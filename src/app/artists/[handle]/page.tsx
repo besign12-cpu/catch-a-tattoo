@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { ArrowLeft, Share2, MoreVertical, Instagram, Image } from "lucide-react";
+import { ArrowLeft, Share2, MoreVertical, Image } from "lucide-react";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Avatar } from "@/components/ui/Avatar";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
@@ -102,7 +102,7 @@ export default function ArtistProfilePage({ params }: Props) {
             rel="noopener noreferrer"
             className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-neutral-200 py-2.5 text-sm font-medium text-neutral-800 active:bg-neutral-50"
           >
-            <Instagram size={15} aria-hidden="true" />
+            <span aria-hidden="true">◎</span>
             Instagram
           </a>
         </div>
