@@ -28,7 +28,7 @@ export function BottomNav() {
       aria-label="하단 내비게이션"
     >
       <div className="mx-auto flex h-[52px] max-w-mobile items-center justify-around px-1">
-        {NAV_ITEMS.map(({ href, icon: Icon, label, hasNotif }) => {
+        {NAV_ITEMS.map(({ href, icon: Icon, label }) => {
           const active = isActive(href);
           return (
             <Link
@@ -46,12 +46,8 @@ export function BottomNav() {
                   strokeWidth={active ? 2 : 1.5}
                   aria-hidden="true"
                 />
-                {hasNotif && (
-                  <span
-                    className="absolute -right-0.5 -top-0.5 h-[7px] w-[7px] rounded-full bg-red-500"
-                    aria-label="읽지 않은 알림 있음"
-                  />
-                )}
+                
+                
               </div>
               <span className="text-[10px] font-medium leading-none">
                 {label}
