@@ -6,7 +6,7 @@ import { FeedCard } from "@/components/artist/FeedCard";
 import { FeedSkeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { SearchInput } from "@/components/search/SearchInput";
-import { CityFilterBar } from "@/components/search/CityFilterBar";
+import { HomeTagFilter } from "@/components/search/HomeTagFilter";
 
 import { getFeedSchedules } from "@/lib/queries/artists";
 import { DUMMY_FEED } from "@/data/dummy";
@@ -38,13 +38,12 @@ async function FeedSection() {
 export default function HomePage() {
   return (
     <PageContainer>
-      {/* 헤더 — 검색 중심 */}
       <header className="sticky top-0 z-40 border-b border-neutral-100 bg-white">
-        <div className="px-4 pt-4 pb-3">
-          <p className="text-[11px] text-neutral-400 mb-1">게스트워크 일정 찾기</p>
+        <div className="px-4 pt-4 pb-0">
+          {/* 검색창 */}
           <SearchInput className="mb-3" />
-          {/* 도시 필터 — 검색 결과를 빠르게 좁히는 용도 */}
-          <CityFilterBar />
+          {/* 태그 필터 칩 (도시 칩 대신) */}
+          <HomeTagFilter />
         </div>
       </header>
 

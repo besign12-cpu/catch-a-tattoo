@@ -79,7 +79,7 @@ async function ProfileContent({ handle }: { handle: string }) {
             rel="noopener noreferrer"
             className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-neutral-200 py-2.5 text-sm font-medium text-neutral-800 active:bg-neutral-50"
           >
-            <span aria-hidden="true">◎</span>
+            <Image size={15} aria-hidden="true" />
             Instagram
           </a>
         </div>
@@ -152,13 +152,13 @@ async function ProfileContent({ handle }: { handle: string }) {
             이 프로필은 나인가요?
           </p>
           <p className="text-[11px] text-amber-600 mb-2">
-            Instagram DM 인증을 통해 프로필 소유권을 확인하세요.
+            Instagram DM 인증으로 본인 프로필임을 확인하세요.
           </p>
           <Link
             href={`/artists/${artist.instagramHandle}/claim`}
             className="inline-flex items-center rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-medium text-white active:scale-95"
           >
-            Claim Profile →
+            Verify Profile →
           </Link>
         </section>
       )}
