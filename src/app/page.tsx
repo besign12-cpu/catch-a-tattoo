@@ -2,11 +2,10 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 
 import { PageContainer } from "@/components/layout/PageContainer";
-import { FeedCard } from "@/components/artist/FeedCard";
 import { FeedSkeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { SearchInput } from "@/components/search/SearchInput";
-import { HomeTagFilter } from "@/components/search/HomeTagFilter";
+import { HomeFeedClient } from "@/components/home/HomeFeedClient";
 
 import { getFeedSchedules } from "@/lib/queries/artists";
 import { DUMMY_FEED } from "@/data/dummy";
@@ -26,13 +25,7 @@ async function FeedSection() {
     );
   }
 
-  return (
-    <div className="space-y-2.5 px-3 py-3">
-      {items.map((item) => (
-        <FeedCard key={item.schedule.id} data={item} />
-      ))}
-    </div>
-  );
+  return <HomeFeedClient items={items} />;
 }
 
 export default function HomePage() {
@@ -40,10 +33,7 @@ export default function HomePage() {
     <PageContainer>
       <header className="sticky top-0 z-40 border-b border-neutral-100 bg-white">
         <div className="px-4 pt-4 pb-0">
-          {/* 검색창 */}
           <SearchInput className="mb-3" />
-          {/* 태그 필터 칩 (도시 칩 대신) */}
-          <HomeTagFilter />
         </div>
       </header>
 

@@ -218,6 +218,43 @@ Sprint 3 마무리 시 두 파일 삭제.
 
 ---
 
+## [RESOLVED] Home Tag Filter — 태그 클릭 시 /search 페이지로 이동하는 버그
+
+**발생 Sprint:** Sprint 3
+**상태:** ✅ RESOLVED
+
+**증상**
+홈 화면(`/`)에서 태그 필터 칩(Black, Fine Line 등)을 클릭하면
+같은 화면에서 카드가 필터링되지 않고 `/search?tags=...` 로 페이지 이동.
+뒤로가기 버튼이 있는 검색 결과 페이지로 이동하고, 결과도 비어 보임.
+
+**원인**
+`HomeTagFilter` 내부에서 `router.push(\`/search?tags=\${slug}\`)` 를 호출하고 있었음.
+태그 선택 상태를 부모와 공유하지 않고 자체 `active` state만 갖고 있어
+URL 이동 외에 피드 필터링 수단이 없었음.
+
+**해결책**
+1. `HomeTagFilter`를 `src/components/search/`에서 `src/components/home/`으로 이동
+2. `router.push` 완전 제거. `onSelect` / `activeSlug` props 방식으로 변경
+3. 태그 선택 상태를 `HomeFeedClient`(클라이언트 컴포넌트) 내부 `useState`로 관리
+4. `page.tsx`(서버 컴포넌트)에서 피드 전체 fetch → `HomeFeedClient`에 props 전달
+5. 클라이언트에서 선택된 태그 slug로 `items.filter()` 수행 — URL 이동 없음
+
+```
+page.tsx (서버) — getFeedSchedules() fetch
+  └─ HomeFeedClient (클라이언트) — useState(activeTag)
+       ├─ HomeTagFilter — activeSlug + onSelect props
+       └─ FeedCard 목록 — filtered items
+```
+
+**재발 방지 규칙**
+- 홈 태그 필터(`HomeTagFilter`)는 절대 `/search`로 이동시키지 않는다
+- 검색창(`SearchInput`) 입력만 `/search?q=`로 이동한다
+- `HomeTagFilter`는 반드시 `activeSlug`와 `onSelect` props를 받아서 동작한다
+- `HomeTagFilter` 내부에서 `useRouter`, `router.push` 사용 금지
+
+---
+
 ## 이슈 템플릿
 
 ```md
