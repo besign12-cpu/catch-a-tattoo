@@ -2,15 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Search, MapPin, Bell, User } from "lucide-react";
+import { Home, Heart, MapPin, Bell, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
-  { href: "/", icon: Home, label: "홈" },
-  { href: "/search", icon: Search, label: "검색" },
-  { href: "/map", icon: MapPin, label: "지도" },
+  { href: "/",          icon: Home,   label: "홈"     },
+  { href: "/following", icon: Heart,  label: "팔로우" },
+  { href: "/map",       icon: MapPin, label: "지역"   },
   { href: "/notifications", icon: Bell, label: "알림", hasNotif: true },
-  { href: "/me", icon: User, label: "내 정보" },
+  { href: "/me",        icon: User,   label: "내 정보" },
 ] as const;
 
 export function BottomNav() {
@@ -46,8 +46,7 @@ export function BottomNav() {
                   strokeWidth={active ? 2 : 1.5}
                   aria-hidden="true"
                 />
-                
-                
+              
               </div>
               <span className="text-[10px] font-medium leading-none">
                 {label}

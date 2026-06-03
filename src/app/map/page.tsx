@@ -5,87 +5,104 @@ import { MapPin } from "lucide-react";
 
 import { PageContainer } from "@/components/layout/PageContainer";
 import { getCityPins } from "@/lib/queries/artists";
+import type { CityPin } from "@/lib/queries/artists";
 
-export const metadata: Metadata = { title: "지도" };
-export const revalidate = 3600; // 1시간 캐시 (Materialized View 갱신 주기)
+export const metadata: Metadata = { title: "지역" };
+export const revalidate = 3600;
 
-const REGIONS = [
-  { key: "asia",     label: "Asia" },
-  { key: "europe",   label: "Europe" },
-  { key: "americas", label: "Americas" },
-] as const;
+const REGIONS: { key: CityPin["region"]; label: string; emoji: string }[] = [
+  { key: "asia",     label: "Asia",     emoji: "🌏" },
+  { key: "europe",   label: "Europe",   emoji: "🌍" },
+  { key: "americas", label: "Americas", emoji: "🌎" },
+];
 
-async function CityPinList({
+function CityCard({ pin }: { pin: CityPin }) {
+  const slug = `${pin.city.toLowerCase().replace(/\s+/g, "-")}-${pin.country.toLowerCase()}`;
+  return (
+    <Link
+      href={`/city/${slug}`}
+      className="flex flex-col gap-1 rounded-xl border border-neutral-100 bg-white p-3 active:bg-neutral-50"
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <MapPin size={13} className="text-neutral-400" aria-hidden="true" />
+          <span className="text-[13px] font-medium text-neutral-900">
+            {pin.city}
+          </span>
+        </div>
+        <span className="text-[11px] text-neutral-400">{pin.country}</span>
+      </div>
+      <p className="text-[11px] text-emerald-600 font-medium">
+        {pin.upcomingCount}개 일정
+      </p>
+    </Link>
+  );
+}
+
+async function RegionSection({
   region,
+  label,
+  emoji,
 }: {
-  region: "asia" | "europe" | "americas";
+  region: CityPin["region"];
+  label: string;
+  emoji: string;
 }) {
   const pins = await getCityPins(region).catch(() => []);
 
-  if (pins.length === 0) {
-    return (
-      <p className="py-8 text-center text-sm text-neutral-400">
-        이 지역에 등록된 일정이 없습니다
-      </p>
-    );
-  }
+  if (pins.length === 0) return null;
 
   return (
-    <div className="divide-y divide-neutral-100">
-      {pins.map((pin) => (
-        <Link
-          key={`${pin.city}-${pin.country}`}
-          href={`/city/${pin.city.toLowerCase().replace(/\s+/g, "-")}-${pin.country.toLowerCase()}`}
-          className="flex items-center gap-3 bg-white px-4 py-3.5 active:bg-neutral-50"
-        >
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-neutral-100">
-            <MapPin size={16} className="text-neutral-500" aria-hidden="true" />
-          </div>
-          <div className="flex-1">
-            <p className="text-[13px] font-medium text-neutral-900">{pin.city}</p>
-            <p className="text-[11px] text-neutral-400">{pin.country}</p>
-          </div>
-          <div className="text-right">
-            <p className="text-[13px] font-medium text-neutral-900">
-              {pin.upcomingCount}
-            </p>
-            <p className="text-[10px] text-neutral-400">upcoming</p>
-          </div>
-        </Link>
-      ))}
+    <section className="mb-6">
+      <div className="mb-3 flex items-center gap-2 px-4">
+        <span className="text-lg" aria-hidden="true">{emoji}</span>
+        <h2 className="text-[15px] font-medium text-neutral-900">{label}</h2>
+        <span className="ml-auto text-[11px] text-neutral-400">
+          {pins.length}개 도시
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-2 px-4">
+        {pins.map((pin) => (
+          <CityCard key={`${pin.city}-${pin.country}`} pin={pin} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function RegionSkeleton() {
+  return (
+    <div className="mb-6 px-4">
+      <div className="mb-3 h-5 w-20 animate-pulse rounded bg-neutral-200" />
+      <div className="grid grid-cols-2 gap-2">
+        {[...Array(4)].map((_, i) => (
+          <div
+            key={i}
+            className="h-16 animate-pulse rounded-xl bg-neutral-100"
+          />
+        ))}
+      </div>
     </div>
   );
 }
 
 export default function MapPage() {
   return (
-    <PageContainer className="bg-white">
-      <header className="sticky top-0 z-40 border-b border-neutral-100 bg-white px-4 py-3">
-        <p className="text-[17px] font-medium text-neutral-900">지도</p>
-        <p className="text-xs text-neutral-400 mt-0.5">
-          Mapbox 지도는 Sprint 2 후반에 추가됩니다
+    <PageContainer className="bg-neutral-50">
+      <header className="border-b border-neutral-100 bg-white px-4 py-3">
+        <p className="text-[17px] font-medium text-neutral-900">지역 탐색</p>
+        <p className="text-[11px] text-neutral-400 mt-0.5">
+          게스트워크가 예정된 도시
         </p>
       </header>
 
-      {/* 지역 탭 + 도시 목록 */}
-      {REGIONS.map(({ key, label }) => (
-        <section key={key}>
-          <div className="border-b border-neutral-100 bg-neutral-50 px-4 py-2">
-            <p className="text-[11px] font-medium uppercase tracking-widest text-neutral-500">
-              {label}
-            </p>
-          </div>
-          <Suspense
-            fallback={
-              <p className="py-6 text-center text-sm text-neutral-300">
-                불러오는 중...
-              </p>
-            }
-          >
-            <CityPinList region={key} />
+      <div className="pt-5">
+        {REGIONS.map(({ key, label, emoji }) => (
+          <Suspense key={key} fallback={<RegionSkeleton />}>
+            <RegionSection region={key} label={label} emoji={emoji} />
           </Suspense>
-        </section>
-      ))}
+        ))}
+      </div>
     </PageContainer>
   );
 }
