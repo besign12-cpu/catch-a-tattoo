@@ -9,6 +9,7 @@ import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import { TagList } from "@/components/ui/TagChip";
 import { FeedSkeleton } from "@/components/ui/Skeleton";
 import { ResultFilterBar } from "@/components/search/ResultFilterBar";
+import { SearchInput } from "@/components/search/SearchInput";
 
 import { searchArtists } from "@/lib/queries/artists";
 import { formatDateRange, calcDDay } from "@/lib/utils";
@@ -32,7 +33,6 @@ async function SearchResults({
   tags?: string;
   type?: string;
 }) {
-  // q가 없으면 결과 없음
   if (!q?.trim()) {
     return (
       <p className="py-12 text-center text-sm text-neutral-400">
@@ -43,7 +43,6 @@ async function SearchResults({
 
   const tagSlugs = tags ? tags.split(",").filter(Boolean) : [];
 
-  // q 값으로 도시 검색 + 아티스트 이름 검색 병렬 시도
   const [byCity, byName] = await Promise.all([
     searchArtists({
       city: q,
@@ -56,10 +55,10 @@ async function SearchResults({
     }).catch(() => []),
   ]);
 
-  // 도시 결과 우선, 이름 필터 후 중복 제거
-  const nameFiltered = byName.filter((r) =>
-    r.displayName.toLowerCase().includes(q.toLowerCase()) ||
-    (r.instagramHandle ?? "").toLowerCase().includes(q.toLowerCase())
+  const nameFiltered = byName.filter(
+    (r) =>
+      r.displayName.toLowerCase().includes(q.toLowerCase()) ||
+      (r.instagramHandle ?? "").toLowerCase().includes(q.toLowerCase())
   );
 
   const seen = new Set<string>();
@@ -72,7 +71,7 @@ async function SearchResults({
   if (results.length === 0) {
     return (
       <div className="py-12 text-center">
-        <p className="text-sm text-neutral-500 mb-1">
+        <p className="mb-1 text-sm text-neutral-500">
           &quot;{q}&quot; 검색 결과가 없습니다
         </p>
         <p className="text-xs text-neutral-400">
@@ -95,14 +94,14 @@ async function SearchResults({
         >
           <Avatar name={r.displayName} size="sm" />
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 mb-1">
+            <div className="mb-1 flex items-center gap-1.5">
               <span className="text-[13px] font-medium text-neutral-900">
                 {r.displayName}
               </span>
               {r.isVerified && <VerifiedBadge size={12} />}
             </div>
             {r.nextSchedule && (
-              <div className="flex items-center gap-1 mb-1 text-[11px] text-emerald-600">
+              <div className="mb-1 flex items-center gap-1 text-[11px] text-emerald-600">
                 <span>
                   {r.nextSchedule.city} ·{" "}
                   {formatDateRange(
@@ -143,16 +142,11 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           >
             <ArrowLeft size={20} />
           </Link>
+          {/* value/onChange 없이 사용 → uncontrolled 모드, Enter 시 /search?q= 이동 */}
           <div className="flex-1">
-            <input
-             type="text"
-             placeholder="아티스트 이름, 도시 검색"
-             
-             className="h-11 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm outline-none placeholder:text-zinc-400 focus:border-zinc-400"
-            />
+            <SearchInput placeholder="아티스트 이름, 도시 검색" />
           </div>
         </div>
-        {/* 결과 내 필터 — 태그·타입 */}
         {sp.q && (
           <ResultFilterBar
             initialTags={sp.tags}

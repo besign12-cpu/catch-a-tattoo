@@ -218,6 +218,49 @@ Sprint 3 마무리 시 두 파일 삭제.
 
 ---
 
+## [RESOLVED] SearchInput API 변경 후 사용처 누락으로 빌드 실패
+
+**발생 Sprint:** Sprint 3
+**상태:** ✅ RESOLVED
+
+**증상**
+```
+Type '{ placeholder: string; }' is missing the following properties
+from type 'SearchInputProps': value, onChange
+```
+`SearchInput`을 `value`/`onChange` 필수 props 방식으로 변경했으나
+`/src/app/search/page.tsx`의 기존 사용처를 함께 수정하지 않아 빌드 실패.
+
+**원인**
+공용 컴포넌트 API 변경 시 전체 사용처를 확인하지 않고 제출.
+
+**해결책**
+`value`/`onChange`를 optional로 변경하여 두 가지 모드로 동작:
+- **Controlled 모드** (`value` + `onChange` 있음) → 홈 화면, URL 이동 없이 내부 필터링
+- **Uncontrolled 모드** (`value`/`onChange` 없음) → `/search` 페이지, Enter 시 `/search?q=` 이동
+
+```tsx
+// Controlled (홈)
+<SearchInput value={query} onChange={setQuery} />
+
+// Uncontrolled (/search 페이지)
+<SearchInput placeholder="아티스트 이름, 도시 검색" />
+```
+
+**재발 방지 규칙**
+공용 컴포넌트 API 변경 시 반드시 아래 순서를 따른다:
+```bash
+# 1. 전체 사용처 확인
+grep -R "SearchInput" src
+
+# 2. 모든 사용처 함께 수정
+
+# 3. 빌드 통과 확인 후 제출
+npm run build
+```
+
+---
+
 ## [RESOLVED] Home Tag Filter — 태그 클릭 시 /search 페이지로 이동하는 버그
 
 **발생 Sprint:** Sprint 3
