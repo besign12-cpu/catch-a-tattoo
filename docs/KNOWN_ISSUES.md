@@ -218,6 +218,39 @@ Sprint 3 마무리 시 두 파일 삭제.
 
 ---
 
+## [RESOLVED] TypeScript 타입 오류 — 반환 타입 미확인으로 인한 타입 충돌
+
+**발생 Sprint:** Sprint 3 Pre-Home
+**상태:** ✅ RESOLVED
+
+**증상**
+```
+Type 'ArtistProfile[]' is not assignable to type 'SearchResult[]'.
+Type 'ArtistProfile' is missing the following properties from type 'SearchResult':
+artistId, matchedTags, totalTags, priority, nextSchedule
+```
+`getCityArtists()`가 `SearchResult[]`를 반환하는데,
+`ArtistProfile[]` 기반 변환 함수를 작성하여 타입 충돌 발생.
+
+**원인**
+코드 작성 전 실제 반환 타입을 확인하지 않고 타입을 추정해서 구현.
+
+**해결책**
+`dummyToSearchResult()` 변환 함수를 작성해 `ArtistProfile` → `SearchResult` 변환 후 통일.
+`toFeedCards()`도 `SearchResult[]` 기반으로 재작성.
+
+**재발 방지 규칙**
+```
+□ TypeScript 타입 오류 발생 시 as unknown / as any 추론 수정 금지
+□ 관련 파일(queries/artists.ts 등)을 먼저 요청하여 실제 반환 타입 확인
+□ 변환 함수는 실제 타입 기준으로 작성
+□ zip 제출 전 npm run build 필수
+□ unused import 남기지 않기
+□ build 성공 확인 후 zip 제출
+```
+
+---
+
 ## [RESOLVED] Unused import로 인한 빌드 실패 (반복 주의)
 
 **발생 Sprint:** Sprint 3

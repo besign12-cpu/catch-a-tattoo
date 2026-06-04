@@ -10,7 +10,7 @@
 | 배포 | Vercel (자동 배포, main 브랜치) |
 | DB | Supabase (PostgreSQL + RLS) |
 | 저장소 | GitHub |
-| 현재 상태 | Sprint 3 UI 개선 완료 / 인증·프로필 시스템 구현 예정 |
+| 현재 상태 | Sprint 3 Pre-Home 완료 (build ✅) / Sprint 3 Auth + User Profile 진행 예정 |
 
 ---
 
@@ -78,20 +78,25 @@
 | `supabase/migrations/002_rls.sql` | RLS 정책 |
 | `supabase/migrations/003_seed.sql` | 태그 32개 + 샘플 데이터 |
 
-### Sprint 3 — UI 구조 개선 🔄 진행 중
+### Sprint 3 — UI 구조 개선 + Pre-Home 완료 ✅
 
 | 파일 | 작업 | 상태 |
 |---|---|---|
 | `src/components/layout/BottomNav.tsx` | 검색/팔로우 탭 구조 개편, hasNotif 제거 | ✅ |
 | `src/components/artist/FeedCard.tsx` | 라벨 제거, 국가명 추가, 팔로우 버튼 복원 | ✅ |
-| `src/components/search/SearchInput.tsx` | 실제 input 컴포넌트 신규 | ✅ |
-| `src/components/search/HomeTagFilter.tsx` | 도시 칩 대신 태그 칩 신규 | ✅ |
-| `src/components/search/ResultFilterBar.tsx` | 검색 결과 내 필터 드로어 신규 | ✅ |
-| `src/app/page.tsx` | 검색 중심 홈, 태그 필터 칩 | ✅ |
-| `src/app/search/page.tsx` | 텍스트 기반 검색 (도시+이름 병렬) | ✅ |
+| `src/components/search/SearchInput.tsx` | controlled/uncontrolled 하위 호환 재작성 | ✅ |
+| `src/components/search/HomeTagFilter.tsx` | 역할 종료 → `src/components/home/` 로 이동 | ✅ |
+| `src/components/search/ResultFilterBar.tsx` | 검색 결과 내 필터 드로어 | ✅ |
+| `src/components/home/HomeFeedClient.tsx` | Base City 섹션 피드 + AND 필터링 | ✅ |
+| `src/components/home/HomeFilterBar.tsx` | 전체/이번주/Filter 상단 바 신규 | ✅ |
+| `src/components/home/HomeFilterSheet.tsx` | 태그 바텀시트, draft/applied 분리, 드래그 닫기 | ✅ |
+| `src/app/page.tsx` | Base City 기반 섹션형 홈 피드 | ✅ |
+| `src/app/search/page.tsx` | SearchInput 복원 (uncontrolled) | ✅ |
 | `src/app/following/page.tsx` | 팔로우 탭 신규 (빈 상태 UI) | ✅ |
 | `src/app/map/page.tsx` | 지역 탐색 구조 (Asia/Europe/Americas 카드) | ✅ |
-| `src/app/artists/[handle]/page.tsx` | Claim → Verify Profile 문구 변경 | ✅ |
+| `src/app/city/[citySlug]/page.tsx` | Guest/Based 탭 구조, SearchResult 기반 재작성 | ✅ |
+| `src/app/artists/[handle]/page.tsx` | PortfolioPlaceholder SVG 교체, alt warning 해결 | ✅ |
+| `src/lib/mock-preferences.ts` | MOCK_BASE_CITY 상수, toCitySlug/fromCitySlug 유틸 신규 | ✅ |
 | `src/lib/queries/artists.ts` | (변경 없음) | - |
 | `src/app/auth/**` | 로그인·회원가입 화면 | ⏳ 미구현 |
 | `src/app/studio/**` | 아티스트 스튜디오 | ⏳ 미구현 |
@@ -110,6 +115,10 @@
 |---|---|---|
 | `import { Instagram } from "lucide-react"` | 2회 | SVG 직접 인라인 |
 | `hasNotif` 타입 오류 | 2회 | 속성 제거 후 경로 분기 |
+| `HomeTagFilter`에서 `router.push` 사용 | 1회 | onSelect 콜백 + 클라이언트 state 필터링 |
+| 공용 컴포넌트 API 변경 후 사용처 미확인 | 1회 | `grep -R "ComponentName" src` 전수 확인 |
+| 반환 타입 미확인으로 타입 충돌 | 1회 | 관련 쿼리 파일 먼저 요청 후 실제 타입 확인 |
+| unused import 잔존 | 1회 | 제출 전 import 전수 확인 + `npm run build` |
 
 ---
 
@@ -118,8 +127,16 @@
 - 모든 코드는 `npm run build` 통과 후 제출
 - `dev` 서버에서만 되는 코드 제출 금지
 - TypeScript strict 모드 준수
+- unused import 제출 금지 — ESLint build 실패 원인
+- 공용 컴포넌트 API 변경 시 `grep -R "ComponentName" src` 전수 확인 필수
+- 타입 오류 발생 시 `as unknown` 추론 수정 금지 — 관련 파일 먼저 요청
 
 ## 배포 규칙
 
 - main 브랜치 push → Vercel 자동 배포
 - PR merge 전 로컬 빌드 확인 필수
+
+## Next
+
+- Sprint 3 Auth + User Profile 진행 예정
+- `src/lib/mock-preferences.ts`의 `MOCK_BASE_CITY` → 세션 기반으로 교체 필요

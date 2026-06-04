@@ -82,6 +82,52 @@
 - [x] Claim Profile → Verify Profile 문구 변경
 - [x] lucide-react Instagram 아이콘 재발 이슈 해결
 
+### ✅ 완료 — Pre-Home 개선 (Sprint 3 진입 전)
+
+**빌드:** ✅ 통과 (fix4b 기준)
+
+#### Home Personalization
+- [x] `src/lib/mock-preferences.ts` 신규 — `MOCK_BASE_CITY`, `MOCK_BASE_COUNTRY`, `toCitySlug()`, `fromCitySlug()` (Auth 연결 전 임시 상수)
+- [x] 홈 피드를 Base City 기반 섹션형으로 재편
+  - Upcoming Guest Artists in {City} — 최대 8개
+  - Based Artists in {City} — 최대 3개
+  - 각 섹션 "더보기" → `/city/{citySlug}?tab=guest` / `?tab=based`
+- [x] `getCityArtists()` 반환 타입(`SearchResult[]`) 기반으로 `toFeedCards()` 재작성
+- [x] Dummy fallback: `dummyToSearchResult()` 변환 함수로 타입 통일
+
+#### 도시 페이지 탭 구조
+- [x] `/city/[citySlug]` Guest / Based 탭 구조 추가
+- [x] URL query 유지: `?tab=guest` / `?tab=based`
+- [x] All 탭 없음 — CAT 서비스 특성상 Guest / Based만 구분
+
+#### Home Filter Bottom Sheet
+- [x] 상단 태그 칩 가로 스크롤 제거 → Filter 버튼 방식으로 교체
+- [x] `HomeFilterBar` 신규: `[전체]` `[이번 주]` ··· `[Filter]`
+- [x] `HomeFilterSheet` 신규: 바텀시트, Color / Main Style / Art Style 그룹별 태그
+- [x] `appliedTags` / `draftTags` 상태 분리 — Apply 전까지 카드 반영 안 함
+- [x] 드래그 닫기: 핸들 80px 이상 드래그 시 dismiss, draft 버림
+- [x] X 버튼 닫기 + 배경 클릭 닫기 — 모두 draft 버림
+- [x] 하단 액션바: Reset(텍스트, 비대칭) + Apply(w-220px, h-56px, rounded-2xl) — Airbnb 스타일
+- [x] Reset: draft 선택 없을 때 비활성(opacity-40, no-underline)
+- [x] BottomNav + safe-area 가림 방지 (`env(safe-area-inset-bottom) + 80px`)
+
+#### 검색 UX 개선
+- [x] `SearchInput` controlled / uncontrolled 하위 호환 방식으로 재작성
+  - 홈: `value` + `onChange` props → URL 이동 없이 카드 필터링
+  - `/search`: props 없음 → Enter 시 `/search?q=` 이동 (기존 동작 유지)
+- [x] 홈 검색어 + 기간 + 태그 AND 누적 필터링
+
+#### 버그 수정
+- [x] `artists/[handle]/page.tsx` — lucide `Image` 컴포넌트 오용 → `PortfolioPlaceholder` SVG 교체, alt warning 해결
+- [x] `HomeTagFilter` router.push 제거 — URL 이동 없이 클라이언트 필터링
+- [x] `HomeTagFilter` 경로 이동: `src/components/search/` → `src/components/home/`
+
+#### KNOWN_ISSUES 추가
+- [x] Home Tag Filter navigation bug
+- [x] SearchInput API 변경 후 사용처 누락
+- [x] Unused import 빌드 실패
+- [x] TypeScript 타입 오류 — 반환 타입 미확인
+
 ### ⏳ 미완료 (인증·프로필 시스템)
 
 #### Phase A — 인증 기반
