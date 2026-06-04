@@ -3,60 +3,88 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Search, Heart, MapPin, Bell, User } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useSession } from "@/lib/hooks/useSession";
 
-// 홈(/) = 검색 중심 페이지
-// /following = 팔로우한 아티스트 피드
-const NAV_ITEMS = [
+const NAV_ITEMS: Array<{
+  href: string;
+  icon: React.ElementType;
+  label: string;
+}> = [
   { href: "/",             icon: Search, label: "검색"   },
-  { href: "/following",    icon: Heart,  label: "팔로우" },
-  { href: "/map",          icon: MapPin, label: "지역"   },
-  { href: "/notifications",icon: Bell,   label: "알림", hasNotif: true },
-  { href: "/me",           icon: User,   label: "내 정보" },
-] as const;
+  { href: "/following",   icon: Heart,  label: "팔로우" },
+  { href: "/map",         icon: MapPin, label: "지역"   },
+  { href: "/notifications", icon: Bell, label: "알림"   },
+  { href: "/me",          icon: User,   label: "내 정보" },
+];
 
-export function BottomNav() {
+export default function BottomNav() {
   const pathname = usePathname();
+  const { user, status } = useSession();
 
-  function isActive(href: string) {
-    if (href === "/") return pathname === "/";
-    return pathname.startsWith(href);
-  }
+  // 인증 페이지에서는 BottomNav 숨김
+  if (pathname.startsWith("/auth/")) return null;
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 border-t border-neutral-100 bg-white"
-      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
-      aria-label="하단 내비게이션"
+      className="
+        fixed bottom-0 left-1/2 -translate-x-1/2
+        w-full max-w-[430px]
+        bg-cat-black/95 backdrop-blur-sm
+        border-t border-white/5
+        pb-safe
+      "
+      aria-label="하단 네비게이션"
     >
-      <div className="mx-auto flex h-[52px] max-w-mobile items-center justify-around px-1">
+      <ul className="flex items-center justify-around px-2 h-16">
         {NAV_ITEMS.map(({ href, icon: Icon, label }) => {
-          const active = isActive(href);
+          // /me 탭: 비로그인 시 /auth/login으로 이동
+          const targetHref =
+            href === "/me" && !user && status !== "loading"
+              ? "/auth/login"
+              : href;
+
+          const isActive =
+            href === "/"
+              ? pathname === "/"
+              : pathname.startsWith(href);
+
+          // 알림 점 표시 (로그인 상태에서만)
+          const showNotifDot = href === "/notifications" && !!user;
+
           return (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                "relative flex flex-1 flex-col items-center justify-center gap-0.5 py-1 transition-colors",
-                active ? "text-neutral-900" : "text-neutral-400"
-              )}
-              aria-current={active ? "page" : undefined}
-            >
-              <div className="relative">
-                <Icon
-                  size={22}
-                  strokeWidth={active ? 2 : 1.5}
-                  aria-hidden="true"
-                />
-                
-              </div>
-              <span className="text-[10px] font-medium leading-none">
-                {label}
-              </span>
-            </Link>
+            <li key={href}>
+              <Link
+                href={targetHref}
+                aria-label={label}
+                className="
+                  flex flex-col items-center gap-0.5 px-3 py-2
+                  transition-colors
+                "
+              >
+                <span className="relative">
+                  <Icon
+                    size={22}
+                    strokeWidth={isActive ? 2.2 : 1.6}
+                    className={
+                      isActive ? "text-white" : "text-white/35"
+                    }
+                  />
+                  {showNotifDot && (
+                    <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-red-500" />
+                  )}
+                </span>
+                <span
+                  className={`text-[10px] leading-none ${
+                    isActive ? "text-white" : "text-white/35"
+                  }`}
+                >
+                  {label}
+                </span>
+              </Link>
+            </li>
           );
         })}
-      </div>
+      </ul>
     </nav>
   );
 }

@@ -119,6 +119,29 @@
 | 공용 컴포넌트 API 변경 후 사용처 미확인 | 1회 | `grep -R "ComponentName" src` 전수 확인 |
 | 반환 타입 미확인으로 타입 충돌 | 1회 | 관련 쿼리 파일 먼저 요청 후 실제 타입 확인 |
 | unused import 잔존 | 1회 | 제출 전 import 전수 확인 + `npm run build` |
+| export/import 방식 추측 (default vs named) | 1회 | 실제 파일 확인 필수. 모르면 파일 요청 |
+| React 버전 무시한 API 사용 (`useActionState`) | 1회 | package.json react 버전 확인 후 API 선택 |
+
+---
+
+### Sprint 3-1 — Auth Foundation (진행 중)
+
+| 파일 | 작업 | 상태 |
+|---|---|---|
+| `middleware.ts` | 보호 라우트 접근 제어 (`/me`, `/studio` → 비로그인 시 `/auth/login`) | ✅ |
+| `src/actions/auth.ts` | signUp / signIn / signOut Server Actions | ✅ |
+| `src/lib/hooks/useSession.ts` | 클라이언트 세션 훅 (`useFormState` + `onAuthStateChange`) | ✅ |
+| `src/app/auth/callback/route.ts` | 이메일 인증 콜백 핸들러 | ✅ |
+| `src/app/auth/login/page.tsx` | 로그인 화면 (`useFormState` / `useFormStatus`) | ✅ |
+| `src/app/auth/signup/page.tsx` | 회원가입 화면 (`useFormState` / `useFormStatus`) | ✅ |
+| `src/app/auth/verify-email/page.tsx` | 이메일 인증 대기 안내 화면 | ✅ |
+| `src/components/layout/BottomNav.tsx` | 세션 분기 추가 (`useSession` 연결, `/auth/*` 숨김) | ✅ |
+| `src/app/me/page.tsx` | 로그인 이메일 표시 + 로그아웃 버튼 (placeholder) | ✅ |
+
+**KNOWN_ISSUES.md 업데이트** (2026-06-05)
+- `[RESOLVED] Import/Export 추측으로 인한 Build 실패` 항목 추가
+- export 방식 추측 금지 규칙 추가
+- React 버전별 API 불일치(`useActionState` vs `useFormState`) 오류 기록
 
 ---
 
@@ -130,6 +153,8 @@
 - unused import 제출 금지 — ESLint build 실패 원인
 - 공용 컴포넌트 API 변경 시 `grep -R "ComponentName" src` 전수 확인 필수
 - 타입 오류 발생 시 `as unknown` 추론 수정 금지 — 관련 파일 먼저 요청
+- **export/import 방식 추측 금지 — 실제 파일 확인 후 작성. 모르면 파일 요청.**
+- **React API는 package.json의 react 버전 확인 후 사용 (18 vs 19 차이 주의)**
 
 ## 배포 규칙
 

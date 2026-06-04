@@ -8,6 +8,82 @@
 
 ---
 
+## [RESOLVED] Import/Export 추측으로 인한 Build 실패
+
+**발생 Sprint:** Sprint 3 Auth Foundation
+**상태:** ✅ RESOLVED
+**재발 횟수:** 1회 → 반복 금지 항목으로 격상
+
+**증상**
+```
+Module not found: Can't resolve '@/components/layout/BottomNav'
+Module not found: Can't resolve '@/components/layout/PageContainer'
+Module not found: Can't resolve '@/components/layout/TopBar'
+```
+실제로는 모듈 자체가 없는 것이 아니라 **export 방식 불일치**로 발생:
+```ts
+// 잘못된 예 — default import로 추측
+import BottomNav from "@/components/layout/BottomNav";     // ✅ 실제로 default
+import PageContainer from "@/components/layout/PageContainer"; // ❌ named export임
+import TopBar from "@/components/layout/TopBar";           // ❌ named export임
+```
+
+**원인**
+기존 프로젝트 파일을 직접 확인하지 않고 export 방식을 추측하여 작성.
+실제 파일을 열어보지 않고 "대부분 default export겠지"라는 추정으로 진행함.
+
+**실제 export 방식 (Sprint 3 기준)**
+```ts
+// src/components/layout/BottomNav.tsx
+export default function BottomNav()       // default export
+
+// src/components/layout/PageContainer.tsx
+export function PageContainer()           // named export
+
+// src/components/layout/TopBar.tsx
+export function TopBar()                  // named export
+
+// src/components/ui/Avatar.tsx           // named export
+// src/components/ui/ErrorState.tsx       // named export
+// src/components/ui/Skeleton.tsx         // named export (복수)
+// src/components/ui/TagChip.tsx          // named export (복수)
+// src/components/ui/VerifiedBadge.tsx    // named export
+
+// src/lib/supabase/client.ts  → export function getSupabaseBrowserClient()
+// src/lib/supabase/server.ts  → export async function getSupabaseServerClient()
+// src/lib/supabase/admin.ts   → export function getSupabaseAdminClient()
+// src/lib/hooks/useSession.ts → export function useSession()
+```
+
+**추가 발견 오류 — React 버전 불일치**
+```ts
+// ❌ React 19+용 — 현재 프로젝트 react@18에서 빌드 실패
+import { useActionState } from "react";
+
+// ✅ React 18 + Next.js 14 환경에서 올바른 방식
+import { useFormState, useFormStatus } from "react-dom";
+```
+
+**재발 방지 규칙**
+```
+□ export/import 방식 추측 금지
+□ props 구조 추측 금지
+□ 반환 타입 추측 금지
+□ Server/Client Component 여부 추측 금지
+□ React API는 설치된 react 버전을 package.json에서 먼저 확인
+□ 모르는 경우 → "관련 파일을 업로드해주세요" 먼저 요청
+
+특히 아래 경로는 반드시 실제 파일 확인 후 작성:
+  - src/components/layout/*
+  - src/components/ui/*
+  - src/lib/*
+  - src/actions/*
+
+동일 패턴 오류가 2회 이상 발생하면 추측 수정 중단 후 파일 요청.
+```
+
+---
+
 ## [RESOLVED] Instagram 아이콘 — lucide-react 미지원 (2회 발생)
 
 **발생 Sprint:** Sprint 2, Sprint 3 (재발)
