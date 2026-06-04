@@ -1,67 +1,84 @@
-import { Suspense } from "react";
-import Link from "next/link";
 import type { Metadata } from "next";
-import { ArrowLeft, ChevronRight } from "lucide-react";
+import Link from "next/link";
 
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Avatar } from "@/components/ui/Avatar";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import { TagList } from "@/components/ui/TagChip";
-import { FeedSkeleton } from "@/components/ui/Skeleton";
+import { ErrorState } from "@/components/ui/ErrorState";
 
-import { getCityArtists } from "@/lib/queries/artists";
+import { getCityArtists, type SearchResult } from "@/lib/queries/artists";
+import { DUMMY_ARTISTS } from "@/data/dummy";
+import { fromCitySlug } from "@/lib/mock-preferences";
 import { formatDateRange, calcDDay } from "@/lib/utils";
-import type { SearchResult } from "@/lib/queries/artists";
+import type { GuestSchedule } from "@/types";
 
-interface Props {
+export const metadata: Metadata = { title: "도시" };
+
+type TabType = "guest" | "based";
+
+interface CityPageProps {
   params: Promise<{ citySlug: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }
 
-// citySlug: "seoul-kr" → city="Seoul", country="KR"
-function parseCitySlug(slug: string) {
-  const parts = slug.split("-");
-  const country = parts.pop()?.toUpperCase() ?? "";
-  const city = parts
-    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
-    .join(" ");
-  return { city, country };
+// ── Dummy ArtistProfile → SearchResult 변환 ─────────────────
+
+function dummyToSearchResult(
+  artist: (typeof DUMMY_ARTISTS)[number],
+  type: "guest" | "based"
+): SearchResult {
+  const nextSchedule: GuestSchedule | null =
+    type === "guest" && artist.upcomingSchedules.length > 0
+      ? artist.upcomingSchedules[0]
+      : null;
+
+  return {
+    artistId: artist.id,
+    displayName: artist.displayName,
+    instagramHandle: artist.instagramHandle,
+    isVerified: artist.isVerified,
+    isClaimed: artist.isClaimed,
+    baseCity: artist.baseCity,
+    baseCountry: artist.baseCountry,
+    contactType: artist.contactType,
+    contactValue: artist.contactValue,
+    matchedTags: artist.tags.length,
+    totalTags: artist.tags.length,
+    priority: 0,
+    nextSchedule,
+    tags: artist.tags,
+  };
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { citySlug } = await params;
-  const { city } = parseCitySlug(citySlug);
-  return { title: city };
-}
+// ── 아티스트 카드 ────────────────────────────────────────────
 
-function ArtistRow({
-  result,
-  highlightedSlugs = [],
-}: {
-  result: SearchResult;
-  highlightedSlugs?: string[];
-}) {
+function ArtistCard({ result }: { result: SearchResult }) {
+  const href = `/artists/${result.instagramHandle ?? result.artistId}`;
+
   return (
     <Link
-      href={`/artists/${result.instagramHandle ?? result.artistId}`}
-      className="flex items-center gap-3 bg-white px-4 py-3 active:bg-neutral-50"
+      href={href}
+      className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3 active:bg-neutral-50"
     >
       <Avatar name={result.displayName} size="sm" />
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5 mb-1">
+        <div className="mb-1 flex items-center gap-1.5">
           <span className="text-[13px] font-medium text-neutral-900">
             {result.displayName}
           </span>
           {result.isVerified && <VerifiedBadge size={12} />}
         </div>
         {result.nextSchedule && (
-          <div className="flex items-center gap-1 mb-1">
-            <span className="text-[11px] text-emerald-600">
+          <div className="mb-1 flex items-center gap-1 text-[11px] text-emerald-600">
+            <span>
+              {result.nextSchedule.city} ·{" "}
               {formatDateRange(
                 result.nextSchedule.startDate,
                 result.nextSchedule.endDate
               )}
             </span>
-            <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] text-emerald-600">
+            <span className="rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px]">
               {calcDDay(
                 result.nextSchedule.startDate,
                 result.nextSchedule.endDate
@@ -69,103 +86,100 @@ function ArtistRow({
             </span>
           </div>
         )}
-        <TagList
-          tags={result.tags}
-          highlightedSlugs={highlightedSlugs}
-          size="sm"
-          max={4}
-        />
+        <TagList tags={result.tags} size="sm" max={4} />
       </div>
-      <ChevronRight size={16} className="shrink-0 text-neutral-300" />
     </Link>
   );
 }
 
-async function CityContent({ city }: { city: string }) {
-  const { guests, based } = await getCityArtists(city).catch(() => ({
-    guests: [],
-    based: [],
-  }));
+// ── 페이지 ──────────────────────────────────────────────────
 
-  return (
-    <>
-      {/* 요약 */}
-      <div className="flex gap-6 border-b border-neutral-100 bg-white px-5 py-3">
-        <div className="text-center">
-          <p className="text-lg font-medium text-neutral-900">{guests.length}</p>
-          <p className="text-[10px] text-neutral-400">게스트워크</p>
-        </div>
-        <div className="w-px self-stretch bg-neutral-100" />
-        <div className="text-center">
-          <p className="text-lg font-medium text-neutral-900">{based.length}</p>
-          <p className="text-[10px] text-neutral-400">거주 아티스트</p>
-        </div>
-      </div>
-
-      {/* 게스트 아티스트 섹션 */}
-      {guests.length > 0 && (
-        <section className="mt-2">
-          <div className="border-b border-neutral-100 bg-neutral-50 px-4 py-2">
-            <p className="text-[10px] font-medium uppercase tracking-widest text-neutral-500">
-              Guest Artists Coming to {city}
-            </p>
-          </div>
-          <div className="divide-y divide-neutral-100">
-            {guests.map((r) => (
-              <ArtistRow key={r.artistId} result={r} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* 거주 아티스트 섹션 */}
-      {based.length > 0 && (
-        <section className="mt-2">
-          <div className="border-b border-neutral-100 bg-neutral-50 px-4 py-2">
-            <p className="text-[10px] font-medium uppercase tracking-widest text-neutral-500">
-              Based in {city}
-            </p>
-          </div>
-          <div className="divide-y divide-neutral-100">
-            {based.map((r) => (
-              <ArtistRow key={r.artistId} result={r} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {guests.length === 0 && based.length === 0 && (
-        <p className="py-12 text-center text-sm text-neutral-400">
-          이 도시에 등록된 아티스트가 없습니다
-        </p>
-      )}
-    </>
-  );
-}
-
-export default async function CityPage({ params }: Props) {
+export default async function CityPage({
+  params,
+  searchParams,
+}: CityPageProps) {
   const { citySlug } = await params;
-  const { city, country } = parseCitySlug(citySlug);
+  const sp = await searchParams;
+
+  const activeTab: TabType = sp.tab === "based" ? "based" : "guest";
+  const { city } = fromCitySlug(citySlug);
+
+  let guests: SearchResult[] = [];
+  let based: SearchResult[] = [];
+
+  try {
+    const result = await getCityArtists(city);
+    guests = result.guests;
+    based = result.based;
+
+    if (guests.length === 0 && based.length === 0) {
+      guests = DUMMY_ARTISTS.filter((a) => a.upcomingSchedules.length > 0).map(
+        (a) => dummyToSearchResult(a, "guest")
+      );
+      based = DUMMY_ARTISTS.filter(
+        (a) => a.baseCity.toLowerCase() === city.toLowerCase()
+      ).map((a) => dummyToSearchResult(a, "based"));
+    }
+  } catch {
+    guests = DUMMY_ARTISTS.filter((a) => a.upcomingSchedules.length > 0).map(
+      (a) => dummyToSearchResult(a, "guest")
+    );
+    based = DUMMY_ARTISTS.filter(
+      (a) => a.baseCity.toLowerCase() === city.toLowerCase()
+    ).map((a) => dummyToSearchResult(a, "based"));
+  }
+
+  const activeItems = activeTab === "guest" ? guests : based;
 
   return (
     <PageContainer className="bg-neutral-50">
-      <header className="sticky top-0 z-40 flex h-[52px] items-center gap-3 border-b border-neutral-100 bg-white px-4">
-        <Link
-          href="/map"
-          className="flex h-9 w-9 items-center justify-center rounded-full text-neutral-700 active:bg-neutral-100"
-          aria-label="뒤로가기"
-        >
-          <ArrowLeft size={20} />
-        </Link>
-        <div className="flex items-center gap-1.5">
-          <h1 className="text-[13px] font-medium text-neutral-900">{city}</h1>
-          <span className="text-[12px] text-neutral-400">{country}</span>
+      <header className="sticky top-0 z-40 border-b border-neutral-100 bg-white">
+        <div className="px-4 pt-5 pb-0">
+          <h1 className="text-[18px] font-bold text-neutral-900">{city}</h1>
+        </div>
+        <div className="flex px-4 pt-3">
+          <Link
+            href={`/city/${citySlug}?tab=guest`}
+            className={`mr-5 pb-2.5 text-[13px] font-medium transition-colors ${
+              activeTab === "guest"
+                ? "border-b-2 border-neutral-900 text-neutral-900"
+                : "text-neutral-400"
+            }`}
+          >
+            Guest
+            <span className="ml-1.5 text-[11px]">{guests.length}</span>
+          </Link>
+          <Link
+            href={`/city/${citySlug}?tab=based`}
+            className={`pb-2.5 text-[13px] font-medium transition-colors ${
+              activeTab === "based"
+                ? "border-b-2 border-neutral-900 text-neutral-900"
+                : "text-neutral-400"
+            }`}
+          >
+            Based
+            <span className="ml-1.5 text-[11px]">{based.length}</span>
+          </Link>
         </div>
       </header>
 
-      <Suspense fallback={<FeedSkeleton />}>
-        <CityContent city={city} />
-      </Suspense>
+      <div className="space-y-2 px-3 py-3">
+        {activeItems.length === 0 ? (
+          <div className="pt-4">
+            <ErrorState
+              type="generic"
+              message={
+                activeTab === "guest"
+                  ? `${city}에 예정된 게스트 아티스트가 없습니다`
+                  : `${city}에 기반한 아티스트가 없습니다`
+              }
+              compact
+            />
+          </div>
+        ) : (
+          activeItems.map((r) => <ArtistCard key={r.artistId} result={r} />)
+        )}
+      </div>
     </PageContainer>
   );
 }

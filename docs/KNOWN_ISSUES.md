@@ -218,6 +218,42 @@ Sprint 3 마무리 시 두 파일 삭제.
 
 ---
 
+## [RESOLVED] Unused import로 인한 빌드 실패 (반복 주의)
+
+**발생 Sprint:** Sprint 3
+**상태:** ✅ RESOLVED
+
+**증상**
+```
+'DUMMY_ARTISTS' is defined but never used.
+```
+`page.tsx`에서 `DUMMY_ARTISTS`를 import했으나 실제 코드에서 사용하지 않아 ESLint build 실패.
+
+**원인**
+이전 버전 코드에서 사용하던 import를 로직 변경 후 제거하지 않음.
+`getCityArtists`의 반환 타입이 `SearchResult[]`임을 확인하지 않고
+`ArtistProfile[]` 기반 `toFeedCards`를 작성하다 리팩토링 과정에서 import 잔존.
+
+**재발 방지 규칙**
+코드 제출 전 반드시 아래를 확인한다:
+```bash
+# 1. 사용하지 않는 import 확인
+grep "^import" src/app/page.tsx  # 각 파일별로 확인
+
+# 2. 특히 아래 항목은 제거 후 잔존 여부 주의
+#    DUMMY_ARTISTS / notFound / unused SearchResult 등
+
+# 3. 빌드 통과 확인
+npm run build
+```
+
+**추가 원칙**
+- 반환 타입이 변경된 함수(`getCityArtists` 등)를 사용할 때
+  반드시 실제 반환 타입을 확인 후 변환 함수 작성
+- `Awaited<ReturnType<typeof fn>>` 패턴으로 타입 추론 활용
+
+---
+
 ## [RESOLVED] SearchInput API 변경 후 사용처 누락으로 빌드 실패
 
 **발생 Sprint:** Sprint 3

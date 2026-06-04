@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import { FeedCard } from "@/components/artist/FeedCard";
 import { SearchInput } from "@/components/search/SearchInput";
 import { HomeFilterBar, type PeriodFilter } from "@/components/home/HomeFilterBar";
@@ -10,7 +12,7 @@ import type { FeedCard as FeedCardType } from "@/types";
 /** 이번 주 범위 계산 (월~일) */
 function getThisWeekRange(): { start: Date; end: Date } {
   const now = new Date();
-  const day = now.getDay(); // 0=일, 1=월 ...
+  const day = now.getDay();
   const diffToMon = day === 0 ? -6 : 1 - day;
   const start = new Date(now);
   start.setDate(now.getDate() + diffToMon);
@@ -21,7 +23,6 @@ function getThisWeekRange(): { start: Date; end: Date } {
   return { start, end };
 }
 
-/** 일정이 이번 주와 겹치는지 확인 */
 function isThisWeek(startDate: string, endDate: string): boolean {
   const { start, end } = getThisWeekRange();
   const schedStart = new Date(startDate);
@@ -29,84 +30,114 @@ function isThisWeek(startDate: string, endDate: string): boolean {
   return schedStart <= end && schedEnd >= start;
 }
 
-interface HomeFeedClientProps {
-  items: FeedCardType[];
+/** AND 누적 필터 */
+function applyFilters(
+  items: FeedCardType[],
+  query: string,
+  period: PeriodFilter,
+  appliedTags: string[]
+): FeedCardType[] {
+  return items.filter(({ artist, schedule }) => {
+    if (query.trim()) {
+      const q = query.trim().toLowerCase();
+      if (
+        !schedule.city.toLowerCase().includes(q) &&
+        !artist.displayName.toLowerCase().includes(q)
+      )
+        return false;
+    }
+    if (period === "week" && !isThisWeek(schedule.startDate, schedule.endDate))
+      return false;
+    if (appliedTags.length > 0) {
+      const slugs = artist.tags.map((t) => t.slug);
+      if (!appliedTags.every((s) => slugs.includes(s))) return false;
+    }
+    return true;
+  });
 }
 
-export function HomeFeedClient({ items }: HomeFeedClientProps) {
+interface SectionHeaderProps {
+  title: string;
+  href: string;
+}
+
+function SectionHeader({ title, href }: SectionHeaderProps) {
+  return (
+    <div className="flex items-center justify-between px-4 pb-2 pt-5">
+      <h2 className="text-[13px] font-semibold text-neutral-800">{title}</h2>
+      <Link
+        href={href}
+        className="flex items-center gap-0.5 text-[12px] text-neutral-400 active:text-neutral-600"
+      >
+        더보기
+        <ChevronRight size={13} strokeWidth={2} />
+      </Link>
+    </div>
+  );
+}
+
+interface HomeFeedClientProps {
+  guestItems: FeedCardType[];
+  basedItems: FeedCardType[];
+  baseCity: string;
+  citySlug: string;
+}
+
+export function HomeFeedClient({
+  guestItems,
+  basedItems,
+  baseCity,
+  citySlug,
+}: HomeFeedClientProps) {
   const [query, setQuery] = useState("");
   const [period, setPeriod] = useState<PeriodFilter>("all");
-
-  // 실제 카드 리스트에 적용된 태그
   const [appliedTags, setAppliedTags] = useState<string[]>([]);
-  // 바텀시트 안에서 임시 선택 중인 태그
   const [draftTags, setDraftTags] = useState<string[]>([]);
-
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  /** Filter 버튼 클릭 — draft를 applied 값으로 초기화한 뒤 시트 오픈 */
   function handleFilterOpen() {
     setDraftTags(appliedTags);
     setSheetOpen(true);
   }
 
-  /** 바텀시트 내 태그 토글 — draft만 변경 */
   function handleDraftToggle(slug: string) {
     setDraftTags((prev) =>
       prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]
     );
   }
 
-  /** Apply — draft를 applied에 반영하고 시트 닫기 */
+  function handleDraftReset() {
+    setDraftTags([]);
+  }
+
   function handleApply() {
     setAppliedTags(draftTags);
     setSheetOpen(false);
   }
 
-  /** 배경 클릭 — draft 버리고 시트만 닫기 */
   function handleDismiss() {
     setSheetOpen(false);
-    // draftTags는 다음 시트 오픈 시 handleFilterOpen에서 applied로 덮어씀
   }
 
-  /** AND 누적 필터링 */
-  const filtered = useMemo(() => {
-    return items.filter((item) => {
-      const { artist, schedule } = item;
+  const isFiltering =
+    query.trim().length > 0 || period !== "all" || appliedTags.length > 0;
 
-      // 1. 검색어 (도시명 OR 아티스트명, 대소문자 무시)
-      if (query.trim().length > 0) {
-        const q = query.trim().toLowerCase();
-        const matchCity = schedule.city.toLowerCase().includes(q);
-        const matchName = artist.displayName.toLowerCase().includes(q);
-        if (!matchCity && !matchName) return false;
-      }
+  const filteredGuest = useMemo(
+    () => applyFilters(guestItems, query, period, appliedTags),
+    [guestItems, query, period, appliedTags]
+  );
+  const filteredBased = useMemo(
+    () => applyFilters(basedItems, query, period, appliedTags),
+    [basedItems, query, period, appliedTags]
+  );
 
-      // 2. 기간
-      if (period === "week") {
-        if (!isThisWeek(schedule.startDate, schedule.endDate)) return false;
-      }
-
-      // 3. 태그 (AND — applied 기준)
-      if (appliedTags.length > 0) {
-        const artistSlugs = artist.tags.map((t) => t.slug);
-        const allMatch = appliedTags.every((slug) => artistSlugs.includes(slug));
-        if (!allMatch) return false;
-      }
-
-      return true;
-    });
-  }, [items, query, period, appliedTags]);
+  const totalFiltered = filteredGuest.length + filteredBased.length;
 
   return (
     <>
       {/* sticky 헤더 */}
       <div className="sticky top-0 z-40 border-b border-neutral-100 bg-white px-4 pt-4 pb-0">
-        <SearchInput
-          value={query}
-          onChange={setQuery}
-          className="mb-3"
-        />
+        <SearchInput value={query} onChange={setQuery} className="mb-3" />
         <HomeFilterBar
           period={period}
           onPeriodChange={setPeriod}
@@ -115,29 +146,60 @@ export function HomeFeedClient({ items }: HomeFeedClientProps) {
         />
       </div>
 
-      {/* 카드 리스트 */}
-      <div className="space-y-2.5 px-3 py-3">
-        {filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <p className="text-[14px] font-medium text-neutral-500">
-              No artists match these filters.
+      {/* 필터 결과 없음 */}
+      {isFiltering && totalFiltered === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <p className="text-[14px] font-medium text-neutral-500">
+            No artists match these filters.
+          </p>
+          <p className="mt-1 text-[12px] text-neutral-400">
+            조건을 바꿔서 다시 시도해보세요.
+          </p>
+        </div>
+      ) : (
+        <div className="pb-6">
+          {/* Upcoming Guest Artists 섹션 */}
+          <SectionHeader
+            title={`Upcoming Guest Artists in ${baseCity}`}
+            href={`/city/${citySlug}?tab=guest`}
+          />
+          {filteredGuest.length === 0 ? (
+            <p className="px-4 py-4 text-[12px] text-neutral-400">
+              조건에 맞는 게스트 아티스트가 없습니다.
             </p>
-            <p className="mt-1 text-[12px] text-neutral-400">
-              조건을 바꿔서 다시 시도해보세요.
+          ) : (
+            <div className="space-y-2.5 px-3 pt-1">
+              {filteredGuest.map((item) => (
+                <FeedCard key={item.schedule.id} data={item} />
+              ))}
+            </div>
+          )}
+
+          {/* Based Artists 섹션 */}
+          <SectionHeader
+            title={`Based Artists in ${baseCity}`}
+            href={`/city/${citySlug}?tab=based`}
+          />
+          {filteredBased.length === 0 ? (
+            <p className="px-4 py-4 text-[12px] text-neutral-400">
+              조건에 맞는 베이스드 아티스트가 없습니다.
             </p>
-          </div>
-        ) : (
-          filtered.map((item) => (
-            <FeedCard key={item.schedule.id} data={item} />
-          ))
-        )}
-      </div>
+          ) : (
+            <div className="space-y-2.5 px-3 pt-1">
+              {filteredBased.map((item) => (
+                <FeedCard key={item.schedule.id} data={item} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 태그 바텀시트 */}
       <HomeFilterSheet
         isOpen={sheetOpen}
         draftSlugs={draftTags}
         onToggle={handleDraftToggle}
+        onReset={handleDraftReset}
         onApply={handleApply}
         onDismiss={handleDismiss}
       />

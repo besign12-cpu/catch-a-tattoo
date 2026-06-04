@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect } from "react";
+import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ALL_TAGS } from "@/data/dummy";
 import type { Tag } from "@/types";
@@ -8,8 +9,6 @@ import type { Tag } from "@/types";
 const COLOR_TAGS = ALL_TAGS.filter((t) => t.group === "color");
 const MAIN_TAGS = ALL_TAGS.filter((t) => t.group === "main");
 const ART_TAGS = ALL_TAGS.filter((t) => t.group === "art");
-
-const DRAG_CLOSE_THRESHOLD = 80; // px — 이 이상 내리면 닫기
 
 interface TagGroupProps {
   label: string;
@@ -49,6 +48,7 @@ interface HomeFilterSheetProps {
   isOpen: boolean;
   draftSlugs: string[];
   onToggle: (slug: string) => void;
+  onReset: () => void;
   onApply: () => void;
   onDismiss: () => void;
 }
@@ -57,15 +57,12 @@ export function HomeFilterSheet({
   isOpen,
   draftSlugs,
   onToggle,
+  onReset,
   onApply,
   onDismiss,
 }: HomeFilterSheetProps) {
-  // 드래그 중 이동 거리 (translateY)
-  const [dragY, setDragY] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const startYRef = useRef(0);
+  const hasSelection = draftSlugs.length > 0;
 
-  /* body 스크롤 잠금 */
   useEffect(() => {
     document.body.style.overflow = isOpen ? "hidden" : "";
     return () => {
@@ -73,47 +70,9 @@ export function HomeFilterSheet({
     };
   }, [isOpen]);
 
-  /* 시트 닫힐 때 dragY 초기화 */
-  useEffect(() => {
-    if (!isOpen) setDragY(0);
-  }, [isOpen]);
-
-  /* 핸들바 pointerDown — 드래그 시작 */
-  function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    e.currentTarget.setPointerCapture(e.pointerId);
-    startYRef.current = e.clientY;
-    setIsDragging(true);
-  }
-
-  /* pointerMove — 아래 방향만 추적 */
-  function handlePointerMove(e: React.PointerEvent<HTMLDivElement>) {
-    if (!isDragging) return;
-    const delta = e.clientY - startYRef.current;
-    setDragY(Math.max(0, delta)); // 위로는 이동 안 함
-  }
-
-  /* pointerUp — 임계값 판단 후 닫기 or 복귀 */
-  function handlePointerUp() {
-    if (!isDragging) return;
-    setIsDragging(false);
-    if (dragY >= DRAG_CLOSE_THRESHOLD) {
-      setDragY(0);
-      onDismiss(); // draft 버리고 닫기
-    } else {
-      setDragY(0); // 원위치 복귀
-    }
-  }
-
-  // 드래그 중엔 transition 제거, 평소엔 적용
-  const panelStyle: React.CSSProperties = {
-    transform: isOpen ? `translateY(${dragY}px)` : "translateY(100%)",
-    transition: isDragging ? "none" : "transform 300ms cubic-bezier(0.32, 0.72, 0, 1)",
-    maxHeight: "75vh",
-  };
-
   return (
     <>
-      {/* 딤 배경 */}
+      {/* 딤 배경 — draft 버리고 닫기 */}
       <div
         className={cn(
           "fixed inset-0 z-50 bg-black/40 transition-opacity duration-300",
@@ -127,37 +86,30 @@ export function HomeFilterSheet({
 
       {/* 바텀시트 패널 */}
       <div
-        className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-w-[430px] flex-col rounded-t-2xl bg-white"
-        style={panelStyle}
+        className={cn(
+          "fixed inset-x-0 bottom-0 z-50 mx-auto flex max-w-[430px] flex-col rounded-t-2xl bg-white transition-transform duration-300 ease-out",
+          isOpen ? "translate-y-0" : "translate-y-full"
+        )}
+        style={{ maxHeight: "75vh" }}
         role="dialog"
         aria-modal="true"
         aria-label="태그 필터"
       >
-        {/* 핸들 영역 — 드래그 이벤트 여기서만 */}
-        <div
-          className="flex shrink-0 cursor-grab touch-none justify-center py-3 active:cursor-grabbing"
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerUp}
-          aria-label="드래그하여 닫기"
-        >
-          <div
-            className={cn(
-              "h-1 w-10 rounded-full transition-colors",
-              isDragging ? "bg-neutral-400" : "bg-neutral-200"
-            )}
-          />
-        </div>
-
-        {/* 헤더 */}
-        <div className="shrink-0 px-5 pb-3 pt-0">
+        {/* 헤더 — Filter 타이틀 + X 버튼 */}
+        <div className="flex shrink-0 items-center justify-between px-5 pt-5 pb-4">
           <span className="text-[15px] font-semibold text-neutral-900">
             Filter
           </span>
+          <button
+            onClick={onDismiss}
+            className="flex h-7 w-7 items-center justify-center rounded-full bg-neutral-100 text-neutral-500 transition-colors active:bg-neutral-200"
+            aria-label="닫기"
+          >
+            <X size={14} strokeWidth={2.5} />
+          </button>
         </div>
 
-        {/* 태그 그룹 — 스크롤 영역, 드래그 이벤트 없음 */}
+        {/* 태그 그룹 목록 — 스크롤 영역 */}
         <div className="flex-1 overflow-y-auto px-5 pb-2">
           <TagGroup
             label="Color"
@@ -179,20 +131,36 @@ export function HomeFilterSheet({
           />
         </div>
 
-        {/* Apply 버튼 — BottomNav + safe-area 위로 고정 */}
+        {/* 하단 버튼 영역 — BottomNav + safe-area 위로 고정 */}
         <div
           className="shrink-0 border-t border-neutral-100 bg-white px-5 pt-4"
           style={{
-            paddingBottom:
-              "calc(env(safe-area-inset-bottom, 0px) + 80px)",
+            paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 80px)",
           }}
         >
-          <button
-            onClick={onApply}
-            className="w-full rounded-xl bg-neutral-900 py-3 text-[13px] font-medium text-white active:scale-95"
-          >
-            Apply
-          </button>
+          <div className="flex items-center gap-3">
+            {/* Reset — draft 선택 있을 때만 활성 */}
+            <button
+              onClick={onReset}
+              disabled={!hasSelection}
+              className={cn(
+                "text-[13px] font-medium transition-colors",
+                hasSelection
+                  ? "text-neutral-700 active:text-neutral-900"
+                  : "cursor-not-allowed text-neutral-300"
+              )}
+            >
+              Reset
+            </button>
+
+            {/* Apply */}
+            <button
+              onClick={onApply}
+              className="flex-1 rounded-xl bg-neutral-900 py-3 text-[13px] font-medium text-white active:scale-95"
+            >
+              Apply
+            </button>
+          </div>
         </div>
       </div>
     </>
