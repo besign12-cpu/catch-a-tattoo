@@ -8,7 +8,6 @@ import { Avatar } from "@/components/ui/Avatar";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import { TagList } from "@/components/ui/TagChip";
 import { FeedSkeleton } from "@/components/ui/Skeleton";
-import { SearchInput } from "@/components/search/SearchInput";
 import { ResultFilterBar } from "@/components/search/ResultFilterBar";
 
 import { searchArtists } from "@/lib/queries/artists";
@@ -145,8 +144,11 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
             <ArrowLeft size={20} />
           </Link>
           <div className="flex-1">
-            <SearchInput
-              placeholder="아티스트 이름, 도시 검색"
+            <input
+             type="text"
+             placeholder="아티스트 이름, 도시 검색"
+             
+             className="h-11 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm outline-none placeholder:text-zinc-400 focus:border-zinc-400"
             />
           </div>
         </div>

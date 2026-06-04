@@ -4,7 +4,6 @@ import type { Metadata } from "next";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { FeedSkeleton } from "@/components/ui/Skeleton";
 import { ErrorState } from "@/components/ui/ErrorState";
-import { SearchInput } from "@/components/search/SearchInput";
 import { HomeFeedClient } from "@/components/home/HomeFeedClient";
 
 import { getFeedSchedules } from "@/lib/queries/artists";
@@ -31,12 +30,6 @@ async function FeedSection() {
 export default function HomePage() {
   return (
     <PageContainer>
-      <header className="sticky top-0 z-40 border-b border-neutral-100 bg-white">
-        <div className="px-4 pt-4 pb-0">
-          <SearchInput className="mb-3" />
-        </div>
-      </header>
-
       <Suspense fallback={<FeedSkeleton />}>
         <FeedSection />
       </Suspense>
