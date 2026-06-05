@@ -128,11 +128,37 @@
 - [x] Unused import 빌드 실패
 - [x] TypeScript 타입 오류 — 반환 타입 미확인
 
+### ✅ 완료 — Sprint 3-1 Auth Foundation
+
+**빌드:** ✅ 통과
+
+- [x] `middleware.ts` — 라우트 보호 (`/me`, `/studio` → 비로그인 시 `/auth/login`)
+- [x] `/auth/login/page.tsx` — 로그인 화면 (`useFormState` / `useFormStatus`)
+- [x] `/auth/signup/page.tsx` — 회원가입 화면
+- [x] `/auth/verify-email/page.tsx` — 이메일 인증 대기 안내
+- [x] `/auth/callback/route.ts` — OAuth 콜백 핸들러
+- [x] `src/actions/auth.ts` — signUp / signIn / signOut Server Actions
+- [x] `src/lib/hooks/useSession.ts` — 클라이언트 세션 훅
+- [x] `src/components/layout/BottomNav.tsx` — 세션 분기 추가
+
+### ✅ 완료 — Sprint 3-2 User Profile
+
+**빌드:** ✅ 통과
+**수정 이슈:** Supabase `.maybeSingle()` 반환 타입 never 오류 → `as any as DB_ROW_TYPE` 2단계 단언으로 해결
+
+- [x] `src/lib/queries/user.ts` 신규 — `getUserProfile()`: users + artist_profiles 조회
+- [x] `src/app/me/page.tsx` 실제 구현
+  - Avatar(이니셜) + displayName + email + 역할 뱃지 + 가입일
+  - 기본 정보 (이메일, 사용자명, 활동 도시)
+  - 아티스트 프로필 연결 여부 표시
+  - 로그아웃 버튼 (Server Action)
+  - users 테이블 row 없을 때 Auth user 정보로 폴백
+
 ### ⏳ 미완료 (인증·프로필 시스템)
 
 #### Phase A — 인증 기반
-- [ ] `middleware.ts` — 라우트 보호 (studio, me → login 리다이렉트)
-- [ ] `/auth/login/page.tsx` — 로그인 화면
+- [x] `middleware.ts` — 라우트 보호 ✅ Sprint 3-1 완료
+- [x] `/auth/login/page.tsx` — 로그인 화면 ✅ Sprint 3-1 완료
 - [ ] `/auth/signup/page.tsx` — 회원가입 화면
 - [ ] `/auth/verify-email/page.tsx` — 이메일 인증 대기
 - [ ] `/auth/callback/route.ts` — OAuth 콜백
@@ -159,8 +185,8 @@
 - [ ] FeedCard 팔로우 버튼 실제 연결
 
 #### Phase E — 내 정보 화면
-- [ ] `/me/page.tsx` — 실제 사용자 정보 표시
-- [ ] `/settings/page.tsx` — 알림 토글·계정
+- [x] `/me/page.tsx` — 실제 사용자 정보 표시 ✅ Sprint 3-2 완료
+- [ ] `/settings/page.tsx` — 알림 토글·계정 (Sprint 5 예정)
 
 ---
 

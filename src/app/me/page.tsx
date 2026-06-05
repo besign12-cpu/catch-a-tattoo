@@ -1,8 +1,54 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { getUserProfile } from "@/lib/queries/user";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { TopBar } from "@/components/layout/TopBar";
+import { Avatar } from "@/components/ui/Avatar";
 import { signOut } from "@/actions/auth";
+import { cn } from "@/lib/utils";
+
+// 국가 코드 → 국가명 변환 (ARCHITECTURE.md 기준)
+function countryName(code: string | null): string {
+  if (!code) return "";
+  const map: Record<string, string> = {
+    KR: "South Korea",
+    JP: "Japan",
+    US: "United States",
+    GB: "United Kingdom",
+    FR: "France",
+    DE: "Germany",
+    AU: "Australia",
+    TH: "Thailand",
+    SG: "Singapore",
+    HK: "Hong Kong",
+    TW: "Taiwan",
+    CN: "China",
+    IT: "Italy",
+    ES: "Spain",
+    NL: "Netherlands",
+    CA: "Canada",
+    BR: "Brazil",
+    MX: "Mexico",
+  };
+  return map[code] ?? code;
+}
+
+// 역할 레이블
+function roleLabel(role: "customer" | "artist" | "admin"): string {
+  const map: Record<string, string> = {
+    customer: "일반 회원",
+    artist: "아티스트",
+    admin: "관리자",
+  };
+  return map[role] ?? role;
+}
+
+// 가입일 포맷
+function formatJoinDate(createdAt: string): string {
+  const d = new Date(createdAt);
+  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 가입`;
+}
 
 export default async function MePage() {
   const supabase = await getSupabaseServerClient();
@@ -10,41 +56,153 @@ export default async function MePage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // middleware가 처리하지만, 서버에서도 이중 보호
+  // 비로그인 → 로그인 페이지 (middleware 이중 보호)
   if (!user) {
     redirect("/auth/login");
   }
 
+  const profile = await getUserProfile(user.id);
+
+  // users 테이블에 아직 row가 없을 때 (신규 가입 직후 등)
+  // Supabase Auth user 정보만 사용해 기본 표시
+  const displayName =
+    profile?.username ?? user.email?.split("@")[0] ?? "사용자";
+  const email = profile?.email ?? user.email ?? "";
+
   return (
     <PageContainer>
       <TopBar title="내 정보" />
-      <div className="flex flex-col gap-4 px-4 pt-6 pb-32">
-        {/* 로그인 계정 정보 */}
-        <div className="rounded-2xl bg-white border border-neutral-100 px-5 py-5 flex flex-col gap-1.5 shadow-sm">
-          <p className="text-xs text-neutral-400">로그인된 계정</p>
-          <p className="text-sm text-neutral-900 font-medium">{user.email}</p>
+
+      <div className="flex flex-col pb-8">
+        {/* ── 프로필 헤더 ─────────────────────────────── */}
+        <section className="flex flex-col items-center gap-3 px-4 pt-8 pb-6">
+          <Avatar name={displayName} size="lg" />
+
+          <div className="text-center">
+            <h2 className="text-[15px] font-semibold text-neutral-900">
+              {displayName}
+            </h2>
+            <p className="mt-0.5 text-xs text-neutral-400">{email}</p>
+          </div>
+
+          {/* 역할 + 가입일 */}
+          <div className="flex items-center gap-2">
+            {profile && (
+              <span
+                className={cn(
+                  "rounded-full px-2.5 py-0.5 text-[10px] font-medium",
+                  profile.role === "artist"
+                    ? "bg-cat-purple/10 text-cat-purple"
+                    : profile.role === "admin"
+                    ? "bg-red-50 text-red-600"
+                    : "bg-neutral-100 text-neutral-500"
+                )}
+              >
+                {roleLabel(profile.role)}
+              </span>
+            )}
+            {profile && (
+              <span className="text-[10px] text-neutral-300">
+                {formatJoinDate(profile.createdAt)}
+              </span>
+            )}
+          </div>
+        </section>
+
+        <div className="px-4 flex flex-col gap-3">
+          {/* ── 기본 정보 ────────────────────────────────── */}
+          <div className="rounded-2xl bg-white border border-neutral-100 overflow-hidden">
+            <p className="px-5 pt-4 pb-2 text-[11px] font-medium text-neutral-400 tracking-wide uppercase">
+              기본 정보
+            </p>
+
+            <InfoRow label="이메일" value={email} />
+
+            {profile?.username && (
+              <InfoRow label="사용자명" value={`@${profile.username}`} />
+            )}
+
+            {profile?.baseCity && (
+              <InfoRow
+                label="활동 도시"
+                value={`${profile.baseCity}${
+                  profile.baseCountry
+                    ? `, ${countryName(profile.baseCountry)}`
+                    : ""
+                }`}
+              />
+            )}
+          </div>
+
+          {/* ── 아티스트 프로필 연결 ─────────────────────── */}
+          {profile?.artistHandle ? (
+            <Link
+              href={`/artists/${profile.artistHandle}`}
+              className="
+                flex items-center justify-between
+                rounded-2xl bg-white border border-neutral-100
+                px-5 py-4
+                hover:border-neutral-200 transition-colors
+              "
+            >
+              <div className="flex flex-col gap-0.5">
+                <p className="text-xs text-neutral-400">연결된 아티스트 프로필</p>
+                <p className="text-sm font-medium text-neutral-900">
+                  @{profile.artistHandle}
+                </p>
+              </div>
+              <span className="text-xs text-neutral-300">보기 →</span>
+            </Link>
+          ) : (
+            <div className="rounded-2xl bg-neutral-50 border border-neutral-100 border-dashed px-5 py-4">
+              <p className="text-xs text-neutral-400">
+                연결된 아티스트 프로필이 없습니다.
+              </p>
+              <p className="mt-0.5 text-[11px] text-neutral-300">
+                아티스트 프로필 연결은 추후 지원 예정입니다.
+              </p>
+            </div>
+          )}
+
+          {/* ── 로그아웃 ─────────────────────────────────── */}
+          <form action={signOut} className="mt-1">
+            <button
+              type="submit"
+              className="
+                w-full rounded-2xl border border-neutral-200 bg-white
+                py-4 text-sm text-neutral-500
+                hover:text-neutral-900 hover:border-neutral-300
+                transition-colors
+              "
+            >
+              로그아웃
+            </button>
+          </form>
+
+          {/* ── 안내 ────────────────────────────────────── */}
+          <p className="text-center text-[11px] text-neutral-300 mt-1">
+            계정 설정 및 알림 관리는 다음 업데이트에서 제공됩니다.
+          </p>
         </div>
-
-        {/* 로그아웃 */}
-        <form action={signOut}>
-          <button
-            type="submit"
-            className="
-              w-full rounded-2xl border border-neutral-200
-              py-4 text-sm text-neutral-500
-              hover:text-neutral-900 hover:border-neutral-300
-              transition-colors bg-white
-            "
-          >
-            로그아웃
-          </button>
-        </form>
-
-        {/* 안내 문구 */}
-        <p className="text-center text-xs text-neutral-300 mt-2">
-          프로필 편집은 다음 업데이트에서 제공됩니다.
-        </p>
       </div>
     </PageContainer>
+  );
+}
+
+// ── InfoRow 서브 컴포넌트 ──────────────────────────────────────
+
+interface InfoRowProps {
+  label: string;
+  value: string;
+}
+
+function InfoRow({ label, value }: InfoRowProps) {
+  return (
+    <div className="flex items-center justify-between px-5 py-3 border-t border-neutral-50 first:border-t-0">
+      <span className="text-xs text-neutral-400">{label}</span>
+      <span className="text-sm text-neutral-700 font-medium text-right max-w-[60%] truncate">
+        {value}
+      </span>
+    </div>
   );
 }

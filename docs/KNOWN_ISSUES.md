@@ -8,82 +8,6 @@
 
 ---
 
-## [RESOLVED] Import/Export 추측으로 인한 Build 실패
-
-**발생 Sprint:** Sprint 3 Auth Foundation
-**상태:** ✅ RESOLVED
-**재발 횟수:** 1회 → 반복 금지 항목으로 격상
-
-**증상**
-```
-Module not found: Can't resolve '@/components/layout/BottomNav'
-Module not found: Can't resolve '@/components/layout/PageContainer'
-Module not found: Can't resolve '@/components/layout/TopBar'
-```
-실제로는 모듈 자체가 없는 것이 아니라 **export 방식 불일치**로 발생:
-```ts
-// 잘못된 예 — default import로 추측
-import BottomNav from "@/components/layout/BottomNav";     // ✅ 실제로 default
-import PageContainer from "@/components/layout/PageContainer"; // ❌ named export임
-import TopBar from "@/components/layout/TopBar";           // ❌ named export임
-```
-
-**원인**
-기존 프로젝트 파일을 직접 확인하지 않고 export 방식을 추측하여 작성.
-실제 파일을 열어보지 않고 "대부분 default export겠지"라는 추정으로 진행함.
-
-**실제 export 방식 (Sprint 3 기준)**
-```ts
-// src/components/layout/BottomNav.tsx
-export default function BottomNav()       // default export
-
-// src/components/layout/PageContainer.tsx
-export function PageContainer()           // named export
-
-// src/components/layout/TopBar.tsx
-export function TopBar()                  // named export
-
-// src/components/ui/Avatar.tsx           // named export
-// src/components/ui/ErrorState.tsx       // named export
-// src/components/ui/Skeleton.tsx         // named export (복수)
-// src/components/ui/TagChip.tsx          // named export (복수)
-// src/components/ui/VerifiedBadge.tsx    // named export
-
-// src/lib/supabase/client.ts  → export function getSupabaseBrowserClient()
-// src/lib/supabase/server.ts  → export async function getSupabaseServerClient()
-// src/lib/supabase/admin.ts   → export function getSupabaseAdminClient()
-// src/lib/hooks/useSession.ts → export function useSession()
-```
-
-**추가 발견 오류 — React 버전 불일치**
-```ts
-// ❌ React 19+용 — 현재 프로젝트 react@18에서 빌드 실패
-import { useActionState } from "react";
-
-// ✅ React 18 + Next.js 14 환경에서 올바른 방식
-import { useFormState, useFormStatus } from "react-dom";
-```
-
-**재발 방지 규칙**
-```
-□ export/import 방식 추측 금지
-□ props 구조 추측 금지
-□ 반환 타입 추측 금지
-□ Server/Client Component 여부 추측 금지
-□ React API는 설치된 react 버전을 package.json에서 먼저 확인
-□ 모르는 경우 → "관련 파일을 업로드해주세요" 먼저 요청
-
-특히 아래 경로는 반드시 실제 파일 확인 후 작성:
-  - src/components/layout/*
-  - src/components/ui/*
-  - src/lib/*
-  - src/actions/*
-
-동일 패턴 오류가 2회 이상 발생하면 추측 수정 중단 후 파일 요청.
-```
-
----
-
 ## [RESOLVED] Instagram 아이콘 — lucide-react 미지원 (2회 발생)
 
 **발생 Sprint:** Sprint 2, Sprint 3 (재발)
@@ -440,6 +364,109 @@ page.tsx (서버) — getFeedSchedules() fetch
 - 검색창(`SearchInput`) 입력만 `/search?q=`로 이동한다
 - `HomeTagFilter`는 반드시 `activeSlug`와 `onSelect` props를 받아서 동작한다
 - `HomeTagFilter` 내부에서 `useRouter`, `router.push` 사용 금지
+
+---
+
+## [RESOLVED] Import/Export 추측으로 인한 Build 실패
+
+**발생 Sprint:** Sprint 3-1 Auth Foundation
+**상태:** ✅ RESOLVED
+**재발 횟수:** 1회 → 반복 금지 항목으로 격상
+
+**증상**
+```
+// default import로 추측했으나 실제는 named export
+import TopBar from "@/components/layout/TopBar"            // ❌
+import PageContainer from "@/components/layout/PageContainer" // ❌
+
+// React 버전 무시
+import { useActionState } from "react"  // ❌ React 18 미지원
+```
+
+**원인**
+기존 프로젝트 파일을 직접 확인하지 않고 export 방식을 추측하여 작성.
+React API를 설치된 버전 확인 없이 사용.
+
+**실제 export 방식 (Sprint 3 기준)**
+```ts
+export default function BottomNav()   // BottomNav → default
+export function PageContainer()       // PageContainer → named
+export function TopBar()              // TopBar → named
+// 모든 src/components/ui/* → named export
+// src/lib/hooks/useSession → named export
+```
+
+**React 18 올바른 폼 상태 API**
+```ts
+// ❌ React 19+ 전용
+import { useActionState } from "react"
+// ✅ React 18 + Next.js 14
+import { useFormState, useFormStatus } from "react-dom"
+```
+
+**재발 방지 규칙**
+```
+□ export/import 방식 추측 금지 — 실제 파일 확인 후 작성
+□ React API 사용 전 package.json react 버전 확인
+□ 모르는 경우 "파일을 업로드해주세요" 먼저 요청
+□ 특히 확인 필수: src/components/layout/*, src/components/ui/*, src/lib/*
+□ 동일 패턴 2회 발생 시 추측 중단 → 파일 요청
+```
+
+---
+
+## [RESOLVED] Supabase 쿼리 반환 타입 추측으로 never 오류
+
+**발생 Sprint:** Sprint 3-2 User Profile
+**상태:** ✅ RESOLVED
+
+**증상**
+```
+./src/lib/queries/user.ts:57:30
+Type error: Property 'instagram_handle' does not exist on type 'never'.
+```
+
+**원인**
+`@supabase/ssr@0.10.x` + `createServerClient<Database>` 조합에서
+`.select("컬럼명").maybeSingle()` 의 반환 타입을 TypeScript가
+`{ data: never }` 로 추론하는 케이스 발생.
+`instagram_handle` 컬럼은 `database.types.ts`에 실제로 존재하지만,
+SDK 내부 컬럼 파싱 단계에서 타입 추론이 실패함.
+
+**해결책 — artists.ts와 동일한 변환 함수 패턴 적용**
+```ts
+// ❌ 실패 패턴 — maybeSingle() data가 never로 추론됨
+const { data: artistRow } = await supabase
+  .from("artist_profiles")
+  .select("instagram_handle")
+  .eq("user_id", userId)
+  .maybeSingle();
+const handle = artistRow?.instagram_handle; // ❌ never 오류
+
+// ✅ 해결 패턴 — as any → 명시적 DB Row 타입으로 변환
+/* eslint-disable @typescript-eslint/no-explicit-any */
+type ArtistProfileRow = Database["public"]["Tables"]["artist_profiles"]["Row"];
+
+const { data: artistData } = await supabase
+  .from("artist_profiles")
+  .select("instagram_handle")
+  .eq("user_id", userId)
+  .maybeSingle();
+
+const artistRow = artistData as any as Pick<ArtistProfileRow, "instagram_handle"> | null;
+const handle = artistRow?.instagram_handle ?? null; // ✅ string | null
+```
+
+**재발 방지 규칙**
+```
+□ Supabase 쿼리 반환 타입을 추측하지 않는다
+□ 타입 오류 발생 시 database.types.ts에서 실제 Row 타입 확인
+□ 변환 함수(toXxx) 패턴으로 타입 명시 — artists.ts 패턴 참조
+□ as any는 쿼리 레벨에서만 허용 (SDK 타입 추론 실패 대응)
+□ as any 이후 반드시 명시적 DB Row 타입으로 2단계 단언
+   예: data as any as SomeRow | null
+□ eslint-disable 선언은 파일 최상단에 위치
+```
 
 ---
 
