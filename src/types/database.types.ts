@@ -43,6 +43,7 @@ export type Database = {
           push_token?: string | null;
           created_at?: string;
         };
+        Relationships: [];
       };
       artist_profiles: {
         Row: {
@@ -93,6 +94,7 @@ export type Database = {
           contact_value?: string | null;
           created_at?: string;
         };
+        Relationships: [];
       };
       tags: {
         Row: {
@@ -113,6 +115,7 @@ export type Database = {
           slug?: string;
           group_type?: "color" | "main" | "art";
         };
+        Relationships: [];
       };
       artist_tags: {
         Row: {
@@ -130,6 +133,7 @@ export type Database = {
           tag_id?: string;
           other_description?: string | null;
         };
+        Relationships: [];
       };
       portfolio_items: {
         Row: {
@@ -153,6 +157,7 @@ export type Database = {
           sort_order?: number;
           created_at?: string;
         };
+        Relationships: [];
       };
       guest_schedules: {
         Row: {
@@ -203,6 +208,7 @@ export type Database = {
           is_active?: boolean;
           created_at?: string;
         };
+        Relationships: [];
       };
       follows: {
         Row: {
@@ -223,6 +229,7 @@ export type Database = {
           artist_id?: string;
           created_at?: string;
         };
+        Relationships: [];
       };
       city_follows: {
         Row: {
@@ -249,6 +256,7 @@ export type Database = {
           country?: string;
           created_at?: string;
         };
+        Relationships: [];
       };
       city_demand_cache: {
         Row: {
@@ -272,6 +280,7 @@ export type Database = {
           follower_count?: number;
           updated_at?: string;
         };
+        Relationships: [];
       };
       notifications: {
         Row: {
@@ -319,6 +328,7 @@ export type Database = {
           is_read?: boolean;
           created_at?: string;
         };
+        Relationships: [];
       };
       demand_notifications: {
         Row: {
@@ -342,6 +352,7 @@ export type Database = {
           threshold?: number;
           sent_at?: string;
         };
+        Relationships: [];
       };
       claim_requests: {
         Row: {
@@ -374,6 +385,7 @@ export type Database = {
           created_at?: string;
           resolved_at?: string | null;
         };
+        Relationships: [];
       };
     };
     Views: {
@@ -386,6 +398,7 @@ export type Database = {
           region: "asia" | "europe" | "americas" | "other";
           upcoming_count: number;
         };
+        Relationships: [];
       };
     };
     Functions: {

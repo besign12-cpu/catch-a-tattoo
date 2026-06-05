@@ -132,61 +132,70 @@
 
 **빌드:** ✅ 통과
 
-- [x] `middleware.ts` — 라우트 보호 (`/me`, `/studio` → 비로그인 시 `/auth/login`)
-- [x] `/auth/login/page.tsx` — 로그인 화면 (`useFormState` / `useFormStatus`)
+- [x] `middleware.ts` — 보호 라우트 접근 제어
+- [x] `/auth/login/page.tsx` — 로그인 화면
 - [x] `/auth/signup/page.tsx` — 회원가입 화면
-- [x] `/auth/verify-email/page.tsx` — 이메일 인증 대기 안내
-- [x] `/auth/callback/route.ts` — OAuth 콜백 핸들러
-- [x] `src/actions/auth.ts` — signUp / signIn / signOut Server Actions
+- [x] `/auth/verify-email/page.tsx` — 이메일 인증 대기
+- [x] `/auth/callback/route.ts` — OAuth 콜백
+- [x] `src/actions/auth.ts` — signUp / signIn / signOut
 - [x] `src/lib/hooks/useSession.ts` — 클라이언트 세션 훅
-- [x] `src/components/layout/BottomNav.tsx` — 세션 분기 추가
+- [x] `src/components/layout/BottomNav.tsx` — 세션 분기
 
 ### ✅ 완료 — Sprint 3-2 User Profile
 
 **빌드:** ✅ 통과
-**수정 이슈:** Supabase `.maybeSingle()` 반환 타입 never 오류 → `as any as DB_ROW_TYPE` 2단계 단언으로 해결
 
-- [x] `src/lib/queries/user.ts` 신규 — `getUserProfile()`: users + artist_profiles 조회
-- [x] `src/app/me/page.tsx` 실제 구현
-  - Avatar(이니셜) + displayName + email + 역할 뱃지 + 가입일
-  - 기본 정보 (이메일, 사용자명, 활동 도시)
-  - 아티스트 프로필 연결 여부 표시
-  - 로그아웃 버튼 (Server Action)
-  - users 테이블 row 없을 때 Auth user 정보로 폴백
+- [x] `src/lib/queries/user.ts` — `getUserProfile()`
+- [x] `src/app/me/page.tsx` — 실제 사용자 정보 화면
+
+### ✅ 완료 — Sprint 3-3 Artist Creation
+
+**빌드:** ✅ 통과
+**핵심 수정:** `database.types.ts` 모든 테이블/뷰에 `Relationships: []` 추가
+→ `@supabase/postgrest-js@2.107.0`의 `GenericTable` 요구사항 충족
+→ `.insert()` never[] 오류 근본 해결
+
+- [x] `src/types/database.types.ts` — Relationships 필드 추가 (근본 원인 해결)
+- [x] `src/lib/supabase/admin.ts` — `SupabaseClient<Database>` 명시적 타입
+- [x] `src/lib/queries/studio.ts` — `getMyArtistProfile()`
+- [x] `src/actions/artist.ts` — `createArtistProfile()` Server Action
+- [x] `src/components/artist/TagSelector.tsx` — 태그 선택 (Color/Main 필수, Art 0~4)
+- [x] `src/app/artists/new/NewArtistForm.tsx` — Client Component
+- [x] `src/app/artists/new/page.tsx` — 서버 컴포넌트
 
 ### ⏳ 미완료 (인증·프로필 시스템)
 
 #### Phase A — 인증 기반
-- [x] `middleware.ts` — 라우트 보호 ✅ Sprint 3-1 완료
-- [x] `/auth/login/page.tsx` — 로그인 화면 ✅ Sprint 3-1 완료
-- [ ] `/auth/signup/page.tsx` — 회원가입 화면
-- [ ] `/auth/verify-email/page.tsx` — 이메일 인증 대기
-- [ ] `/auth/callback/route.ts` — OAuth 콜백
-- [ ] `src/actions/auth.ts` — Server Actions
-- [ ] `src/lib/hooks/useSession.ts` — 세션 훅
-- [ ] BottomNav 세션 상태 분기
+- [x] `middleware.ts` ✅ Sprint 3-1
+- [x] `/auth/login/page.tsx` ✅ Sprint 3-1
+- [x] `/auth/signup/page.tsx` ✅ Sprint 3-1
+- [x] `/auth/verify-email/page.tsx` ✅ Sprint 3-1
+- [x] `/auth/callback/route.ts` ✅ Sprint 3-1
+- [x] `src/actions/auth.ts` ✅ Sprint 3-1
+- [x] `src/lib/hooks/useSession.ts` ✅ Sprint 3-1
+- [x] BottomNav 세션 상태 분기 ✅ Sprint 3-1
 
 #### Phase B — 프로필 생성
-- [ ] `/artists/new/page.tsx` — 신규 프로필 생성 폼
-- [ ] `src/components/artist/TagSelector.tsx` — 태그 선택 UI
-- [ ] `/studio/page.tsx` — 아티스트 대시보드
-- [ ] `src/lib/queries/studio.ts` — 스튜디오 쿼리
-- [ ] `src/actions/artist.ts` — 프로필 Server Actions
+- [x] `/artists/new/page.tsx` ✅ Sprint 3-3
+- [x] `src/components/artist/TagSelector.tsx` ✅ Sprint 3-3
+- [ ] `/studio/page.tsx` — 아티스트 대시보드 ⏳
+- [x] `src/lib/queries/studio.ts` ✅ Sprint 3-3
+- [x] `src/actions/artist.ts` ✅ Sprint 3-3
 
 #### Phase C — 프로필 편집
-- [ ] `/studio/profile/edit/page.tsx` — 편집 화면
-- [ ] `src/components/artist/PortfolioUploader.tsx` — 이미지 업로드
-- [ ] `src/lib/image-utils.ts` — 이미지 압축 유틸
-- [ ] `src/actions/portfolio.ts` — 포트폴리오 Server Actions
+- [ ] `/studio/profile/edit/page.tsx`
+- [ ] `src/components/artist/PortfolioUploader.tsx`
+- [ ] `src/lib/image-utils.ts`
+- [ ] `src/actions/portfolio.ts`
 
 #### Phase D — 팔로우 실제 동작
-- [ ] `src/lib/hooks/useFollow.ts` — Optimistic UI 훅
-- [ ] `src/actions/follow.ts` — 팔로우 Server Action
+- [ ] `src/lib/hooks/useFollow.ts`
+- [ ] `src/actions/follow.ts`
 - [ ] FeedCard 팔로우 버튼 실제 연결
 
 #### Phase E — 내 정보 화면
-- [x] `/me/page.tsx` — 실제 사용자 정보 표시 ✅ Sprint 3-2 완료
-- [ ] `/settings/page.tsx` — 알림 토글·계정 (Sprint 5 예정)
+- [x] `/me/page.tsx` ✅ Sprint 3-2
+- [ ] `/settings/page.tsx` ⏳
 
 ---
 

@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database.types";
 
 // SERVICE ROLE KEY 사용 — RLS 완전 우회
@@ -6,9 +6,11 @@ import type { Database } from "@/types/database.types";
 // 절대 클라이언트 컴포넌트에서 import 하지 않을 것
 // 절대 NEXT_PUBLIC_ 환경 변수 사용하지 않을 것
 
-let adminClient: ReturnType<typeof createClient<Database>> | null = null;
+// SupabaseClient<Database>를 명시적으로 선언
+// → TypeScript가 .from().insert() 등 DB 타입 체인을 올바르게 추론
+let adminClient: SupabaseClient<Database> | null = null;
 
-export function getSupabaseAdminClient() {
+export function getSupabaseAdminClient(): SupabaseClient<Database> {
   if (adminClient) return adminClient;
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;

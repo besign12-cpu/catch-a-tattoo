@@ -369,103 +369,131 @@ page.tsx (서버) — getFeedSchedules() fetch
 
 ## [RESOLVED] Import/Export 추측으로 인한 Build 실패
 
-**발생 Sprint:** Sprint 3-1 Auth Foundation
+**발생 Sprint:** Sprint 3-1
 **상태:** ✅ RESOLVED
-**재발 횟수:** 1회 → 반복 금지 항목으로 격상
 
 **증상**
-```
-// default import로 추측했으나 실제는 named export
-import TopBar from "@/components/layout/TopBar"            // ❌
-import PageContainer from "@/components/layout/PageContainer" // ❌
-
-// React 버전 무시
-import { useActionState } from "react"  // ❌ React 18 미지원
-```
-
-**원인**
-기존 프로젝트 파일을 직접 확인하지 않고 export 방식을 추측하여 작성.
-React API를 설치된 버전 확인 없이 사용.
-
-**실제 export 방식 (Sprint 3 기준)**
 ```ts
-export default function BottomNav()   // BottomNav → default
-export function PageContainer()       // PageContainer → named
-export function TopBar()              // TopBar → named
-// 모든 src/components/ui/* → named export
-// src/lib/hooks/useSession → named export
+import TopBar from "@/components/layout/TopBar"   // ❌ named export
+import { useActionState } from "react"            // ❌ React 18 미지원
 ```
+**해결:** named import 사용, `useFormState` / `useFormStatus` from `react-dom`
 
-**React 18 올바른 폼 상태 API**
-```ts
-// ❌ React 19+ 전용
-import { useActionState } from "react"
-// ✅ React 18 + Next.js 14
-import { useFormState, useFormStatus } from "react-dom"
+**재발 방지**
 ```
-
-**재발 방지 규칙**
-```
-□ export/import 방식 추측 금지 — 실제 파일 확인 후 작성
-□ React API 사용 전 package.json react 버전 확인
-□ 모르는 경우 "파일을 업로드해주세요" 먼저 요청
-□ 특히 확인 필수: src/components/layout/*, src/components/ui/*, src/lib/*
-□ 동일 패턴 2회 발생 시 추측 중단 → 파일 요청
+□ export 방식 추측 금지 — 실제 파일 확인
+□ React API: package.json react 버전 확인
+□ 모르면 파일 업로드 먼저 요청
 ```
 
 ---
 
-## [RESOLVED] Supabase 쿼리 반환 타입 추측으로 never 오류
+## [RESOLVED] Supabase .maybeSingle() 반환 타입 never
 
-**발생 Sprint:** Sprint 3-2 User Profile
+**발생 Sprint:** Sprint 3-2
 **상태:** ✅ RESOLVED
+
+**증상:** `Property 'x' does not exist on type 'never'.`
+
+**해결:**
+```ts
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const row = data as any as Pick<SomeRow, "field"> | null;
+```
+
+---
+
+## [RESOLVED] ESLint dead code — unused parameter
+
+**발생 Sprint:** Sprint 3-3
+**상태:** ✅ RESOLVED
+
+**증상:**
+```
+'_ids' is defined but never used.
+```
+사용하지 않는 `handleTagChange(_ids: string[]) {}` 함수가 빌드 실패 유발.
+
+**해결:** 함수 전체 제거.
+
+**재발 방지**
+```
+□ 제출 전 사용하지 않는 함수/변수/파라미터 전수 확인
+□ npm run build 는 ESLint까지 검사 — dev 서버와 다름
+```
+
+---
+
+## [RESOLVED] Supabase .insert() 파라미터 never[] — database.types.ts Relationships 누락
+
+**발생 Sprint:** Sprint 3-3 (3회 반복)
+**상태:** ✅ RESOLVED
+**재발 횟수:** 3회 → 반복 금지 항목으로 격상
 
 **증상**
 ```
-./src/lib/queries/user.ts:57:30
-Type error: Property 'instagram_handle' does not exist on type 'never'.
+Object literal may only specify known properties,
+and 'user_id' does not exist in type 'never[]'.
+
+Argument of type 'ArtistProfileInsert' is not assignable
+to parameter of type 'never[]'.
+```
+`.from("artist_profiles").insert(...)` 에서 모든 insert 파라미터가 `never[]`.
+
+**근본 원인 (타입 정의 파일 직접 분석으로 확인)**
+
+`@supabase/postgrest-js@2.107.0`의 `GenericTable` 타입 정의:
+```ts
+type GenericTable = {
+  Row: Record<string, unknown>;
+  Insert: Record<string, unknown>;
+  Update: Record<string, unknown>;
+  Relationships: GenericRelationship[];  // ← 필수 필드
+};
 ```
 
-**원인**
-`@supabase/ssr@0.10.x` + `createServerClient<Database>` 조합에서
-`.select("컬럼명").maybeSingle()` 의 반환 타입을 TypeScript가
-`{ data: never }` 로 추론하는 케이스 발생.
-`instagram_handle` 컬럼은 `database.types.ts`에 실제로 존재하지만,
-SDK 내부 컬럼 파싱 단계에서 타입 추론이 실패함.
-
-**해결책 — artists.ts와 동일한 변환 함수 패턴 적용**
+`SupabaseClient<Database>`의 `Schema` 타입 파라미터:
 ```ts
-// ❌ 실패 패턴 — maybeSingle() data가 never로 추론됨
-const { data: artistRow } = await supabase
-  .from("artist_profiles")
-  .select("instagram_handle")
-  .eq("user_id", userId)
-  .maybeSingle();
-const handle = artistRow?.instagram_handle; // ❌ never 오류
+Schema extends (Omit<Database, '__InternalSupabase'>[SchemaName]
+  extends GenericSchema ? ... : never)
+```
 
-// ✅ 해결 패턴 — as any → 명시적 DB Row 타입으로 변환
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type ArtistProfileRow = Database["public"]["Tables"]["artist_profiles"]["Row"];
+`database.types.ts`가 수동 작성이라 모든 테이블에 `Relationships` 필드가 없었음.
+→ 각 테이블이 `GenericTable`을 만족하지 못함
+→ `Database['public']`이 `GenericSchema`를 만족하지 못함
+→ `Schema = never`
+→ `.from().insert()` 파라미터 타입이 `never[]`
 
-const { data: artistData } = await supabase
-  .from("artist_profiles")
-  .select("instagram_handle")
-  .eq("user_id", userId)
-  .maybeSingle();
+이전에 시도한 방법들이 실패한 이유:
+- `SupabaseClient<Database>` 명시 → 무관. Schema 추론 실패가 원인
+- Insert 타입 어노테이션 → 무관. insert() 파라미터 자체가 never[]
 
-const artistRow = artistData as any as Pick<ArtistProfileRow, "instagram_handle"> | null;
-const handle = artistRow?.instagram_handle ?? null; // ✅ string | null
+**해결책 — database.types.ts의 모든 테이블/뷰에 `Relationships: []` 추가**
+```ts
+// 모든 테이블 블록에 추가
+artist_profiles: {
+  Row: { ... };
+  Insert: { ... };
+  Update: { ... };
+  Relationships: [];  // ← 이 줄 추가
+};
+
+// 뷰도 동일
+city_pin_summary: {
+  Row: { ... };
+  Relationships: [];  // ← 이 줄 추가
+};
 ```
 
 **재발 방지 규칙**
 ```
-□ Supabase 쿼리 반환 타입을 추측하지 않는다
-□ 타입 오류 발생 시 database.types.ts에서 실제 Row 타입 확인
-□ 변환 함수(toXxx) 패턴으로 타입 명시 — artists.ts 패턴 참조
-□ as any는 쿼리 레벨에서만 허용 (SDK 타입 추론 실패 대응)
-□ as any 이후 반드시 명시적 DB Row 타입으로 2단계 단언
-   예: data as any as SomeRow | null
-□ eslint-disable 선언은 파일 최상단에 위치
+□ Supabase CLI로 타입 재생성 시 Relationships 필드가 포함되는지 확인
+□ database.types.ts 수동 작성 시 모든 테이블/뷰에 Relationships: [] 필수
+□ .insert() / .update() / .upsert() never[] 오류 발생 시:
+   1. database.types.ts에 Relationships 누락 여부 먼저 확인
+   2. node_modules의 GenericTable 타입 정의 확인
+   3. SupabaseClient 타입 수정으로 해결 시도 금지 (원인 아님)
+□ 이 오류는 SupabaseClient 타입 변경으로 해결되지 않음
 ```
 
 ---

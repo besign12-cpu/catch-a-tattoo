@@ -101,8 +101,8 @@
 | `src/app/auth/**` | 로그인·회원가입 화면 | ✅ Sprint 3-1 완료 |
 | `src/app/studio/**` | 아티스트 스튜디오 | ⏳ 미구현 |
 | `src/actions/auth.ts` | 인증 Server Actions | ✅ Sprint 3-1 완료 |
-| `src/actions/artist.ts` | 프로필 Server Actions | ⏳ 미구현 |
-| `src/components/artist/TagSelector.tsx` | 태그 선택 UI | ⏳ 미구현 |
+| `src/actions/artist.ts` | 프로필 Server Actions | ✅ Sprint 3-3 완료 |
+| `src/components/artist/TagSelector.tsx` | 태그 선택 UI | ✅ Sprint 3-3 완료 |
 | `src/components/artist/PortfolioUploader.tsx` | 포트폴리오 업로드 | ⏳ 미구현 |
 | `src/lib/hooks/useSession.ts` | 세션 훅 | ✅ Sprint 3-1 완료 |
 | `middleware.ts` | 라우트 보호 | ✅ Sprint 3-1 완료 |
@@ -111,25 +111,37 @@
 
 | 파일 | 작업 | 상태 |
 |---|---|---|
-| `middleware.ts` | 보호 라우트 접근 제어 (`/me`, `/studio` → 비로그인 시 `/auth/login`) | ✅ |
-| `src/actions/auth.ts` | signUp / signIn / signOut Server Actions | ✅ |
-| `src/lib/hooks/useSession.ts` | 클라이언트 세션 훅 (`useFormState` + `onAuthStateChange`) | ✅ |
-| `src/app/auth/callback/route.ts` | 이메일 인증 콜백 핸들러 | ✅ |
-| `src/app/auth/login/page.tsx` | 로그인 화면 (`useFormState` / `useFormStatus`) | ✅ |
-| `src/app/auth/signup/page.tsx` | 회원가입 화면 (`useFormState` / `useFormStatus`) | ✅ |
-| `src/app/auth/verify-email/page.tsx` | 이메일 인증 대기 안내 화면 | ✅ |
-| `src/components/layout/BottomNav.tsx` | 세션 분기 추가 (`useSession` 연결, `/auth/*` 숨김) | ✅ |
+| `middleware.ts` | 보호 라우트 접근 제어 | ✅ |
+| `src/actions/auth.ts` | signUp / signIn / signOut | ✅ |
+| `src/lib/hooks/useSession.ts` | 클라이언트 세션 훅 | ✅ |
+| `src/app/auth/callback/route.ts` | 이메일 인증 콜백 | ✅ |
+| `src/app/auth/login/page.tsx` | 로그인 화면 | ✅ |
+| `src/app/auth/signup/page.tsx` | 회원가입 화면 | ✅ |
+| `src/app/auth/verify-email/page.tsx` | 이메일 인증 대기 | ✅ |
+| `src/components/layout/BottomNav.tsx` | 세션 분기 추가 | ✅ |
 
 ### Sprint 3-2 — User Profile ✅
 
 | 파일 | 작업 | 상태 |
 |---|---|---|
-| `src/lib/queries/user.ts` | 신규 — `getUserProfile()` (users + artist_profiles), `UserProfile` 타입 | ✅ |
-| `src/app/me/page.tsx` | 실제 구현 — 프로필 헤더, 기본 정보, 아티스트 연결, 로그아웃 | ✅ |
+| `src/lib/queries/user.ts` | `getUserProfile()` | ✅ |
+| `src/app/me/page.tsx` | 실제 사용자 정보 화면 | ✅ |
 
-**KNOWN_ISSUES.md 업데이트** (Sprint 3-2)
-- `[RESOLVED] Import/Export 추측으로 인한 Build 실패` 항목 추가
-- `[RESOLVED] Supabase 쿼리 반환 타입 추측으로 never 오류` 항목 추가
+### Sprint 3-3 — Artist Creation ✅
+
+| 파일 | 작업 | 비고 |
+|---|---|---|
+| `src/types/database.types.ts` | 모든 테이블/뷰에 `Relationships: []` 추가 | **근본 원인 수정** |
+| `src/lib/supabase/admin.ts` | `SupabaseClient<Database>` 명시적 타입 선언 | Sprint 3-3 중 수정 |
+| `src/lib/queries/studio.ts` | `getMyArtistProfile()` 신규 | ✅ |
+| `src/actions/artist.ts` | `createArtistProfile()` Server Action | ✅ |
+| `src/components/artist/TagSelector.tsx` | 태그 선택 Client Component | ✅ |
+| `src/app/artists/new/NewArtistForm.tsx` | 폼 Client Component | ✅ |
+| `src/app/artists/new/page.tsx` | 아티스트 프로필 생성 페이지 | ✅ |
+
+**KNOWN_ISSUES.md 업데이트** (Sprint 3-3)
+- ESLint dead code 오류 추가
+- `.insert() never[]` 근본 원인 (`Relationships` 누락) 분석 및 해결책 추가
 
 ---
 
@@ -142,10 +154,11 @@
 | `HomeTagFilter`에서 `router.push` 사용 | 1회 | onSelect 콜백 + 클라이언트 state 필터링 |
 | 공용 컴포넌트 API 변경 후 사용처 미확인 | 1회 | `grep -R "ComponentName" src` 전수 확인 |
 | 반환 타입 미확인으로 타입 충돌 | 1회 | 관련 쿼리 파일 먼저 요청 후 실제 타입 확인 |
-| unused import 잔존 | 1회 | 제출 전 import 전수 확인 + `npm run build` |
-| export/import 방식 추측 (default vs named) | 1회 | 실제 파일 확인 필수. 모르면 파일 요청 |
-| React 버전 무시한 API 사용 (`useActionState`) | 1회 | package.json react 버전 확인 후 API 선택 |
-| Supabase `.maybeSingle()` 반환 타입 never | 1회 | `data as any as DB_ROW_TYPE \| null` 2단계 단언 |
+| unused import / dead code 잔존 | 2회 | 제출 전 전수 확인 + `npm run build` |
+| export/import 방식 추측 | 1회 | 실제 파일 확인. 모르면 업로드 요청 |
+| React 버전 무시한 API 사용 | 1회 | package.json react 버전 확인 |
+| Supabase `.maybeSingle()` 반환 타입 never | 1회 | `data as any as DB_ROW \| null` 2단계 단언 |
+| Supabase `.insert()` never[] — `Relationships` 누락 | 3회 | `database.types.ts` 모든 테이블/뷰에 `Relationships: []` 추가 |
 
 ---
 
