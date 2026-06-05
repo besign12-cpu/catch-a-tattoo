@@ -129,62 +129,41 @@
 - [x] TypeScript 타입 오류 — 반환 타입 미확인
 
 ### ✅ 완료 — Sprint 3-1 Auth Foundation
-
-**빌드:** ✅ 통과
-
-- [x] `middleware.ts` — 보호 라우트 접근 제어 (`/me`, `/studio`)
-- [x] `/auth/login/page.tsx` — 로그인 화면
-- [x] `/auth/signup/page.tsx` — 회원가입 화면
-- [x] `/auth/verify-email/page.tsx` — 이메일 인증 대기
-- [x] `/auth/callback/route.ts` — OAuth 콜백
-- [x] `src/actions/auth.ts` — signUp / signIn / signOut
-- [x] `src/lib/hooks/useSession.ts` — 클라이언트 세션 훅
-- [x] `src/components/layout/BottomNav.tsx` — 세션 분기
+- [x] middleware, auth actions, useSession, BottomNav 세션 분기, auth 화면 전체
 
 ### ✅ 완료 — Sprint 3-2 User Profile
-
-**빌드:** ✅ 통과
-
-- [x] `src/lib/queries/user.ts` — `getUserProfile()`
-- [x] `src/app/me/page.tsx` — 실제 사용자 정보 화면
+- [x] `src/lib/queries/user.ts`, `src/app/me/page.tsx`
 
 ### ✅ 완료 — Sprint 3-3 Artist Creation
-
-**빌드:** ✅ 통과 (3차 시도 — database.types.ts Relationships 누락이 근본 원인)
-
-- [x] `src/types/database.types.ts` — Relationships: [] 추가 (근본 원인 해결)
-- [x] `src/lib/supabase/admin.ts` — SupabaseClient<Database> 명시
-- [x] `src/lib/queries/studio.ts` — `getMyArtistProfile()`
-- [x] `src/actions/artist.ts` — `createArtistProfile()`
-- [x] `src/components/artist/TagSelector.tsx` — 태그 선택 (Color/Main 필수, Art 0~4)
-- [x] `src/app/artists/new/**` — 신규 프로필 생성 화면
+**핵심 이슈:** `database.types.ts` Relationships 누락 → insert never[] (3회 반복 후 해결)
+- [x] `src/types/database.types.ts` — Relationships: [] 추가
+- [x] `src/lib/supabase/admin.ts`, `src/lib/queries/studio.ts`, `src/actions/artist.ts`
+- [x] `src/components/artist/TagSelector.tsx`, `src/app/artists/new/**`
 
 ### ✅ 완료 — Sprint 3-4 Studio Dashboard
-
-**빌드:** ✅ 통과
-
-- [x] `src/lib/queries/studio.ts` — artist_tags JOIN, tags: Tag[] 포함
-- [x] `src/app/studio/page.tsx` — 아티스트 대시보드 (프로필 있음/없음 분기)
+- [x] `src/lib/queries/studio.ts` (tags JOIN), `src/app/studio/page.tsx`
 
 ### ✅ 완료 — Sprint 3-5 Profile Edit
+**이슈:** studio.ts zip 미포함으로 tags 타입 오류 → 재포함으로 해결
+- [x] `src/components/artist/TagSelector.tsx` (initialIds prop)
+- [x] `src/actions/artist.ts` (updateArtistProfile)
+- [x] `src/app/studio/profile/edit/**`
+
+### ✅ 완료 — Sprint 3-6 Portfolio Upload
 
 **빌드:** ✅ 통과
-**수정 이슈:** Sprint 3-4에서 tags 추가된 studio.ts가 zip에 미포함 → profile.tags 타입 오류 → studio.ts 재포함으로 해결
+**수정 이슈:** `as any` ESLint 오류 → DB Row 타입 인덱스 접근으로 해결 / `<img>` 경고 → `eslint-disable-next-line` 주석으로 처리
 
-- [x] `src/lib/queries/studio.ts` — Sprint 3-4 버전(tags: Tag[] 포함) zip 재포함
-- [x] `src/components/artist/TagSelector.tsx` — `initialIds?: string[]` prop 추가
-- [x] `src/actions/artist.ts` — `updateArtistProfile()` Server Action 추가
-  - artist_profiles update
-  - artist_tags 전체 삭제 후 재삽입
-  - 핸들 변경 시 중복 확인
-  - redirect 없이 `{ status: "success", handle }` 반환 (Client에서 router.push)
-- [x] `src/app/studio/profile/edit/EditProfileForm.tsx` — Client Component
-  - `useFormState` / `useFormStatus` 패턴
-  - 성공 시 `router.push("/studio")` + `router.refresh()`
-- [x] `src/app/studio/profile/edit/page.tsx` — 서버 컴포넌트
-  - 프로필 없으면 `/artists/new` redirect
+- [x] `src/lib/queries/studio.ts` — `getMyPortfolio()` 추가
+- [x] `src/actions/portfolio.ts` — `addPortfolioItem()`, `deletePortfolioItem()` 신규
+  - 본인 소유 확인 후 CRUD
+  - sort_order 자동 부여 (기존 최대값 + 1)
+  - `revalidatePath("/studio")`, `revalidatePath("/studio/portfolio")`
+- [x] `src/app/studio/portfolio/PortfolioClient.tsx` — URL 입력 추가, 이미지 삭제
+- [x] `src/app/studio/portfolio/page.tsx` — 포트폴리오 관리 페이지
+- [x] `src/app/studio/page.tsx` — 포트폴리오 섹션 추가 (미리보기 6장, 관리 링크)
 
-### ⏳ 미완료 (인증·프로필 시스템)
+### ⏳ 미완료
 
 #### Phase A — 인증 기반 ✅ Sprint 3-1 전체 완료
 
@@ -192,13 +171,12 @@
 
 #### Phase C — 프로필 편집
 - [x] `/studio/profile/edit/page.tsx` ✅ Sprint 3-5
-- [ ] `src/components/artist/PortfolioUploader.tsx` — 이미지 업로드 ⏳
+- [x] `src/actions/portfolio.ts` ✅ Sprint 3-6 (URL 방식, Storage 연동은 미구현)
+- [ ] `src/components/artist/PortfolioUploader.tsx` — Supabase Storage 실제 업로드 ⏳
 - [ ] `src/lib/image-utils.ts` — 이미지 압축 유틸 ⏳
-- [ ] `src/actions/portfolio.ts` — 포트폴리오 Server Actions ⏳
 
 #### Phase D — 팔로우 실제 동작
-- [ ] `src/lib/hooks/useFollow.ts` ⏳
-- [ ] `src/actions/follow.ts` ⏳
+- [ ] `src/lib/hooks/useFollow.ts`, `src/actions/follow.ts` ⏳
 - [ ] FeedCard 팔로우 버튼 실제 연결 ⏳
 
 #### Phase E — 내 정보 화면

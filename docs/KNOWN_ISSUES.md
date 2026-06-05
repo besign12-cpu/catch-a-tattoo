@@ -367,185 +367,64 @@ page.tsx (서버) — getFeedSchedules() fetch
 
 ---
 
-## [RESOLVED] Import/Export 추측으로 인한 Build 실패
+## [RESOLVED] Sprint 3-6 — portfolio.ts as any + img 태그 ESLint 오류
 
-**발생 Sprint:** Sprint 3-1
-**상태:** ✅ RESOLVED
-**재발 횟수:** 1회 → 반복 금지 항목으로 격상
-
-**증상**
-```ts
-import TopBar from "@/components/layout/TopBar"   // ❌ named export임
-import { useActionState } from "react"            // ❌ React 18 미지원
-```
-
-**실제 export 방식 (Sprint 3 기준)**
-```ts
-export default function BottomNav()  // → default
-export function PageContainer()      // → named
-export function TopBar()             // → named
-// src/components/ui/* 전체 → named export
-// src/lib/hooks/useSession → named export
-```
-
-**올바른 React 18 폼 상태 API**
-```ts
-import { useFormState, useFormStatus } from "react-dom"  // ✅
-```
-
-**재발 방지 규칙**
-```
-□ export/import 방식 추측 금지 — 실제 파일 확인 후 작성
-□ React API 사용 전 package.json react 버전 확인
-□ 모르면 "파일을 업로드해주세요" 먼저 요청
-□ 특히 확인 필수: src/components/layout/*, src/components/ui/*, src/lib/*
-```
-
----
-
-## [RESOLVED] Supabase .maybeSingle() 반환 타입 never
-
-**발생 Sprint:** Sprint 3-2
+**발생 Sprint:** Sprint 3-6 Portfolio Upload
 **상태:** ✅ RESOLVED
 
 **증상**
 ```
-Type error: Property 'instagram_handle' does not exist on type 'never'.
+84:34  Error: Unexpected any. Specify a different type.
+100:26 Error: Unexpected any. Specify a different type.
+163:34 Error: Unexpected any. Specify a different type.
+243:21 Warning: Using <img>...
+139:13 Warning: Using <img>...
 ```
 
-**원인**
-`@supabase/ssr@0.10.x`에서 `.select("컬럼명").maybeSingle()` 조합이 TypeScript 컬럼 파싱 단계에서 `data: never`로 추론되는 케이스.
+**원인 1 — as any 사용**
+`src/actions/portfolio.ts`에 `/* eslint-disable */` 선언 없이 `as any` 사용.
+`src/actions/` 파일은 `eslint-disable` 없이는 `as any` 사용 불가 (`no-explicit-any` rule).
 
-**해결책**
+**해결 1 — DB Row 타입 인덱스 접근**
+`database.types.ts`에 `Relationships: []` 추가 이후 `SupabaseClient<Database>`의 타입 추론이 정상 작동하므로 `as any` 없이 DB Row 타입으로 직접 접근:
 ```ts
-/* eslint-disable @typescript-eslint/no-explicit-any */
-type ArtistProfileRow = Database["public"]["Tables"]["artist_profiles"]["Row"];
-const row = data as any as Pick<ArtistProfileRow, "instagram_handle"> | null;
-const handle = row?.instagram_handle ?? null; // ✅
+// ❌ 기존 — as any 사용
+const artistId = (myProfile as any as Pick<ArtistProfileRow, "id">).id;
+
+// ✅ 수정 — DB Row 타입 인덱스 접근
+const artistId: ArtistProfileRow["id"] = myProfile.id;
+
+// ❌ 기존
+const nextSortOrder = (maxOrderData as any as Pick<PortfolioItemRow, "sort_order">).sort_order + 1;
+
+// ✅ 수정
+const maxSortOrder: PortfolioItemRow["sort_order"] | null = maxOrderData?.sort_order ?? null;
+const nextSortOrder: number = maxSortOrder !== null ? maxSortOrder + 1 : 0;
+```
+
+**원인 2 — <img> 태그 ESLint 경고**
+`next.config.ts`에 외부 이미지 도메인 미설정 → `next/image` 사용 불가.
+`<img>` 직접 사용 시 `@next/next/no-img-element` 경고 발생.
+
+**해결 2 — eslint-disable-next-line 주석 (기존 프로젝트 패턴)**
+```tsx
+// ✅ artists/[handle]/page.tsx와 동일한 기존 패턴
+{/* eslint-disable-next-line @next/next/no-img-element */}
+<img src={item.imageUrl} alt="포트폴리오 이미지" className="..." />
 ```
 
 **재발 방지 규칙**
 ```
-□ database.types.ts에서 실제 Row 타입 확인 후 2단계 단언
-□ as any as DB_ROW_TYPE 패턴 사용 (as any 단독 금지)
-□ eslint-disable 파일 최상단 선언
-```
-
----
-
-## [RESOLVED] ESLint dead code — unused parameter
-
-**발생 Sprint:** Sprint 3-3
-**상태:** ✅ RESOLVED
-
-**증상**
-```
-'_ids' is defined but never used.
-```
-사용하지 않는 `handleTagChange(_ids: string[]) {}` 함수가 빌드 실패 유발.
-
-**해결:** 함수 전체 제거.
-
-**재발 방지 규칙**
-```
-□ 사용하지 않는 함수/변수/파라미터 제출 전 전수 확인
-□ npm run build 는 ESLint까지 검사 — dev 서버와 다름
-□ 제출 전 grep으로 unused 심볼 확인
-```
-
----
-
-## [RESOLVED] Supabase .insert() never[] — database.types.ts Relationships 누락
-
-**발생 Sprint:** Sprint 3-3 (3회 반복)
-**상태:** ✅ RESOLVED
-**재발 횟수:** 3회 → 반복 금지 항목으로 격상
-
-**증상**
-```
-Object literal may only specify known properties,
-and 'user_id' does not exist in type 'never[]'.
-Argument of type 'profileInsert' is not assignable to parameter of type 'never[]'.
-```
-
-**근본 원인 (node_modules 타입 파일 직접 분석으로 확인)**
-`@supabase/postgrest-js@2.107.0`의 `GenericTable`은 `Relationships: GenericRelationship[]`를 필수로 요구.
-`database.types.ts`가 수동 작성이라 이 필드 누락
-→ 각 테이블이 `GenericTable`을 만족하지 못함
-→ `Database['public']`이 `GenericSchema`를 만족하지 못함
-→ `Schema = never` → `.from().insert()` 파라미터가 `never[]`
-
-이전 시도들이 실패한 이유:
-- `SupabaseClient<Database>` 명시 → 원인 아님
-- Insert 타입 어노테이션 추가 → 원인 아님
-
-**해결책**
-```ts
-// 모든 테이블/뷰 블록에 Relationships: [] 추가
-artist_profiles: {
-  Row: { ... };
-  Insert: { ... };
-  Update: { ... };
-  Relationships: [];  // ← 필수
-};
-```
-
-**재발 방지 규칙**
-```
-□ database.types.ts 수동 작성 시 모든 테이블/뷰에 Relationships: [] 필수
-□ .insert() never[] 오류 → database.types.ts Relationships 누락 먼저 확인
-□ SupabaseClient 타입 변경으로 해결 시도 금지 (원인 아님)
-□ Supabase CLI로 재생성 시 자동 포함됨
-```
-
----
-
-## [RESOLVED] Sprint 3-5 — studio.ts 버전 누락으로 tags 타입 오류
-
-**발생 Sprint:** Sprint 3-5 Profile Edit
-**상태:** ✅ RESOLVED
-
-**증상**
-```
-./src/app/studio/profile/edit/page.tsx:39:33
-Type error: Property 'tags' does not exist on type 'StudioArtistProfile'.
-```
-`page.tsx`에서 `profile.tags.map((t) => t.id)` 호출 시 타입 오류 발생.
-
-**원인**
-`StudioArtistProfile` 타입에 `tags: Tag[]` 필드가 추가된 것은 Sprint 3-4 작업.
-그러나 Sprint 3-5 zip 제출 시 `src/lib/queries/studio.ts`를 누락하여
-프로젝트에는 tags 필드가 없는 Sprint 3-3 버전이 그대로 남아 있었음.
-
-**의존 파일 버전 불일치 흐름**
-```
-Sprint 3-3: studio.ts 생성 (tags 필드 없음)
-Sprint 3-4: studio.ts 수정 (tags: Tag[] 추가) → sprint3-4 zip에 포함
-Sprint 3-5: studio.ts를 zip에 미포함
-  → 프로젝트에는 Sprint 3-3 버전(tags 없음) 잔존
-  → page.tsx에서 profile.tags 접근 → 타입 오류
-```
-
-**해결책**
-Sprint 3-5 zip에 `src/lib/queries/studio.ts`(tags 포함 버전) 추가하여 재제출.
-
-**재발 방지 규칙**
-```
-□ 기존 파일을 수정하거나 의존하는 새 코드 작성 시
-  해당 파일도 반드시 zip에 포함
-□ 새 파일이 기존 파일의 타입/함수에 의존할 때:
-  - 해당 기존 파일의 현재 버전을 확인
-  - 필요한 필드/함수가 없으면 직접 수정 후 함께 제출
-□ zip 제출 전 체크리스트:
-  - 새 파일이 import하는 모든 로컬 파일의 최신 버전 확인
-  - 타입 변경이 있는 파일은 반드시 zip에 포함
-□ 특히 sprint N-1에서 수정된 파일을 sprint N에서 참조할 때 주의
+□ Server Action 파일(src/actions/)에서 as any 사용 시 eslint-disable 필수
+□ Relationships: [] 추가 후 DB Row 타입 인덱스 접근으로 as any 대체 가능
+□ <img> 태그 사용 시 eslint-disable-next-line @next/next/no-img-element 주석 추가
+□ 외부 이미지 URL 사용 시 next/image 대신 <img> + eslint-disable 주석 사용
+□ npm run build는 ESLint 경고도 error로 처리하므로 warning 무시 금지
 ```
 
 ---
 
 ## 이슈 템플릿
-
 
 ```md
 ## [상태] 이슈 제목

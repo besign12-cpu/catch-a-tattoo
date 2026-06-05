@@ -99,66 +99,63 @@
 | `src/lib/mock-preferences.ts` | MOCK_BASE_CITY 상수, toCitySlug/fromCitySlug 유틸 신규 | ✅ |
 | `src/lib/queries/artists.ts` | (변경 없음) | - |
 | `src/app/auth/**` | 로그인·회원가입 화면 | ✅ Sprint 3-1 완료 |
-| `src/app/studio/**` | 아티스트 스튜디오 | ✅ Sprint 3-4 완료 |
-| `src/app/studio/profile/edit/**` | 프로필 수정 | ✅ Sprint 3-5 완료 |
+| `src/app/studio/**` | 아티스트 스튜디오 | ✅ Sprint 3-4/3-6 완료 |
+| `src/app/studio/portfolio/**` | 포트폴리오 관리 | ✅ Sprint 3-6 완료 |
 | `src/actions/auth.ts` | 인증 Server Actions | ✅ Sprint 3-1 완료 |
 | `src/actions/artist.ts` | 프로필 생성/수정 Server Actions | ✅ Sprint 3-3/3-5 완료 |
+| `src/actions/portfolio.ts` | 포트폴리오 Server Actions | ✅ Sprint 3-6 완료 |
 | `src/components/artist/TagSelector.tsx` | 태그 선택 UI | ✅ Sprint 3-3/3-5 완료 |
-| `src/components/artist/PortfolioUploader.tsx` | 포트폴리오 업로드 | ⏳ 미구현 |
+| `src/components/artist/PortfolioUploader.tsx` | 포트폴리오 업로드 (Storage 연동) | ⏳ 미구현 |
 | `src/lib/hooks/useSession.ts` | 세션 훅 | ✅ Sprint 3-1 완료 |
 | `middleware.ts` | 라우트 보호 | ✅ Sprint 3-1 완료 |
 
 ### Sprint 3-1 — Auth Foundation ✅
-
 | 파일 | 작업 |
 |---|---|
-| `middleware.ts` | 보호 라우트 접근 제어 (`/me`, `/studio`) |
-| `src/actions/auth.ts` | signUp / signIn / signOut |
-| `src/lib/hooks/useSession.ts` | 클라이언트 세션 훅 |
-| `src/app/auth/callback/route.ts` | 이메일 인증 콜백 |
-| `src/app/auth/login/page.tsx` | 로그인 화면 |
-| `src/app/auth/signup/page.tsx` | 회원가입 화면 |
-| `src/app/auth/verify-email/page.tsx` | 이메일 인증 대기 |
-| `src/components/layout/BottomNav.tsx` | 세션 분기 추가 |
+| `middleware.ts`, `src/actions/auth.ts`, `src/lib/hooks/useSession.ts` | 인증 기반 |
+| `src/app/auth/**`, `src/components/layout/BottomNav.tsx` | 로그인/회원가입 화면 |
 
 ### Sprint 3-2 — User Profile ✅
-
 | 파일 | 작업 |
 |---|---|
-| `src/lib/queries/user.ts` | `getUserProfile()` 신규 |
-| `src/app/me/page.tsx` | 실제 사용자 정보 화면 |
+| `src/lib/queries/user.ts` | `getUserProfile()` |
+| `src/app/me/page.tsx` | 사용자 정보 화면 |
 
 ### Sprint 3-3 — Artist Creation ✅
-
 | 파일 | 작업 |
 |---|---|
-| `src/types/database.types.ts` | 모든 테이블/뷰에 `Relationships: []` 추가 (근본 원인 수정) |
-| `src/lib/supabase/admin.ts` | `SupabaseClient<Database>` 명시적 타입 선언 |
+| `src/types/database.types.ts` | 모든 테이블/뷰에 `Relationships: []` 추가 |
+| `src/lib/supabase/admin.ts` | `SupabaseClient<Database>` 명시 |
 | `src/lib/queries/studio.ts` | `getMyArtistProfile()` 신규 |
-| `src/actions/artist.ts` | `createArtistProfile()` Server Action |
-| `src/components/artist/TagSelector.tsx` | 태그 선택 Client Component |
-| `src/app/artists/new/NewArtistForm.tsx` | 폼 Client Component |
-| `src/app/artists/new/page.tsx` | 아티스트 프로필 생성 페이지 |
+| `src/actions/artist.ts` | `createArtistProfile()` |
+| `src/components/artist/TagSelector.tsx` | 태그 선택 |
+| `src/app/artists/new/**` | 프로필 생성 페이지 |
 
 ### Sprint 3-4 — Studio Dashboard ✅
-
 | 파일 | 작업 |
 |---|---|
-| `src/lib/queries/studio.ts` | `artist_tags` JOIN 추가, `tags: Tag[]` 필드 추가 |
-| `src/app/studio/page.tsx` | 아티스트 대시보드 신규 |
+| `src/lib/queries/studio.ts` | `tags: Tag[]` JOIN 추가 |
+| `src/app/studio/page.tsx` | 아티스트 대시보드 |
 
 ### Sprint 3-5 — Profile Edit ✅
+| 파일 | 작업 |
+|---|---|
+| `src/components/artist/TagSelector.tsx` | `initialIds?: string[]` prop 추가 |
+| `src/actions/artist.ts` | `updateArtistProfile()` 추가 |
+| `src/app/studio/profile/edit/**` | 프로필 수정 화면 |
+
+### Sprint 3-6 — Portfolio Upload ✅
 
 | 파일 | 작업 |
 |---|---|
-| `src/lib/queries/studio.ts` | Sprint 3-4 버전(tags 포함) — zip 누락으로 재포함 |
-| `src/components/artist/TagSelector.tsx` | `initialIds?: string[]` prop 추가 (수정 화면 초기값) |
-| `src/actions/artist.ts` | `updateArtistProfile()` Server Action 추가 |
-| `src/app/studio/profile/edit/EditProfileForm.tsx` | 수정 폼 Client Component 신규 |
-| `src/app/studio/profile/edit/page.tsx` | 프로필 수정 페이지 신규 |
+| `src/lib/queries/studio.ts` | `getMyPortfolio()` 추가 |
+| `src/actions/portfolio.ts` | `addPortfolioItem()`, `deletePortfolioItem()` 신규 — `as any` 없이 DB Row 타입 인덱스 접근 |
+| `src/app/studio/portfolio/PortfolioClient.tsx` | 포트폴리오 관리 Client Component, `eslint-disable-next-line` 주석 추가 |
+| `src/app/studio/portfolio/page.tsx` | 포트폴리오 관리 페이지 |
+| `src/app/studio/page.tsx` | 포트폴리오 섹션 추가, `eslint-disable-next-line` 주석 추가 |
 
-**KNOWN_ISSUES.md 업데이트** (Sprint 3-5)
-- `[RESOLVED] Sprint 3-5 — studio.ts 버전 누락으로 tags 타입 오류` 추가
+**KNOWN_ISSUES.md 업데이트** (Sprint 3-6)
+- `[RESOLVED] Sprint 3-6 — portfolio.ts as any + img 태그 ESLint 오류` 추가
 
 ---
 
@@ -176,6 +173,7 @@
 | React 버전 무시한 API 사용 | 1회 | package.json react 버전 확인 |
 | Supabase `.maybeSingle()` 반환 타입 never | 1회 | `data as any as DB_ROW \| null` 2단계 단언 |
 | Supabase `.insert()` never[] — `Relationships` 누락 | 3회 | `database.types.ts` 전 테이블/뷰에 `Relationships: []` 추가 |
+| zip 제출 시 의존 파일 누락 | 1회 | 수정된 파일과 그에 의존하는 파일 모두 zip 포함 |
 
 ---
 

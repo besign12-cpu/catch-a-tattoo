@@ -1,10 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database.types";
-import type { Tag } from "@/types";
+import type { Tag, PortfolioItem } from "@/types";
 
 type ArtistProfileRow =
   Database["public"]["Tables"]["artist_profiles"]["Row"];
+type PortfolioItemRow =
+  Database["public"]["Tables"]["portfolio_items"]["Row"];
 
 export interface StudioArtistProfile {
   id: string;
@@ -38,7 +40,10 @@ function toTag(raw: {
   };
 }
 
-function toStudioProfile(row: ArtistProfileRow, tags: Tag[]): StudioArtistProfile {
+function toStudioProfile(
+  row: ArtistProfileRow,
+  tags: Tag[]
+): StudioArtistProfile {
   return {
     id: row.id,
     userId: row.user_id,
@@ -53,6 +58,14 @@ function toStudioProfile(row: ArtistProfileRow, tags: Tag[]): StudioArtistProfil
     contactValue: row.contact_value,
     createdAt: row.created_at,
     tags,
+  };
+}
+
+function toPortfolioItem(row: PortfolioItemRow): PortfolioItem {
+  return {
+    id: row.id,
+    imageUrl: row.image_url,
+    sortOrder: row.sort_order,
   };
 }
 
@@ -98,4 +111,24 @@ export async function getMyArtistProfile(
       ) ?? [];
 
   return toStudioProfile(row, tags);
+}
+
+/**
+ * artistId 기준 포트폴리오 이미지 목록 조회 (sort_order 오름차순)
+ * Server Component / Server Action 전용
+ */
+export async function getMyPortfolio(
+  artistId: string
+): Promise<PortfolioItem[]> {
+  const supabase = await getSupabaseServerClient();
+
+  const { data, error } = await supabase
+    .from("portfolio_items")
+    .select("id, artist_id, image_url, sort_order, created_at")
+    .eq("artist_id", artistId)
+    .order("sort_order", { ascending: true });
+
+  if (error || !data) return [];
+
+  return (data as any as PortfolioItemRow[]).map(toPortfolioItem);
 }
