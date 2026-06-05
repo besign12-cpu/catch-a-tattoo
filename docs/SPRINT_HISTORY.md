@@ -132,7 +132,7 @@
 
 **빌드:** ✅ 통과
 
-- [x] `middleware.ts` — 보호 라우트 접근 제어
+- [x] `middleware.ts` — 보호 라우트 접근 제어 (`/me`, `/studio`)
 - [x] `/auth/login/page.tsx` — 로그인 화면
 - [x] `/auth/signup/page.tsx` — 회원가입 화면
 - [x] `/auth/verify-email/page.tsx` — 이메일 인증 대기
@@ -150,48 +150,56 @@
 
 ### ✅ 완료 — Sprint 3-3 Artist Creation
 
-**빌드:** ✅ 통과
-**핵심 수정:** `database.types.ts` 모든 테이블/뷰에 `Relationships: []` 추가
-→ `@supabase/postgrest-js@2.107.0`의 `GenericTable` 요구사항 충족
-→ `.insert()` never[] 오류 근본 해결
+**빌드:** ✅ 통과 (3차 시도 — database.types.ts Relationships 누락이 근본 원인)
 
-- [x] `src/types/database.types.ts` — Relationships 필드 추가 (근본 원인 해결)
-- [x] `src/lib/supabase/admin.ts` — `SupabaseClient<Database>` 명시적 타입
+- [x] `src/types/database.types.ts` — Relationships: [] 추가 (근본 원인 해결)
+- [x] `src/lib/supabase/admin.ts` — SupabaseClient<Database> 명시
 - [x] `src/lib/queries/studio.ts` — `getMyArtistProfile()`
-- [x] `src/actions/artist.ts` — `createArtistProfile()` Server Action
+- [x] `src/actions/artist.ts` — `createArtistProfile()`
 - [x] `src/components/artist/TagSelector.tsx` — 태그 선택 (Color/Main 필수, Art 0~4)
-- [x] `src/app/artists/new/NewArtistForm.tsx` — Client Component
-- [x] `src/app/artists/new/page.tsx` — 서버 컴포넌트
+- [x] `src/app/artists/new/**` — 신규 프로필 생성 화면
+
+### ✅ 완료 — Sprint 3-4 Studio Dashboard
+
+**빌드:** ✅ 통과
+
+- [x] `src/lib/queries/studio.ts` — artist_tags JOIN, tags: Tag[] 포함
+- [x] `src/app/studio/page.tsx` — 아티스트 대시보드 (프로필 있음/없음 분기)
+
+### ✅ 완료 — Sprint 3-5 Profile Edit
+
+**빌드:** ✅ 통과
+**수정 이슈:** Sprint 3-4에서 tags 추가된 studio.ts가 zip에 미포함 → profile.tags 타입 오류 → studio.ts 재포함으로 해결
+
+- [x] `src/lib/queries/studio.ts` — Sprint 3-4 버전(tags: Tag[] 포함) zip 재포함
+- [x] `src/components/artist/TagSelector.tsx` — `initialIds?: string[]` prop 추가
+- [x] `src/actions/artist.ts` — `updateArtistProfile()` Server Action 추가
+  - artist_profiles update
+  - artist_tags 전체 삭제 후 재삽입
+  - 핸들 변경 시 중복 확인
+  - redirect 없이 `{ status: "success", handle }` 반환 (Client에서 router.push)
+- [x] `src/app/studio/profile/edit/EditProfileForm.tsx` — Client Component
+  - `useFormState` / `useFormStatus` 패턴
+  - 성공 시 `router.push("/studio")` + `router.refresh()`
+- [x] `src/app/studio/profile/edit/page.tsx` — 서버 컴포넌트
+  - 프로필 없으면 `/artists/new` redirect
 
 ### ⏳ 미완료 (인증·프로필 시스템)
 
-#### Phase A — 인증 기반
-- [x] `middleware.ts` ✅ Sprint 3-1
-- [x] `/auth/login/page.tsx` ✅ Sprint 3-1
-- [x] `/auth/signup/page.tsx` ✅ Sprint 3-1
-- [x] `/auth/verify-email/page.tsx` ✅ Sprint 3-1
-- [x] `/auth/callback/route.ts` ✅ Sprint 3-1
-- [x] `src/actions/auth.ts` ✅ Sprint 3-1
-- [x] `src/lib/hooks/useSession.ts` ✅ Sprint 3-1
-- [x] BottomNav 세션 상태 분기 ✅ Sprint 3-1
+#### Phase A — 인증 기반 ✅ Sprint 3-1 전체 완료
 
-#### Phase B — 프로필 생성
-- [x] `/artists/new/page.tsx` ✅ Sprint 3-3
-- [x] `src/components/artist/TagSelector.tsx` ✅ Sprint 3-3
-- [ ] `/studio/page.tsx` — 아티스트 대시보드 ⏳
-- [x] `src/lib/queries/studio.ts` ✅ Sprint 3-3
-- [x] `src/actions/artist.ts` ✅ Sprint 3-3
+#### Phase B — 프로필 생성 ✅ Sprint 3-3/3-4 전체 완료
 
 #### Phase C — 프로필 편집
-- [ ] `/studio/profile/edit/page.tsx`
-- [ ] `src/components/artist/PortfolioUploader.tsx`
-- [ ] `src/lib/image-utils.ts`
-- [ ] `src/actions/portfolio.ts`
+- [x] `/studio/profile/edit/page.tsx` ✅ Sprint 3-5
+- [ ] `src/components/artist/PortfolioUploader.tsx` — 이미지 업로드 ⏳
+- [ ] `src/lib/image-utils.ts` — 이미지 압축 유틸 ⏳
+- [ ] `src/actions/portfolio.ts` — 포트폴리오 Server Actions ⏳
 
 #### Phase D — 팔로우 실제 동작
-- [ ] `src/lib/hooks/useFollow.ts`
-- [ ] `src/actions/follow.ts`
-- [ ] FeedCard 팔로우 버튼 실제 연결
+- [ ] `src/lib/hooks/useFollow.ts` ⏳
+- [ ] `src/actions/follow.ts` ⏳
+- [ ] FeedCard 팔로우 버튼 실제 연결 ⏳
 
 #### Phase E — 내 정보 화면
 - [x] `/me/page.tsx` ✅ Sprint 3-2

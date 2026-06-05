@@ -41,10 +41,15 @@ function getValidationMessage(
 interface TagSelectorProps {
   /** 전체 태그 목록 (서버에서 getAllTags()로 조회) */
   tags: Tag[];
+  /**
+   * 초기 선택 태그 ID 목록.
+   * 신규 생성 시 생략(빈 배열), 수정 시 기존 태그 ID 전달.
+   */
+  initialIds?: string[];
 }
 
-export function TagSelector({ tags }: TagSelectorProps) {
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+export function TagSelector({ tags, initialIds = [] }: TagSelectorProps) {
+  const [selectedIds, setSelectedIds] = useState<string[]>(initialIds);
 
   const grouped = GROUP_ORDER.reduce<Record<TagGroup, Tag[]>>(
     (acc, group) => {
