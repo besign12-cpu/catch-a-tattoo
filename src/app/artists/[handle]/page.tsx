@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { ArrowLeft, Share2, MoreVertical } from "lucide-react";
+import { ArrowLeft, Share2, MapPin, Users } from "lucide-react";
+import { Suspense } from "react";
 
 import { PageContainer } from "@/components/layout/PageContainer";
 import { Avatar } from "@/components/ui/Avatar";
@@ -12,11 +13,14 @@ import { ProfileSkeleton } from "@/components/ui/Skeleton";
 
 import { getArtistProfile } from "@/lib/queries/artists";
 import { getArtistByHandle } from "@/data/dummy";
-import { Suspense } from "react";
+import { formatDateRange, calcDDay, isScheduleActive } from "@/lib/utils";
+import type { GuestSchedule } from "@/types";
 
 interface Props {
   params: Promise<{ handle: string }>;
 }
+
+// ── Metadata ─────────────────────────────────────────────────
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { handle } = await params;
@@ -31,7 +35,31 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-/** 포트폴리오 placeholder SVG — lucide Image 컴포넌트 대체 */
+// ── Instagram SVG 아이콘 ──────────────────────────────────────
+// lucide-react 미지원 — SVG 직접 인라인
+
+function InstagramIcon({ size = 15 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="17.5" cy="6.5" r=".5" fill="currentColor" />
+    </svg>
+  );
+}
+
+// ── 포트폴리오 Placeholder ────────────────────────────────────
+
 function PortfolioPlaceholder() {
   return (
     <svg
@@ -53,6 +81,84 @@ function PortfolioPlaceholder() {
   );
 }
 
+// ── 도시별 Bring 행 ───────────────────────────────────────────
+// Sprint 5: city_follows (is_active=true) 실데이터로 교체 예정
+
+function ScheduleBringRow({
+  schedule,
+  bringCount,
+}: {
+  schedule: GuestSchedule;
+  bringCount: number;
+}) {
+  const status = isScheduleActive(schedule.startDate, schedule.endDate);
+  const isActive = status === "active";
+  const dday = calcDDay(schedule.startDate, schedule.endDate);
+  const dateRange = formatDateRange(schedule.startDate, schedule.endDate);
+
+  return (
+    <div
+      className={[
+        "flex items-center gap-3 rounded-xl px-4 py-3",
+        isActive
+          ? "border border-emerald-100 bg-emerald-50"
+          : "border border-neutral-100 bg-neutral-50",
+      ].join(" ")}
+    >
+      {/* 도시 + 날짜 */}
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <div className="flex items-center gap-1.5">
+          <MapPin
+            size={11}
+            className={isActive ? "text-emerald-500" : "text-neutral-400"}
+            aria-hidden="true"
+          />
+          <span className="text-[13px] font-semibold text-neutral-900 leading-tight">
+            {schedule.city}
+          </span>
+          {isActive && (
+            <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700">
+              진행 중
+            </span>
+          )}
+        </div>
+        <span className="text-[11px] text-neutral-400 leading-tight">
+          {dateRange} · {dday}
+        </span>
+      </div>
+
+      {/* Bring 수 */}
+      <div className="flex shrink-0 flex-col items-end gap-0.5">
+        <div className="flex items-center gap-1">
+          <Users size={10} className="text-neutral-400" aria-hidden="true" />
+          <span className="text-[13px] font-bold text-neutral-900 leading-tight">
+            {bringCount}
+          </span>
+        </div>
+        <span className="text-[10px] text-neutral-400 leading-tight">Bring</span>
+      </div>
+
+      {/* Bring CTA 버튼 — Sprint 5 실동작 연결 예정 */}
+      <button
+        className={[
+          "shrink-0 rounded-xl px-3 py-2 text-[12px] font-semibold transition-colors active:opacity-70",
+          bringCount > 0
+            ? "bg-neutral-900 text-white"
+            : "border border-neutral-200 bg-white text-neutral-600",
+        ].join(" ")}
+        aria-label={`${schedule.city}에 ${schedule.startDate} Bring This Artist`}
+        onClick={() => {
+          // Sprint 5: useBring 훅 연결 예정
+        }}
+      >
+        Bring
+      </button>
+    </div>
+  );
+}
+
+// ── 프로필 콘텐츠 ────────────────────────────────────────────
+
 async function ProfileContent({ handle }: { handle: string }) {
   const artist =
     (await getArtistProfile(handle).catch(() => null)) ??
@@ -61,27 +167,45 @@ async function ProfileContent({ handle }: { handle: string }) {
 
   if (!artist) notFound();
 
-  const isFollowing = false; // Sprint 3에서 교체
+  // Sprint 5: city_follows (is_active=true) WHERE artist_id = artist.id 쿼리로 교체
+  // 현재: 도시별 Bring 수 0으로 초기화
+  const bringCounts: Record<string, number> = {};
+  artist.upcomingSchedules.forEach((s) => {
+    bringCounts[s.id] = 0;
+  });
+
+  const isFollowing = false; // Sprint 5: useFollow 훅 연결 예정
 
   const instagramUrl = `https://www.instagram.com/${artist.instagramHandle.replace("@", "")}`;
 
+  // 일정: 진행 중 → 예정 순 정렬 (이미 서버에서 정렬됐지만 명시적 보장)
+  const sortedSchedules = [...artist.upcomingSchedules].sort((a, b) => {
+    const aStatus = isScheduleActive(a.startDate, a.endDate);
+    const bStatus = isScheduleActive(b.startDate, b.endDate);
+    if (aStatus === "active" && bStatus !== "active") return -1;
+    if (aStatus !== "active" && bStatus === "active") return 1;
+    return new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
+  });
+
   return (
-    <div>
-      {/* 프로필 헤더 */}
-      <section className="bg-white px-4 pb-0 pt-4">
+    <div className="pb-10">
+
+      {/* ── 프로필 헤더 ─────────────────────────────────── */}
+      <section className="bg-white px-4 pb-4 pt-4">
         <div className="mb-3 flex items-start gap-3">
           <Avatar name={artist.displayName} size="lg" />
           <div className="min-w-0 flex-1">
-            <div className="mb-0.5 flex items-center gap-1.5">
-              <h2 className="text-[17px] font-medium leading-tight text-neutral-900">
+            <div className="mb-0.5 flex items-center gap-1.5 flex-wrap">
+              <h2 className="text-[17px] font-semibold leading-tight text-neutral-900">
                 {artist.displayName}
               </h2>
               {artist.isVerified && <VerifiedBadge size={16} />}
             </div>
-            <p className="mb-2 text-xs text-neutral-500">
-              Based in {artist.baseCity}, {artist.baseCountry}
+            <p className="mb-2 text-xs text-neutral-400">
+              Based in {artist.baseCity}
+              {artist.baseCountry ? `, ${artist.baseCountry}` : ""}
             </p>
-            <TagList tags={artist.tags} size="sm" />
+            <TagList tags={artist.tags} size="sm" max={5} />
           </div>
         </div>
 
@@ -91,9 +215,16 @@ async function ProfileContent({ handle }: { handle: string }) {
           </p>
         )}
 
-        <div className="flex gap-2 pb-4">
+        {/* ── CTA 버튼 행 ──────────────────────────────── */}
+        <div className="flex gap-2">
+          {/* 팔로우 버튼 */}
           <button
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-neutral-900 py-2.5 text-sm font-medium text-white transition-opacity active:opacity-80"
+            className={[
+              "flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-medium transition-colors active:opacity-80",
+              isFollowing
+                ? "border border-neutral-200 bg-neutral-100 text-neutral-500"
+                : "bg-neutral-900 text-white",
+            ].join(" ")}
             aria-label={
               isFollowing
                 ? `${artist.displayName} 팔로잉 중`
@@ -102,56 +233,74 @@ async function ProfileContent({ handle }: { handle: string }) {
           >
             {isFollowing ? "팔로잉" : "팔로우"}
           </button>
+
+          {/* Instagram 버튼 */}
           <a
             href={instagramUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-neutral-200 py-2.5 text-sm font-medium text-neutral-800 active:bg-neutral-50"
+            className="flex items-center justify-center gap-1.5 rounded-xl border border-neutral-200 px-4 py-2.5 text-sm font-medium text-neutral-700 active:bg-neutral-50"
+            aria-label={`${artist.displayName} Instagram`}
           >
-            {/* Instagram 아이콘 — lucide-react 미지원, SVG 직접 사용 */}
-            <svg
-              width="15"
-              height="15"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
-              <circle cx="12" cy="12" r="4" />
-              <circle cx="17.5" cy="6.5" r=".5" fill="currentColor" />
-            </svg>
-            Instagram
+            <InstagramIcon size={15} />
+            <span>Instagram</span>
           </a>
         </div>
       </section>
 
-      {/* 다음 게스트워크 */}
+      {/* ── Guest Work 일정 — 진행 중 우선 ──────────────── */}
       <section className="mt-2 bg-white px-4 py-4">
-        <h3 className="mb-2.5 text-[10px] font-medium uppercase tracking-widest text-neutral-400">
-          다음 게스트워크
+        <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-neutral-400">
+          Guest Work
+          {sortedSchedules.length > 0 && (
+            <span className="ml-1.5 text-neutral-300">
+              {sortedSchedules.length}
+            </span>
+          )}
         </h3>
-        {artist.upcomingSchedules.length > 0 ? (
-          <div className="space-y-2">
-            {artist.upcomingSchedules.map((schedule) => (
-              <ScheduleBlock key={schedule.id} schedule={schedule} />
+
+        {sortedSchedules.length > 0 ? (
+          <div className="flex flex-col gap-3">
+            {sortedSchedules.map((schedule) => (
+              <div key={schedule.id} className="flex flex-col gap-1.5">
+                {/* 일정 상세 블록 */}
+                <ScheduleBlock schedule={schedule} variant="card" />
+                {/* 도시별 Bring 행 */}
+                <ScheduleBringRow
+                  schedule={schedule}
+                  bringCount={bringCounts[schedule.id] ?? 0}
+                />
+              </div>
             ))}
           </div>
         ) : (
-          <p className="rounded-xl bg-neutral-50 py-5 text-center text-sm text-neutral-400">
-            등록된 일정이 없습니다
-          </p>
+          <div className="flex flex-col items-center gap-2 rounded-2xl bg-neutral-50 py-8 text-center">
+            <MapPin size={20} className="text-neutral-300" aria-hidden="true" />
+            <p className="text-sm text-neutral-400">
+              등록된 게스트워크 일정이 없습니다
+            </p>
+          </div>
         )}
       </section>
 
-      {/* 대표 작품 */}
+      {/* ── 대표 작품 ─────────────────────────────────── */}
       <section className="mt-2 bg-white px-4 pb-4 pt-4">
-        <h3 className="mb-2.5 text-[10px] font-medium uppercase tracking-widest text-neutral-400">
-          대표 작품
-        </h3>
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-[10px] font-semibold uppercase tracking-widest text-neutral-400">
+            대표 작품
+          </h3>
+          <a
+            href={instagramUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 text-[11px] text-neutral-400 hover:text-neutral-600 transition-colors"
+            aria-label="Instagram에서 더 보기"
+          >
+            <InstagramIcon size={11} />
+            <span>더 보기</span>
+          </a>
+        </div>
+
         <div className="grid grid-cols-3 gap-0.5 overflow-hidden rounded-xl">
           {[0, 1, 2].map((i) => {
             const item = artist.portfolioItems[i];
@@ -174,32 +323,20 @@ async function ProfileContent({ handle }: { handle: string }) {
             );
           })}
         </div>
-        <p className="mt-2.5 text-center text-[11px] text-neutral-400">
-          더 많은 작품은{" "}
-          <a
-            href={instagramUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-neutral-600 underline underline-offset-2"
-          >
-            Instagram
-          </a>
-          에서 확인
-        </p>
       </section>
 
-      {/* 미인증 클레임 배너 */}
+      {/* ── 미인증 클레임 배너 ────────────────────────── */}
       {!artist.isVerified && (
-        <section className="mx-3 mb-3 mt-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-          <p className="mb-0.5 text-xs font-medium text-amber-800">
+        <section className="mx-4 mb-2 mt-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <p className="mb-0.5 text-xs font-semibold text-amber-800">
             이 프로필은 나인가요?
           </p>
-          <p className="mb-2 text-[11px] text-amber-600">
+          <p className="mb-2.5 text-[11px] text-amber-600 leading-relaxed">
             Instagram DM 인증으로 본인 프로필임을 확인하세요.
           </p>
           <Link
             href={`/artists/${artist.instagramHandle}/claim`}
-            className="inline-flex items-center rounded-lg bg-amber-700 px-3 py-1.5 text-xs font-medium text-white active:scale-95"
+            className="inline-flex items-center rounded-xl bg-amber-700 px-4 py-2 text-xs font-semibold text-white active:opacity-80"
           >
             Verify Profile →
           </Link>
@@ -209,11 +346,14 @@ async function ProfileContent({ handle }: { handle: string }) {
   );
 }
 
+// ── 메인 페이지 ─────────────────────────────────────────────
+
 export default async function ArtistProfilePage({ params }: Props) {
   const { handle } = await params;
 
   return (
     <PageContainer className="bg-neutral-50">
+      {/* TopBar */}
       <header className="sticky top-0 z-40 flex h-[52px] items-center justify-between border-b border-neutral-100 bg-white px-4">
         <Link
           href="/"
@@ -223,20 +363,12 @@ export default async function ArtistProfilePage({ params }: Props) {
           <ArrowLeft size={20} />
         </Link>
         <span className="text-[13px] font-medium text-neutral-900">프로필</span>
-        <div className="flex items-center gap-2">
-          <button
-            className="flex h-9 w-9 items-center justify-center rounded-full text-neutral-700 active:bg-neutral-100"
-            aria-label="공유"
-          >
-            <Share2 size={18} />
-          </button>
-          <button
-            className="flex h-9 w-9 items-center justify-center rounded-full text-neutral-700 active:bg-neutral-100"
-            aria-label="더보기"
-          >
-            <MoreVertical size={18} />
-          </button>
-        </div>
+        <button
+          className="flex h-9 w-9 items-center justify-center rounded-full text-neutral-700 active:bg-neutral-100"
+          aria-label="공유"
+        >
+          <Share2 size={18} />
+        </button>
       </header>
 
       <Suspense fallback={<ProfileSkeleton />}>
