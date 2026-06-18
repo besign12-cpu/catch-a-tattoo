@@ -138,21 +138,21 @@ function ScheduleBringRow({
         <span className="text-[10px] text-neutral-400 leading-tight">Bring</span>
       </div>
 
-      {/* Bring CTA 버튼 — Sprint 5 실동작 연결 예정 */}
-      <button
+      {/* Bring — Sprint 5에서 Client Component + useBring 훅으로 교체 예정 */}
+      {/* Server Component에서 onClick 불가 → 비활성 UI */}
+      <div
         className={[
-          "shrink-0 rounded-xl px-3 py-2 text-[12px] font-semibold transition-colors active:opacity-70",
+          "shrink-0 rounded-xl px-3 py-2 text-[12px] font-semibold select-none cursor-default",
           bringCount > 0
             ? "bg-neutral-900 text-white"
-            : "border border-neutral-200 bg-white text-neutral-600",
+            : "border border-neutral-200 bg-neutral-50 text-neutral-400",
         ].join(" ")}
-        aria-label={`${schedule.city}에 ${schedule.startDate} Bring This Artist`}
-        onClick={() => {
-          // Sprint 5: useBring 훅 연결 예정
-        }}
+        aria-label={`${schedule.city} Bring This Artist`}
+        role="button"
+        aria-disabled="true"
       >
         Bring
-      </button>
+      </div>
     </div>
   );
 }
