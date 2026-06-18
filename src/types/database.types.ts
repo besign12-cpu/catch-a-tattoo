@@ -9,6 +9,8 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      // ── 기존 테이블 (Sprint 1~3) ─────────────────────────────
+
       users: {
         Row: {
           id: string;
@@ -20,6 +22,8 @@ export type Database = {
           base_country: string | null;
           push_token: string | null;
           created_at: string;
+          // Sprint 4 — 007_users_base_city.sql
+          base_city_changed_at: string | null;
         };
         Insert: {
           id: string;
@@ -31,6 +35,7 @@ export type Database = {
           base_country?: string | null;
           push_token?: string | null;
           created_at?: string;
+          base_city_changed_at?: string | null;
         };
         Update: {
           id?: string;
@@ -42,9 +47,11 @@ export type Database = {
           base_country?: string | null;
           push_token?: string | null;
           created_at?: string;
+          base_city_changed_at?: string | null;
         };
         Relationships: [];
       };
+
       artist_profiles: {
         Row: {
           id: string;
@@ -96,6 +103,7 @@ export type Database = {
         };
         Relationships: [];
       };
+
       tags: {
         Row: {
           id: string;
@@ -117,6 +125,7 @@ export type Database = {
         };
         Relationships: [];
       };
+
       artist_tags: {
         Row: {
           artist_id: string;
@@ -135,6 +144,7 @@ export type Database = {
         };
         Relationships: [];
       };
+
       portfolio_items: {
         Row: {
           id: string;
@@ -159,6 +169,7 @@ export type Database = {
         };
         Relationships: [];
       };
+
       guest_schedules: {
         Row: {
           id: string;
@@ -210,6 +221,7 @@ export type Database = {
         };
         Relationships: [];
       };
+
       follows: {
         Row: {
           id: string;
@@ -231,6 +243,7 @@ export type Database = {
         };
         Relationships: [];
       };
+
       city_follows: {
         Row: {
           id: string;
@@ -239,6 +252,10 @@ export type Database = {
           city: string;
           country: string;
           created_at: string;
+          // Sprint 4 — 005_bring_update.sql
+          is_active: boolean;
+          expired_reason: "base_city_changed" | "guest_work_completed" | null;
+          expired_at: string | null;
         };
         Insert: {
           id?: string;
@@ -247,6 +264,9 @@ export type Database = {
           city: string;
           country: string;
           created_at?: string;
+          is_active?: boolean;
+          expired_reason?: "base_city_changed" | "guest_work_completed" | null;
+          expired_at?: string | null;
         };
         Update: {
           id?: string;
@@ -255,9 +275,13 @@ export type Database = {
           city?: string;
           country?: string;
           created_at?: string;
+          is_active?: boolean;
+          expired_reason?: "base_city_changed" | "guest_work_completed" | null;
+          expired_at?: string | null;
         };
         Relationships: [];
       };
+
       city_demand_cache: {
         Row: {
           artist_id: string;
@@ -282,6 +306,7 @@ export type Database = {
         };
         Relationships: [];
       };
+
       notifications: {
         Row: {
           id: string;
@@ -330,6 +355,7 @@ export type Database = {
         };
         Relationships: [];
       };
+
       demand_notifications: {
         Row: {
           id: string;
@@ -354,6 +380,7 @@ export type Database = {
         };
         Relationships: [];
       };
+
       claim_requests: {
         Row: {
           id: string;
@@ -387,7 +414,206 @@ export type Database = {
         };
         Relationships: [];
       };
+
+      // ── Sprint 4 신규 테이블 ─────────────────────────────────
+
+      // 004_cities.sql
+      cities: {
+        Row: {
+          id: string;
+          name: string;
+          country: string;
+          country_name: string;
+          lat: number | null;
+          lng: number | null;
+          region: "asia" | "europe" | "americas" | "other";
+          is_approved: boolean;
+          created_at: string;
+          approved_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          country: string;
+          country_name: string;
+          lat?: number | null;
+          lng?: number | null;
+          region: "asia" | "europe" | "americas" | "other";
+          is_approved?: boolean;
+          created_at?: string;
+          approved_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          country?: string;
+          country_name?: string;
+          lat?: number | null;
+          lng?: number | null;
+          region?: "asia" | "europe" | "americas" | "other";
+          is_approved?: boolean;
+          created_at?: string;
+          approved_at?: string | null;
+        };
+        Relationships: [];
+      };
+
+      // 004_cities.sql
+      city_requests: {
+        Row: {
+          id: string;
+          requested_by: string | null;
+          city_name: string;
+          country: string;
+          reason: string | null;
+          status: "pending" | "approved" | "rejected";
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          requested_by?: string | null;
+          city_name: string;
+          country: string;
+          reason?: string | null;
+          status?: "pending" | "approved" | "rejected";
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          requested_by?: string | null;
+          city_name?: string;
+          country?: string;
+          reason?: string | null;
+          status?: "pending" | "approved" | "rejected";
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+
+      // 006_analytics.sql
+      demand_events: {
+        Row: {
+          id: string;
+          event_type:
+            | "profile_view"
+            | "schedule_view"
+            | "instagram_click"
+            | "city_click";
+          user_id: string | null;
+          artist_id: string | null;
+          city_id: string | null;
+          session_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          event_type:
+            | "profile_view"
+            | "schedule_view"
+            | "instagram_click"
+            | "city_click";
+          user_id?: string | null;
+          artist_id?: string | null;
+          city_id?: string | null;
+          session_id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          event_type?:
+            | "profile_view"
+            | "schedule_view"
+            | "instagram_click"
+            | "city_click";
+          user_id?: string | null;
+          artist_id?: string | null;
+          city_id?: string | null;
+          session_id?: string;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+
+      // 006_analytics.sql
+      search_logs: {
+        Row: {
+          id: string;
+          query_type: "city" | "style" | "artist" | "combined";
+          query_value: string | null;
+          user_id: string | null;
+          session_id: string;
+          result_count: number;
+          filters_used: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          query_type: "city" | "style" | "artist" | "combined";
+          query_value?: string | null;
+          user_id?: string | null;
+          session_id: string;
+          result_count?: number;
+          filters_used?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          query_type?: "city" | "style" | "artist" | "combined";
+          query_value?: string | null;
+          user_id?: string | null;
+          session_id?: string;
+          result_count?: number;
+          filters_used?: Json;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+
+      // 006_analytics.sql
+      analytics_snapshots: {
+        Row: {
+          id: string;
+          snapshot_type:
+            | "city_follows"
+            | "style_search"
+            | "guest_work_count"
+            | "artist_profile_views"
+            | "city_search";
+          target_id: string | null;
+          period: string;
+          value: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          snapshot_type:
+            | "city_follows"
+            | "style_search"
+            | "guest_work_count"
+            | "artist_profile_views"
+            | "city_search";
+          target_id?: string | null;
+          period: string;
+          value?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          snapshot_type?:
+            | "city_follows"
+            | "style_search"
+            | "guest_work_count"
+            | "artist_profile_views"
+            | "city_search";
+          target_id?: string | null;
+          period?: string;
+          value?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
     };
+
     Views: {
       city_pin_summary: {
         Row: {
@@ -401,6 +627,7 @@ export type Database = {
         Relationships: [];
       };
     };
+
     Functions: {
       search_artists: {
         Args: {
@@ -435,7 +662,34 @@ export type Database = {
         Args: { p_artist_id: string; p_city: string };
         Returns: void;
       };
+      // Sprint 4 — 005_bring_update.sql
+      expire_bring_by_base_city_change: {
+        Args: { p_user_id: string };
+        Returns: number;
+      };
+      expire_bring_by_schedule: {
+        Args: { p_artist_id: string; p_city: string };
+        Returns: number;
+      };
+      expire_bring_for_completed_schedules: {
+        Args: Record<string, never>;
+        Returns: void;
+      };
+      // Sprint 4 — 007_users_base_city.sql
+      can_change_base_city: {
+        Args: { p_user_id: string };
+        Returns: boolean;
+      };
+      update_base_city: {
+        Args: {
+          p_user_id: string;
+          p_base_city: string;
+          p_base_country: string;
+        };
+        Returns: Json;
+      };
     };
+
     Enums: {
       user_role: "customer" | "artist" | "admin";
       contact_type: "instagram" | "email" | "website";
