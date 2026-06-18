@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { Settings } from "lucide-react";
+import { Plus, MapPin, Settings } from "lucide-react";
 
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getMyArtistProfile, getMyPortfolio } from "@/lib/queries/studio";
@@ -15,33 +15,36 @@ export const metadata: Metadata = {
   title: "스튜디오",
 };
 
-// ── 국가 코드 → 국가명 ───────────────────────────────────────
+// ── 타입 ────────────────────────────────────────────────────
+
+// Sprint 5에서 city_follows + city_demand_cache 쿼리로 실데이터 연결 예정
+export interface RecommendedCity {
+  cityName: string;
+  country: string;
+  bringCount: number;
+  followCount: number;
+  interestedCount: number; // 관심 고객 수 (Profile View 기반)
+  rank: number;
+}
+
+// ── 국가 코드 → 국가명 ──────────────────────────────────────
+
 function countryName(code: string | null): string {
   if (!code) return "";
   const map: Record<string, string> = {
-    KR: "South Korea",
-    JP: "Japan",
-    US: "United States",
-    GB: "United Kingdom",
-    FR: "France",
-    DE: "Germany",
-    AU: "Australia",
-    TH: "Thailand",
-    SG: "Singapore",
-    HK: "Hong Kong",
-    TW: "Taiwan",
-    CN: "China",
-    IT: "Italy",
-    ES: "Spain",
-    NL: "Netherlands",
-    CA: "Canada",
-    BR: "Brazil",
-    MX: "Mexico",
+    KR: "South Korea", JP: "Japan", US: "United States",
+    GB: "United Kingdom", FR: "France", DE: "Germany",
+    AU: "Australia", TH: "Thailand", SG: "Singapore",
+    HK: "Hong Kong", TW: "Taiwan", CN: "China",
+    IT: "Italy", ES: "Spain", NL: "Netherlands",
+    CA: "Canada", BR: "Brazil", MX: "Mexico",
+    ID: "Indonesia", VN: "Vietnam", PH: "Philippines",
+    IN: "India", TR: "Turkey", PL: "Poland",
   };
-  return map[code] ?? code;
+  return map[code.toUpperCase()] ?? code;
 }
 
-// ── 프로필 없을 때 ────────────────────────────────────────────
+// ── 프로필 없을 때 ───────────────────────────────────────────
 
 function NoProfileState() {
   return (
@@ -90,7 +93,110 @@ function NoProfileState() {
   );
 }
 
-// ── 메인 페이지 ──────────────────────────────────────────────
+// ── 추천 도시 TOP 섹션 ───────────────────────────────────────
+
+function RecommendedCitiesSection({
+  cities,
+}: {
+  cities: RecommendedCity[];
+}) {
+  return (
+    <div className="rounded-2xl border border-neutral-100 bg-white px-5 py-4">
+      {/* 섹션 헤더 */}
+      <div className="mb-3 flex items-center justify-between">
+        <p className="text-[11px] font-semibold tracking-widest text-neutral-400 uppercase">
+          추천 도시 TOP
+        </p>
+        <span className="text-[11px] text-neutral-300">Bring 순위 기준</span>
+      </div>
+
+      {cities.length === 0 ? (
+        /* Empty State — Bring 데이터 없을 때 */
+        <div className="flex flex-col items-center gap-3 py-6 text-center">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-neutral-100">
+            <MapPin size={18} className="text-neutral-400" aria-hidden="true" />
+          </div>
+          <div className="flex flex-col gap-1">
+            <p className="text-[13px] font-medium text-neutral-600">
+              추천 도시 데이터가 없습니다
+            </p>
+            <p className="text-[12px] text-neutral-400 leading-relaxed">
+              고객이 Bring This Artist를 누르면
+              <br />
+              도시별 수요를 여기서 확인할 수 있습니다
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {cities.map((city) => (
+            <CityCard key={`${city.cityName}-${city.country}`} city={city} />
+          ))}
+        </div>
+      )}
+
+      {/* Sprint 5 연결 안내 */}
+      <p className="mt-3 text-center text-[11px] text-neutral-300">
+        * 실데이터 연결은 Sprint 5에서 진행됩니다
+      </p>
+    </div>
+  );
+}
+
+// ── 도시 카드 ────────────────────────────────────────────────
+
+function CityCard({ city }: { city: RecommendedCity }) {
+  return (
+    <Link
+      href="/calendar"
+      className="
+        flex items-center gap-3 rounded-xl border border-neutral-100
+        bg-neutral-50 px-4 py-3
+        hover:border-neutral-200 hover:bg-white
+        active:opacity-80 transition-colors
+      "
+      aria-label={`${city.cityName} 캘린더 보기`}
+    >
+      {/* 순위 */}
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-[11px] font-bold text-white">
+        {city.rank}
+      </span>
+
+      {/* 도시 정보 */}
+      <div className="min-w-0 flex-1">
+        <p className="text-[14px] font-semibold text-neutral-900 leading-tight truncate">
+          {city.cityName}
+        </p>
+        <p className="text-[11px] text-neutral-400 leading-tight">
+          {countryName(city.country)}
+        </p>
+      </div>
+
+      {/* 수요 지표 */}
+      <div className="flex shrink-0 items-center gap-3 text-right">
+        <div className="flex flex-col items-end gap-0">
+          <span className="text-[14px] font-bold text-neutral-900 leading-tight">
+            {city.bringCount}
+          </span>
+          <span className="text-[10px] text-neutral-400 leading-tight">
+            Bring
+          </span>
+        </div>
+        <div className="w-px h-6 bg-neutral-200" />
+        <div className="flex flex-col items-end gap-0">
+          <span className="text-[14px] font-bold text-neutral-900 leading-tight">
+            {city.followCount}
+          </span>
+          <span className="text-[10px] text-neutral-400 leading-tight">
+            Follow
+          </span>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+// ── 메인 페이지 ─────────────────────────────────────────────
 
 export default async function StudioPage() {
   const supabase = await getSupabaseServerClient();
@@ -107,6 +213,10 @@ export default async function StudioPage() {
   // 포트폴리오 조회 (프로필 있을 때만)
   const portfolioItems = profile ? await getMyPortfolio(profile.id) : [];
 
+  // Sprint 5: city_follows (is_active=true) + city_demand_cache JOIN 쿼리로 교체
+  // 현재: 빈 배열 → Empty State 표시
+  const recommendedCities: RecommendedCity[] = [];
+
   return (
     <PageContainer>
       <TopBar
@@ -115,7 +225,7 @@ export default async function StudioPage() {
           <Link
             href="/studio/profile/edit"
             className="flex h-9 w-9 items-center justify-center rounded-full text-neutral-500 hover:bg-neutral-100 transition-colors"
-            aria-label="설정"
+            aria-label="프로필 설정"
           >
             <Settings size={18} />
           </Link>
@@ -125,9 +235,28 @@ export default async function StudioPage() {
       {!profile ? (
         <NoProfileState />
       ) : (
-        <div className="flex flex-col gap-4 px-4 pt-6 pb-10">
-          {/* ── 프로필 헤더 카드 ────────────────────────────── */}
-          <div className="rounded-2xl bg-white border border-neutral-100 px-5 py-5">
+        <div className="flex flex-col gap-4 px-4 pt-4 pb-10">
+
+          {/* ── 1. Guest Work 등록 CTA — 최상단 ──────────────── */}
+          <Link
+            href="/studio/schedule/new"
+            className="
+              flex items-center justify-center gap-2
+              w-full rounded-2xl bg-neutral-900
+              py-4 text-sm font-semibold text-white
+              hover:opacity-90 active:opacity-80
+              transition-opacity
+            "
+          >
+            <Plus size={16} aria-hidden="true" />
+            Guest Work 등록
+          </Link>
+
+          {/* ── 2. 추천 도시 TOP ──────────────────────────────── */}
+          <RecommendedCitiesSection cities={recommendedCities} />
+
+          {/* ── 3. 프로필 헤더 카드 ───────────────────────────── */}
+          <div className="rounded-2xl border border-neutral-100 bg-white px-5 py-5">
             <div className="flex items-center gap-4">
               <Avatar name={profile.displayName} size="lg" />
               <div className="min-w-0 flex-1">
@@ -153,6 +282,7 @@ export default async function StudioPage() {
               </div>
             </div>
 
+            {/* Claimed / Verified 뱃지 */}
             <div className="mt-4 flex gap-2">
               <span
                 className={`
@@ -183,9 +313,9 @@ export default async function StudioPage() {
             </div>
           </div>
 
-          {/* ── 스타일 태그 ─────────────────────────────────── */}
+          {/* ── 4. 스타일 태그 ────────────────────────────────── */}
           {profile.tags.length > 0 && (
-            <div className="rounded-2xl bg-white border border-neutral-100 px-5 py-4">
+            <div className="rounded-2xl border border-neutral-100 bg-white px-5 py-4">
               <p className="mb-3 text-[11px] font-semibold tracking-widest text-neutral-400 uppercase">
                 스타일 태그
               </p>
@@ -193,9 +323,9 @@ export default async function StudioPage() {
             </div>
           )}
 
-          {/* ── 바이오 ──────────────────────────────────────── */}
+          {/* ── 5. 바이오 ─────────────────────────────────────── */}
           {profile.bio && (
-            <div className="rounded-2xl bg-white border border-neutral-100 px-5 py-4">
+            <div className="rounded-2xl border border-neutral-100 bg-white px-5 py-4">
               <p className="mb-2 text-[11px] font-semibold tracking-widest text-neutral-400 uppercase">
                 소개
               </p>
@@ -205,8 +335,8 @@ export default async function StudioPage() {
             </div>
           )}
 
-          {/* ── 포트폴리오 섹션 ─────────────────────────────── */}
-          <div className="rounded-2xl bg-white border border-neutral-100 px-5 py-4">
+          {/* ── 6. 포트폴리오 ────────────────────────────────── */}
+          <div className="rounded-2xl border border-neutral-100 bg-white px-5 py-4">
             <div className="mb-3 flex items-center justify-between">
               <p className="text-[11px] font-semibold tracking-widest text-neutral-400 uppercase">
                 포트폴리오
@@ -261,7 +391,7 @@ export default async function StudioPage() {
             )}
           </div>
 
-          {/* ── 액션 버튼 ───────────────────────────────────── */}
+          {/* ── 7. 액션 버튼 ─────────────────────────────────── */}
           <div className="flex flex-col gap-2 mt-1">
             {profile.instagramHandle && (
               <Link
@@ -291,7 +421,7 @@ export default async function StudioPage() {
             </Link>
           </div>
 
-          {/* ── 미인증 안내 ─────────────────────────────────── */}
+          {/* ── 8. 미인증 안내 ────────────────────────────────── */}
           {!profile.isVerified && (
             <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
               <p className="text-xs font-medium text-amber-800">인증 대기 중</p>
