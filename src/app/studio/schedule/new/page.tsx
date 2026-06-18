@@ -1,0 +1,82 @@
+import { redirect } from "next/navigation";
+import Link from "next/link";
+import type { Metadata } from "next";
+import { ChevronLeft } from "lucide-react";
+
+import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { getMyArtistProfile } from "@/lib/queries/studio";
+import { PageContainer } from "@/components/layout/PageContainer";
+import { ScheduleNewClient } from "./ScheduleNewClient";
+import type { CityOption } from "./ScheduleNewClient";
+
+export const metadata: Metadata = { title: "Guest Work 등록" };
+
+export default async function ScheduleNewPage() {
+  const supabase = await getSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/auth/login?next=/studio/schedule/new");
+  }
+
+  // 아티스트 프로필 확인 — 없으면 생성 페이지로
+  const profile = await getMyArtistProfile(user.id);
+  if (!profile) {
+    redirect("/artists/new");
+  }
+
+  // cities 테이블에서 승인된 도시 조회
+  const { data: citiesData } = await supabase
+    .from("cities")
+    .select("id, name, country, country_name, region, lat, lng")
+    .eq("is_approved", true)
+    .order("name", { ascending: true });
+
+  const cities: CityOption[] = (citiesData ?? []).map(
+    (c: {
+      id: string;
+      name: string;
+      country: string;
+      country_name: string;
+      region: "asia" | "europe" | "americas" | "other";
+      lat: number | null;
+      lng: number | null;
+    }) => ({
+      id: c.id,
+      name: c.name,
+      country: c.country,
+      countryName: c.country_name,
+      region: c.region,
+      lat: c.lat,
+      lng: c.lng,
+    })
+  );
+
+  return (
+    <PageContainer className="bg-neutral-50">
+      {/* TopBar */}
+      <header className="sticky top-0 z-40 flex h-[52px] items-center justify-between border-b border-neutral-100 bg-white px-4">
+        <Link
+          href="/studio"
+          className="flex h-9 w-9 items-center justify-center rounded-full text-neutral-700 active:bg-neutral-100"
+          aria-label="스튜디오로 돌아가기"
+        >
+          <ChevronLeft size={20} />
+        </Link>
+        <span className="text-[13px] font-medium text-neutral-900">
+          Guest Work 등록
+        </span>
+        <div className="w-9" aria-hidden="true" />
+      </header>
+
+      <div className="py-2">
+        <ScheduleNewClient
+          cities={cities}
+          artistHandle={profile.instagramHandle}
+        />
+      </div>
+    </PageContainer>
+  );
+}
