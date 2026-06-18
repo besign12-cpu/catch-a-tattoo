@@ -129,55 +129,66 @@
 - [x] TypeScript 타입 오류 — 반환 타입 미확인
 
 ### ✅ 완료 — Sprint 3-1 Auth Foundation
-- [x] middleware, auth actions, useSession, BottomNav 세션 분기, auth 화면 전체
+- [x] `middleware.ts`, `src/actions/auth.ts`, `src/lib/hooks/useSession.ts`
+- [x] `/auth/login`, `/auth/signup`, `/auth/verify-email`, `/auth/callback`
+- [x] `BottomNav.tsx` 세션 분기 + `/auth/*` 숨김
 
 ### ✅ 완료 — Sprint 3-2 User Profile
-- [x] `src/lib/queries/user.ts`, `src/app/me/page.tsx`
+- [x] `src/lib/queries/user.ts` — `getUserProfile()`
+- [x] `src/app/me/page.tsx` — 실제 사용자 정보 화면
 
 ### ✅ 완료 — Sprint 3-3 Artist Creation
-**핵심 이슈:** `database.types.ts` Relationships 누락 → insert never[] (3회 반복 후 해결)
-- [x] `src/types/database.types.ts` — Relationships: [] 추가
-- [x] `src/lib/supabase/admin.ts`, `src/lib/queries/studio.ts`, `src/actions/artist.ts`
-- [x] `src/components/artist/TagSelector.tsx`, `src/app/artists/new/**`
+- [x] `src/types/database.types.ts` — Relationships: [] 추가 (근본 원인 해결)
+- [x] `src/lib/supabase/admin.ts` — SupabaseClient<Database> 명시
+- [x] `src/lib/queries/studio.ts`, `src/actions/artist.ts`
+- [x] `TagSelector.tsx`, `src/app/artists/new/**`
 
 ### ✅ 완료 — Sprint 3-4 Studio Dashboard
 - [x] `src/lib/queries/studio.ts` (tags JOIN), `src/app/studio/page.tsx`
 
 ### ✅ 완료 — Sprint 3-5 Profile Edit
-**이슈:** studio.ts zip 미포함으로 tags 타입 오류 → 재포함으로 해결
-- [x] `src/components/artist/TagSelector.tsx` (initialIds prop)
-- [x] `src/actions/artist.ts` (updateArtistProfile)
-- [x] `src/app/studio/profile/edit/**`
+- [x] `TagSelector.tsx` (initialIds prop), `updateArtistProfile()`, `src/app/studio/profile/edit/**`
 
 ### ✅ 완료 — Sprint 3-6 Portfolio Upload
+- [x] `getMyPortfolio()`, `addPortfolioItem()`, `deletePortfolioItem()`
+- [x] `src/app/studio/portfolio/**`, `src/app/studio/page.tsx` (포트폴리오 섹션)
+
+### ✅ 완료 — Sprint 3-7 Cleanup & QA
 
 **빌드:** ✅ 통과
-**수정 이슈:** `as any` ESLint 오류 → DB Row 타입 인덱스 접근으로 해결 / `<img>` 경고 → `eslint-disable-next-line` 주석으로 처리
+**Build 상태:** 전체 프로젝트 clean build 확인
 
-- [x] `src/lib/queries/studio.ts` — `getMyPortfolio()` 추가
-- [x] `src/actions/portfolio.ts` — `addPortfolioItem()`, `deletePortfolioItem()` 신규
-  - 본인 소유 확인 후 CRUD
-  - sort_order 자동 부여 (기존 최대값 + 1)
-  - `revalidatePath("/studio")`, `revalidatePath("/studio/portfolio")`
-- [x] `src/app/studio/portfolio/PortfolioClient.tsx` — URL 입력 추가, 이미지 삭제
-- [x] `src/app/studio/portfolio/page.tsx` — 포트폴리오 관리 페이지
-- [x] `src/app/studio/page.tsx` — 포트폴리오 섹션 추가 (미리보기 6장, 관리 링크)
+#### 삭제 파일
+- [x] `src/components/search/CityFilterBar.tsx` — 미사용 파일 삭제
+- [x] `src/components/search/SearchFilterBar.tsx` — 미사용 파일 삭제
 
-### ⏳ 미완료
+#### QA 점검 결과
+- [x] Auth 흐름: login → signup → verify-email → callback → me → studio 정상
+- [x] BottomNav: `/auth/*`에서 숨김, `/me` 비로그인 시 `/auth/login` 이동
+- [x] middleware: `/me`, `/studio`, `/studio/**` 보호 정상
+- [x] 금지 패턴 전수 점검: Instagram import, hasNotif, useActionState, admin 클라이언트 남용, as any 없음
+- [x] 미사용 파일 정리 완료
 
-#### Phase A — 인증 기반 ✅ Sprint 3-1 전체 완료
+#### 문서 전면 업데이트
+- [x] `docs/ARCHITECTURE.md` — Sprint 3 완료 기준 전면 재작성
+- [x] `docs/PROJECT_STRUCTURE.md` — 파일 트리 최신화, export 방식 레퍼런스 추가
+- [x] `docs/MASTER_LOG.md` — Sprint 3-1~3-7 이력 정리
+- [x] `docs/SPRINT_HISTORY.md` — Sprint 3-7 완료 처리
+- [x] `docs/KNOWN_ISSUES.md` — Sprint 3 전체 이슈 정리
 
-#### Phase B — 프로필 생성 ✅ Sprint 3-3/3-4 전체 완료
+### ⏳ 미완료 — Sprint 4 예정
 
-#### Phase C — 프로필 편집
-- [x] `/studio/profile/edit/page.tsx` ✅ Sprint 3-5
-- [x] `src/actions/portfolio.ts` ✅ Sprint 3-6 (URL 방식, Storage 연동은 미구현)
-- [ ] `src/components/artist/PortfolioUploader.tsx` — Supabase Storage 실제 업로드 ⏳
-- [ ] `src/lib/image-utils.ts` — 이미지 압축 유틸 ⏳
+#### Phase A — 완료 ✅ (Sprint 3-1)
+#### Phase B — 완료 ✅ (Sprint 3-3/3-4)
+#### Phase C — 부분 완료
+- [x] `/studio/profile/edit/**` ✅ Sprint 3-5
+- [x] `src/actions/portfolio.ts` ✅ Sprint 3-6 (URL 방식)
+- [ ] `src/components/artist/PortfolioUploader.tsx` — Storage 실제 업로드 ⏳
+- [ ] `src/lib/image-utils.ts` ⏳
 
-#### Phase D — 팔로우 실제 동작
-- [ ] `src/lib/hooks/useFollow.ts`, `src/actions/follow.ts` ⏳
-- [ ] FeedCard 팔로우 버튼 실제 연결 ⏳
+#### Phase D — 팔로우 실제 동작 ⏳
+- [ ] `src/lib/hooks/useFollow.ts`, `src/actions/follow.ts`
+- [ ] FeedCard 팔로우 버튼 실제 연결
 
 #### Phase E — 내 정보 화면
 - [x] `/me/page.tsx` ✅ Sprint 3-2
@@ -185,39 +196,91 @@
 
 ---
 
-## Sprint 4 — 게스트워크 일정 등록 (예정)
+## Sprint 4 — Navigation 재편 + Guest Work + Bring 정책 + Analytics 기반 (예정)
 
-**목표:** 인증된 아티스트가 일정을 올리면 팔로워에게 알림 발송
+**목표:** UX/IA 최종 확정 기준으로 핵심 구조 구현
 **상태:** ⏳ 예정
+**신규 페이지:** 4개 (`/calendar`, `/me/settings`, `/studio/schedule/new`, `/studio/schedule/:id`)
+**수정 페이지:** 4개 (`/following`, `/studio`, `/city/:slug`, `/artists/:handle`)
 
-- [ ] 일정 등록 4단계 스텝 폼
-- [ ] 일정 수정·삭제
-- [ ] 자동 비활성화 (pg_cron)
-- [ ] Claim/Verify Profile 3단계 흐름
-- [ ] FCM/APNs push 알림 연동
-- [ ] 알림 센터 화면
+### DB Migrations
+- [ ] `004_cities.sql` — cities + city_requests 테이블 + seed 데이터
+- [ ] `005_bring_update.sql` — city_follows: is_active, expired_reason, expired_at
+- [ ] `006_analytics.sql` — demand_events + search_logs
+- [ ] `007_users_base_city.sql` — users.base_city_changed_at
+
+### BottomNav 5탭 → 4탭
+- [ ] `BottomNav.tsx` 수정: Discover / Following / Calendar / 나
+- [ ] `/map`, `/notifications` 탭 제거 (페이지는 유지, 탭 접근만 제거)
+
+### 신규 페이지
+- [ ] `/calendar/page.tsx` — Customer View: 월 요약 + 팔로우 일정 + 달력
+- [ ] `/calendar/page.tsx` — Artist View: 도시 드롭다운 + 날짜별 🟢🟡🔴 + 인사이트 + CTA
+- [ ] `/me/settings/page.tsx` — Base City 30일 제한 + 관심장르 + 알림
+- [ ] `/studio/schedule/new/page.tsx` — 5단계 등록 (도시→인사이트→날짜→인사이트→상세)
+- [ ] `/studio/schedule/[id]/page.tsx` — 일정 수정/삭제
+
+### 기존 페이지 수정
+- [ ] `following/page.tsx` — [일정][팔로우] 탭 + 🔔 알림 버튼 구현
+- [ ] `studio/page.tsx` — [+ Guest Work 등록] CTA 최상단 + 추천 도시 TOP (Bring 순위)
+- [ ] `city/[citySlug]/page.tsx` — Customer/Artist View 역할 분기
+- [ ] `artists/[handle]/page.tsx` — 총 Bring 수 제거, 일정별 도시 Bring 수 표시
+
+### Bring 정책 구현
+- [ ] Bring 도시: users.base_city 자동 적용 (도시 선택 UI 없음)
+- [ ] Base City 변경 30일 제한 로직 (base_city_changed_at 기준)
+- [ ] Base City 변경 시 기존 Bring 전체 종료 처리
+- [ ] Guest Work end_date + 1~3일 후 pg_cron → Bring 자동 종료 + 알림
+
+### Analytics 수집 시작
+- [ ] demand_events: Profile View, Schedule View, Instagram Click, City Click
+- [ ] search_logs: 도시/스타일 검색 수집
+- [ ] lib/analytics/collect.ts 신규 (비로그인 session_id 처리 포함)
+- [ ] mock-preferences.ts → 세션 기반 교체
+
+### City System
+- [ ] cities dropdown (아티스트 프로필 Base City + 일정 등록)
+- [ ] Discover 하단 "도시 추가 요청" UI
+- [ ] 일정 등록 Step 1 "도시 추가 요청" 링크
 
 ---
 
-## Sprint 5 — 팔로우·알림·Analytics (예정)
+## Sprint 5 — Following 실데이터 + Demand Signals + City System 고도화 (예정)
 
+**목표:** Demand Signal 전체 수집 + 팔로우/Bring 실동작 + Analytics 집계 시작
 **상태:** ⏳ 예정
 
-- [ ] 팔로우 탭 실데이터 연결
-- [ ] Bring This Artist (도시 지정 팔로우)
-- [ ] Supabase Realtime 알림 구독
-- [ ] 수요 임계값 알림
-- [ ] 아티스트 Analytics
+- [ ] Following [일정] 탭 실데이터 연결
+- [ ] Bring This Artist 실동작 (is_active 기반 Current Demand)
+- [ ] City Click, City/Style Search 이벤트 수집
+- [ ] city_requests 도시 추가 요청 UI + 관리자 승인 흐름
+- [ ] analytics_snapshots 테이블 + pg_cron 월별 집계
+- [ ] Follow Growth, City Growth, Style Demand Growth 집계 시작
+- [ ] Supabase Realtime 알림 (수요 임계값)
 
 ---
 
-## Sprint 6 — QA·최적화·출시 (예정)
+## Sprint 6 — Admin Analytics Dashboard + QA (예정)
 
+**목표:** 관리자 Analytics Dashboard 완성 + QA
 **상태:** ⏳ 예정
 
-- [ ] Admin 대시보드
-- [ ] 설정 화면
-- [ ] 모바일 QA 전체
-- [ ] 성능 최적화
-- [ ] 보안 검토
+- [ ] /admin/analytics Overview Dashboard
+- [ ] City Analytics: Popular / Growing Cities, Style Demand by City
+- [ ] Style Analytics: Popular / Growing Styles
+- [ ] Route Analytics: Popular Routes, Country Movement
+- [ ] 모바일 QA 전체 + 성능 최적화 + 보안 검토
 - [ ] PWA 정식 적용
+
+---
+
+## Sprint 7+ — CAT Pro 방향 (장기)
+
+**목표:** 아티스트를 위한 데이터 기반 의사결정 도구
+**상태:** ⏳ 장기 계획
+
+- [ ] Growing Cities 추천
+- [ ] Recommended Guest Work Routes
+- [ ] Market Trend Reports
+- [ ] Event Calendar 완성 (타투 컨벤션 연동)
+- [ ] CAT Pro 구독 모델 검토

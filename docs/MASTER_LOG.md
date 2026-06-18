@@ -10,7 +10,7 @@
 | 배포 | Vercel (자동 배포, main 브랜치) |
 | DB | Supabase (PostgreSQL + RLS) |
 | 저장소 | GitHub |
-| 현재 상태 | Sprint 3 Pre-Home 완료 (build ✅) / Sprint 3 Auth + User Profile 진행 예정 |
+| 현재 상태 | Sprint 3 전체 완료 (build ✅) / Product Direction Update 완료 / UX·IA 최종 확정 / Sprint 4 착수 준비 완료 |
 
 ---
 
@@ -99,63 +99,44 @@
 | `src/lib/mock-preferences.ts` | MOCK_BASE_CITY 상수, toCitySlug/fromCitySlug 유틸 신규 | ✅ |
 | `src/lib/queries/artists.ts` | (변경 없음) | - |
 | `src/app/auth/**` | 로그인·회원가입 화면 | ✅ Sprint 3-1 완료 |
-| `src/app/studio/**` | 아티스트 스튜디오 | ✅ Sprint 3-4/3-6 완료 |
-| `src/app/studio/portfolio/**` | 포트폴리오 관리 | ✅ Sprint 3-6 완료 |
+| `src/app/studio/**` | 아티스트 스튜디오 | ✅ Sprint 3-4/3-5/3-6 완료 |
 | `src/actions/auth.ts` | 인증 Server Actions | ✅ Sprint 3-1 완료 |
 | `src/actions/artist.ts` | 프로필 생성/수정 Server Actions | ✅ Sprint 3-3/3-5 완료 |
 | `src/actions/portfolio.ts` | 포트폴리오 Server Actions | ✅ Sprint 3-6 완료 |
-| `src/components/artist/TagSelector.tsx` | 태그 선택 UI | ✅ Sprint 3-3/3-5 완료 |
-| `src/components/artist/PortfolioUploader.tsx` | 포트폴리오 업로드 (Storage 연동) | ⏳ 미구현 |
+| `src/components/artist/TagSelector.tsx` | 태그 선택 UI (initialIds prop 포함) | ✅ Sprint 3-3/3-5 완료 |
+| `src/components/artist/PortfolioUploader.tsx` | Storage 실제 업로드 | ⏳ Sprint 4 예정 |
 | `src/lib/hooks/useSession.ts` | 세션 훅 | ✅ Sprint 3-1 완료 |
 | `middleware.ts` | 라우트 보호 | ✅ Sprint 3-1 완료 |
 
 ### Sprint 3-1 — Auth Foundation ✅
-| 파일 | 작업 |
-|---|---|
-| `middleware.ts`, `src/actions/auth.ts`, `src/lib/hooks/useSession.ts` | 인증 기반 |
-| `src/app/auth/**`, `src/components/layout/BottomNav.tsx` | 로그인/회원가입 화면 |
+| `middleware.ts`, `src/actions/auth.ts`, `src/lib/hooks/useSession.ts`, `src/app/auth/**`, `BottomNav.tsx` |
 
 ### Sprint 3-2 — User Profile ✅
-| 파일 | 작업 |
-|---|---|
-| `src/lib/queries/user.ts` | `getUserProfile()` |
-| `src/app/me/page.tsx` | 사용자 정보 화면 |
+| `src/lib/queries/user.ts`, `src/app/me/page.tsx` |
 
-### Sprint 3-3 — Artist Creation ✅
-| 파일 | 작업 |
-|---|---|
-| `src/types/database.types.ts` | 모든 테이블/뷰에 `Relationships: []` 추가 |
-| `src/lib/supabase/admin.ts` | `SupabaseClient<Database>` 명시 |
-| `src/lib/queries/studio.ts` | `getMyArtistProfile()` 신규 |
-| `src/actions/artist.ts` | `createArtistProfile()` |
-| `src/components/artist/TagSelector.tsx` | 태그 선택 |
-| `src/app/artists/new/**` | 프로필 생성 페이지 |
+### Sprint 3-3 — Artist Creation ✅ (3차 시도 — Relationships 누락 해결)
+| `src/types/database.types.ts` (Relationships: []), `src/lib/supabase/admin.ts`, `src/lib/queries/studio.ts`, `src/actions/artist.ts`, `TagSelector.tsx`, `src/app/artists/new/**` |
 
 ### Sprint 3-4 — Studio Dashboard ✅
-| 파일 | 작업 |
-|---|---|
-| `src/lib/queries/studio.ts` | `tags: Tag[]` JOIN 추가 |
-| `src/app/studio/page.tsx` | 아티스트 대시보드 |
+| `src/lib/queries/studio.ts` (tags JOIN), `src/app/studio/page.tsx` |
 
 ### Sprint 3-5 — Profile Edit ✅
-| 파일 | 작업 |
-|---|---|
-| `src/components/artist/TagSelector.tsx` | `initialIds?: string[]` prop 추가 |
-| `src/actions/artist.ts` | `updateArtistProfile()` 추가 |
-| `src/app/studio/profile/edit/**` | 프로필 수정 화면 |
+| `TagSelector.tsx` (initialIds prop), `src/actions/artist.ts` (updateArtistProfile), `src/app/studio/profile/edit/**` |
 
 ### Sprint 3-6 — Portfolio Upload ✅
+| `src/lib/queries/studio.ts` (getMyPortfolio), `src/actions/portfolio.ts`, `src/app/studio/portfolio/**`, `src/app/studio/page.tsx` (포트폴리오 섹션) |
+
+### Sprint 3-7 — Cleanup & QA ✅
 
 | 파일 | 작업 |
 |---|---|
-| `src/lib/queries/studio.ts` | `getMyPortfolio()` 추가 |
-| `src/actions/portfolio.ts` | `addPortfolioItem()`, `deletePortfolioItem()` 신규 — `as any` 없이 DB Row 타입 인덱스 접근 |
-| `src/app/studio/portfolio/PortfolioClient.tsx` | 포트폴리오 관리 Client Component, `eslint-disable-next-line` 주석 추가 |
-| `src/app/studio/portfolio/page.tsx` | 포트폴리오 관리 페이지 |
-| `src/app/studio/page.tsx` | 포트폴리오 섹션 추가, `eslint-disable-next-line` 주석 추가 |
-
-**KNOWN_ISSUES.md 업데이트** (Sprint 3-6)
-- `[RESOLVED] Sprint 3-6 — portfolio.ts as any + img 태그 ESLint 오류` 추가
+| `src/components/search/CityFilterBar.tsx` | **삭제** (미사용 파일) |
+| `src/components/search/SearchFilterBar.tsx` | **삭제** (미사용 파일) |
+| `docs/ARCHITECTURE.md` | Sprint 3 완료 기준 전면 업데이트 |
+| `docs/PROJECT_STRUCTURE.md` | Sprint 3 완료 기준 전면 업데이트 |
+| `docs/MASTER_LOG.md` | Sprint 3-1~3-7 이력 정리 |
+| `docs/SPRINT_HISTORY.md` | Sprint 3-7 완료 처리 |
+| `docs/KNOWN_ISSUES.md` | Sprint 3 전체 이슈 정리 |
 
 ---
 
@@ -168,12 +149,7 @@
 | `HomeTagFilter`에서 `router.push` 사용 | 1회 | onSelect 콜백 + 클라이언트 state 필터링 |
 | 공용 컴포넌트 API 변경 후 사용처 미확인 | 1회 | `grep -R "ComponentName" src` 전수 확인 |
 | 반환 타입 미확인으로 타입 충돌 | 1회 | 관련 쿼리 파일 먼저 요청 후 실제 타입 확인 |
-| unused import / dead code 잔존 | 2회 | 제출 전 전수 확인 + `npm run build` |
-| export/import 방식 추측 | 1회 | 실제 파일 확인. 모르면 파일 요청 |
-| React 버전 무시한 API 사용 | 1회 | package.json react 버전 확인 |
-| Supabase `.maybeSingle()` 반환 타입 never | 1회 | `data as any as DB_ROW \| null` 2단계 단언 |
-| Supabase `.insert()` never[] — `Relationships` 누락 | 3회 | `database.types.ts` 전 테이블/뷰에 `Relationships: []` 추가 |
-| zip 제출 시 의존 파일 누락 | 1회 | 수정된 파일과 그에 의존하는 파일 모두 zip 포함 |
+| unused import 잔존 | 1회 | 제출 전 import 전수 확인 + `npm run build` |
 
 ---
 
@@ -185,13 +161,64 @@
 - unused import 제출 금지 — ESLint build 실패 원인
 - 공용 컴포넌트 API 변경 시 `grep -R "ComponentName" src` 전수 확인 필수
 - 타입 오류 발생 시 `as unknown` 추론 수정 금지 — 관련 파일 먼저 요청
+- **export/import 방식 추측 금지 — 실제 파일 확인 후 작성**
+- **React 18: useFormState / useFormStatus (react-dom) 사용**
+- **database.types.ts 수동 작성 시 Relationships: [] 필수**
+- **zip 제출 시 의존 파일도 함께 포함**
+- **Server Action에서 as any 사용 시 eslint-disable 또는 DB Row 타입 직접 지정**
 
 ## 배포 규칙
 
 - main 브랜치 push → Vercel 자동 배포
 - PR merge 전 로컬 빌드 확인 필수
 
-## Next
+## Product Direction (Sprint 4~)
 
-- Sprint 3 Auth + User Profile 진행 예정
-- `src/lib/mock-preferences.ts`의 `MOCK_BASE_CITY` → 세션 기반으로 교체 필요
+> **CAT Vision:** Discovery + Guest Work + Analytics = Tattoo Industry Data Platform
+> **North Star Metric:** Monthly Demand Signals
+
+### Sprint 4 목표 (UX/IA 최종 확정 기준)
+
+**DB Migrations**
+- `004_cities.sql` — cities + city_requests 테이블
+- `005_bring_update.sql` — city_follows: is_active, expired_reason, expired_at 추가
+- `006_analytics.sql` — demand_events + search_logs 테이블
+- `007_users_base_city.sql` — users.base_city_changed_at 추가
+
+**BottomNav 변경**
+- 5탭 → 4탭: Discover / Following / Calendar / 나
+- /map, /notifications 탭 제거
+
+**신규 페이지 구현**
+- `/calendar` — Customer/Artist View 역할 분기 (단일 URL)
+- `/me/settings` — Base City 30일 제한 + 관심장르 + 알림
+- `/studio/schedule/new` — 5단계 일정 등록 (도시 인사이트 → 날짜 → 상세)
+- `/studio/schedule/:id` — 일정 수정/삭제
+
+**기존 페이지 수정**
+- `studio/page.tsx` — 추천 도시 TOP(Bring 순위) + [+ Guest Work 등록] CTA 최상단
+- `following/page.tsx` — [일정][팔로우] 탭 + 🔔 알림 버튼
+- `city/[citySlug]/page.tsx` — Customer/Artist View 분기
+- `artists/[handle]/page.tsx` — 총 Bring 수 제거, 도시별 Bring 수 표시
+
+**Bring 정책 구현**
+- Bring 도시: users.base_city 자동 적용 (사용자 변경 불가)
+- Base City 30일 변경 제한 로직
+- Guest Work end_date + 1~3일 후 Bring 자동 종료 + 알림
+- city_follows Current Demand 쿼리: is_active=true 필터
+
+**Analytics 수집 시작**
+- demand_events: Profile View, Instagram Click 수집
+- search_logs: 도시/스타일 검색 로그
+- mock-preferences.ts → 세션 기반 교체
+
+### Sprint 5 목표
+- Following [일정][팔로우] 탭 실데이터 연결
+- Bring This Artist 실동작 (Current Demand 분리)
+- City/Style Search 이벤트 수집
+- city_requests 도시 추가 요청 UI
+- analytics_snapshots 월별 집계 + pg_cron
+
+### Sprint 6 목표
+- /admin/analytics Admin Analytics Dashboard
+- Popular/Growing Cities, Style Demand, Route Analytics

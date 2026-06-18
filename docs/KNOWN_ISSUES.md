@@ -200,21 +200,13 @@ Supabase Storage 미연동, 업로드 UI 미구현.
 
 ---
 
-## [ACTIVE] CityFilterBar.tsx 미사용 파일 잔존
+## [RESOLVED] CityFilterBar.tsx 미사용 파일 잔존
 
 **발생 Sprint:** Sprint 3
-**상태:** 🔄 ACTIVE (빌드 영향 없음, 정리 필요)
+**상태:** ✅ RESOLVED — Sprint 3-7 Cleanup에서 삭제 완료
 
-**증상**
-`src/components/search/CityFilterBar.tsx`와
-`src/components/search/SearchFilterBar.tsx`가
-어디서도 import되지 않는 상태로 남아 있음.
-
-**영향**
-빌드 오류 없음. 단, 코드베이스 혼란 가능성.
-
-**해결 예정**
-Sprint 3 마무리 시 두 파일 삭제.
+**해결**
+`src/components/search/CityFilterBar.tsx`, `SearchFilterBar.tsx` 모두 삭제됨.
 
 ---
 
@@ -367,60 +359,334 @@ page.tsx (서버) — getFeedSchedules() fetch
 
 ---
 
-## [RESOLVED] Sprint 3-6 — portfolio.ts as any + img 태그 ESLint 오류
+## [RESOLVED] Sprint 3-7 — 미사용 파일 정리
 
-**발생 Sprint:** Sprint 3-6 Portfolio Upload
+**발생 Sprint:** Sprint 3-7 Cleanup & QA
+**상태:** ✅ RESOLVED
+
+**증상**
+코드베이스에 import되지 않는 파일이 잔존.
+
+**삭제한 파일**
+- `src/components/search/CityFilterBar.tsx` — KNOWN_ISSUES에서 Sprint 3부터 삭제 예정이었던 파일
+- `src/components/search/SearchFilterBar.tsx` — 동일
+
+**재발 방지 규칙**
+```
+□ 새 파일 추가 시 PROJECT_STRUCTURE.md 업데이트
+□ 파일 제거 시 KNOWN_ISSUES.md에 삭제 이유 기록
+□ Sprint 완료 시 미사용 파일 정리
+```
+
+---
+
+## [RESOLVED] Import/Export 추측으로 인한 Build 실패
+
+**발생 Sprint:** Sprint 3-1
+**상태:** ✅ RESOLVED
+
+**증상**
+```ts
+import TopBar from "@/components/layout/TopBar"   // ❌ named export임
+import { useActionState } from "react"            // ❌ React 18 미지원
+```
+
+**실제 export 방식**
+```ts
+export default function BottomNav()  // → default
+export function PageContainer()      // → named
+export function TopBar()             // → named
+// src/components/ui/* 전체, src/lib/hooks/useSession → named
+```
+
+**올바른 React 18 API**
+```ts
+import { useFormState, useFormStatus } from "react-dom"
+```
+
+**재발 방지**
+```
+□ export/import 방식 추측 금지 — PROJECT_STRUCTURE.md export 레퍼런스 확인
+□ React API: package.json react 버전 확인
+□ 모르면 파일 업로드 요청
+```
+
+---
+
+## [RESOLVED] Supabase .maybeSingle() 반환 타입 never
+
+**발생 Sprint:** Sprint 3-2
+**상태:** ✅ RESOLVED
+
+**해결책**
+```ts
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const row = data as any as Pick<SomeRow, "field"> | null;
+```
+
+---
+
+## [RESOLVED] ESLint dead code — unused parameter
+
+**발생 Sprint:** Sprint 3-3
+**상태:** ✅ RESOLVED
+
+**증상:** `'_ids' is defined but never used.`
+**해결:** 사용하지 않는 함수 전체 제거.
+
+---
+
+## [RESOLVED] Supabase .insert() never[] — database.types.ts Relationships 누락
+
+**발생 Sprint:** Sprint 3-3 (3회 반복)
+**상태:** ✅ RESOLVED
+**재발 횟수:** 3회 → 반복 금지 항목으로 격상
+
+**근본 원인**
+`@supabase/postgrest-js@2.107.0`의 `GenericTable`은 `Relationships: GenericRelationship[]`를 필수로 요구.
+`database.types.ts` 수동 작성 시 누락 → `insert()` 파라미터가 `never[]`로 추론됨.
+
+**해결책**
+```ts
+// 모든 테이블/뷰에 추가
+tableName: {
+  Row: { ... };
+  Insert: { ... };
+  Update: { ... };
+  Relationships: [];  // ← 필수
+};
+```
+
+**재발 방지**
+```
+□ database.types.ts 수동 작성 시 Relationships: [] 필수
+□ .insert() never[] → Relationships 누락 먼저 확인
+□ SupabaseClient 타입 변경으로는 해결 안 됨
+```
+
+---
+
+## [RESOLVED] zip 제출 시 의존 파일 누락으로 타입 오류
+
+**발생 Sprint:** Sprint 3-5
 **상태:** ✅ RESOLVED
 
 **증상**
 ```
-84:34  Error: Unexpected any. Specify a different type.
-100:26 Error: Unexpected any. Specify a different type.
-163:34 Error: Unexpected any. Specify a different type.
-243:21 Warning: Using <img>...
-139:13 Warning: Using <img>...
+Property 'tags' does not exist on type 'StudioArtistProfile'.
+```
+Sprint 3-4에서 `studio.ts`에 `tags: Tag[]` 추가했으나 Sprint 3-5 zip에 미포함.
+→ 프로젝트에 tags 없는 버전 잔존 → 타입 오류.
+
+**재발 방지**
+```
+□ 수정된 파일에 의존하는 새 코드 작성 시 해당 파일도 zip에 포함
+□ sprint N-1에서 수정된 파일을 sprint N에서 참조할 때 특히 주의
 ```
 
-**원인 1 — as any 사용**
-`src/actions/portfolio.ts`에 `/* eslint-disable */` 선언 없이 `as any` 사용.
-`src/actions/` 파일은 `eslint-disable` 없이는 `as any` 사용 불가 (`no-explicit-any` rule).
+---
+
+## [RESOLVED] Sprint 3-6 — portfolio.ts as any + img 태그 ESLint 오류
+
+**발생 Sprint:** Sprint 3-6
+**상태:** ✅ RESOLVED
+
+**증상**
+```
+Error: Unexpected any. Specify a different type.
+Warning: Using <img>...
+```
 
 **해결 1 — DB Row 타입 인덱스 접근**
-`database.types.ts`에 `Relationships: []` 추가 이후 `SupabaseClient<Database>`의 타입 추론이 정상 작동하므로 `as any` 없이 DB Row 타입으로 직접 접근:
 ```ts
-// ❌ 기존 — as any 사용
-const artistId = (myProfile as any as Pick<ArtistProfileRow, "id">).id;
-
-// ✅ 수정 — DB Row 타입 인덱스 접근
+// ✅ Relationships: [] 추가 이후 정상 추론됨
 const artistId: ArtistProfileRow["id"] = myProfile.id;
-
-// ❌ 기존
-const nextSortOrder = (maxOrderData as any as Pick<PortfolioItemRow, "sort_order">).sort_order + 1;
-
-// ✅ 수정
 const maxSortOrder: PortfolioItemRow["sort_order"] | null = maxOrderData?.sort_order ?? null;
-const nextSortOrder: number = maxSortOrder !== null ? maxSortOrder + 1 : 0;
 ```
 
-**원인 2 — <img> 태그 ESLint 경고**
-`next.config.ts`에 외부 이미지 도메인 미설정 → `next/image` 사용 불가.
-`<img>` 직접 사용 시 `@next/next/no-img-element` 경고 발생.
-
-**해결 2 — eslint-disable-next-line 주석 (기존 프로젝트 패턴)**
+**해결 2 — eslint-disable-next-line (기존 프로젝트 패턴)**
 ```tsx
-// ✅ artists/[handle]/page.tsx와 동일한 기존 패턴
 {/* eslint-disable-next-line @next/next/no-img-element */}
-<img src={item.imageUrl} alt="포트폴리오 이미지" className="..." />
+<img src={item.imageUrl} alt="포트폴리오 이미지" ... />
 ```
 
-**재발 방지 규칙**
+**재발 방지**
 ```
-□ Server Action 파일(src/actions/)에서 as any 사용 시 eslint-disable 필수
-□ Relationships: [] 추가 후 DB Row 타입 인덱스 접근으로 as any 대체 가능
-□ <img> 태그 사용 시 eslint-disable-next-line @next/next/no-img-element 주석 추가
-□ 외부 이미지 URL 사용 시 next/image 대신 <img> + eslint-disable 주석 사용
-□ npm run build는 ESLint 경고도 error로 처리하므로 warning 무시 금지
+□ Server Action에서 as any 사용 시 eslint-disable 또는 DB Row 타입 직접 지정
+□ <img> 태그: eslint-disable-next-line @next/next/no-img-element 주석 추가
+□ ESLint warning도 build error로 처리됨 — 무시 금지
 ```
+
+---
+
+## [PENDING] City System 미구현 — 자유 텍스트 도시 저장
+
+**발생 시점:** Sprint 4 전 진입 전 발견 (Product Direction Update)
+**상태:** ⏳ PENDING — Sprint 4에서 해결 예정
+
+**현재 상태**
+```
+artist_profiles.base_city   → 자유 텍스트 (string | null)
+guest_schedules.city        → 자유 텍스트 (string)
+city_follows.city           → 자유 텍스트 (string)
+city_pin_summary            → guest_schedules 기반 집계 (Materialized View)
+```
+
+**문제**
+- "Seoul" / "서울" / "SEOUL" 등 동일 도시가 다른 문자열로 저장 가능
+- Analytics 집계 시 도시 중복 계산 발생
+- 검색 품질 저하
+
+**해결 계획 (Sprint 4)**
+- `cities` 마스터 테이블 생성 (is_approved 플래그 포함)
+- 초기 50~100개 주요 Guest Work 도시 seed 등록
+- 일정 등록 폼 + 아티스트 프로필에서 도시 dropdown으로 전환
+- Migration: `004_cities.sql`
+
+**재발 방지**
+```
+□ 도시 관련 필드는 반드시 cities 테이블 참조
+□ 사용자 임의 도시 입력 필드 추가 금지
+□ 도시 추가는 city_requests → 관리자 승인 흐름
+```
+
+---
+
+## [PENDING] Demand Signal 이벤트 테이블 없음
+
+**발생 시점:** Product Direction Update
+**상태:** ⏳ PENDING — Sprint 4에서 해결 예정
+
+**현재 수집 중인 Demand Signal**
+```
+✅ follows          — Follow Demand Signal
+✅ city_follows     — Bring This Artist Demand Signal
+✅ city_demand_cache — 도시별 팔로우 집계
+```
+
+**누락된 Demand Signal (테이블 없음)**
+```
+❌ Profile View     → demand_events 테이블 필요
+❌ Schedule View    → demand_events 테이블 필요
+❌ Instagram Click  → demand_events 테이블 필요
+❌ City Click       → demand_events 테이블 필요
+❌ City Search      → search_logs 테이블 필요
+❌ Style Search     → search_logs 테이블 필요
+```
+
+**해결 계획 (Sprint 4)**
+- `demand_events` 테이블 생성 (Migration: `005_analytics.sql`)
+- `search_logs` 테이블 생성
+- 비로그인도 수집 (session_id 기반)
+
+**중요**
+```
+□ Analytics Data Collection = MVP 필수
+□ 수집하지 않으면 나중에 복원 불가
+□ Dashboard보다 Collection이 먼저
+```
+
+---
+
+## [PENDING] analytics_snapshots 없음 — Growth Analytics 불가
+
+**발생 시점:** Product Direction Update
+**상태:** ⏳ PENDING — Sprint 5에서 해결 예정
+
+**현재 문제**
+시계열 Growth 데이터 집계 테이블이 없어 Growth Analytics 불가.
+
+**해결 계획 (Sprint 5)**
+- `analytics_snapshots` 테이블 생성
+- pg_cron 월말 자동 집계 등록
+- snapshot_type: city_follows | style_search | guest_work_count | ...
+
+---
+
+## [PENDING] mock-preferences.ts — MOCK_BASE_CITY 하드코딩
+
+**발생 시점:** Sprint 3 Pre-Home (Auth 연결 전 임시)
+**상태:** ⏳ PENDING — Sprint 4에서 해결 예정
+
+**현재 상태**
+```ts
+// src/lib/mock-preferences.ts
+export const MOCK_BASE_CITY = "Seoul";
+export const MOCK_BASE_COUNTRY = "KR";
+```
+홈 피드와 도시 페이지가 이 임시 상수에 의존함.
+
+**해결 계획 (Sprint 4)**
+Auth가 완료된 지금, 세션에서 `users.base_city`를 읽어 교체.
+비로그인 시 → 기본 도시 표시 또는 도시 선택 유도.
+
+---
+
+## [PENDING] BottomNav 5탭 → 4탭 변경 필요
+
+**발생 시점:** UX/IA 최종 확정 (Sprint 4 착수 전)
+**상태:** ⏳ PENDING — Sprint 4에서 해결 예정
+
+**현재 상태**
+```
+현재 탭: Search | Following | Map | Notifications | Me (5탭)
+최종 확정: Discover | Following | Calendar | 나 (4탭)
+```
+
+**변경 내용**
+- Map 탭 제거 → Discover 하단 "다른 도시 바로가기"로 통합
+- Notifications 탭 제거 → Following 탭 🔔 알림 버튼으로 통합
+- Calendar 탭 신규 추가 (단일 URL, Customer/Artist View 분기)
+- 나 탭: Customer → /me, Artist → /studio 분기
+
+**영향 파일**
+- `src/components/layout/BottomNav.tsx` 수정 필요
+- `/app/calendar/page.tsx` 신규 생성 필요
+
+---
+
+## [PENDING] Following 페이지 — 피드형에서 탭형으로 구조 변경
+
+**발생 시점:** UX/IA 최종 확정 (Sprint 4 착수 전)
+**상태:** ⏳ PENDING — Sprint 4에서 해결 예정
+
+**현재 상태**
+현재 `/following/page.tsx`는 빈 상태 UI만 있음.
+
+**최종 확정 구조**
+- [일정] 탭: 팔로우 아티스트의 현재/예정 일정 (진행 중 상단 우선)
+- [팔로우] 탭: 아티스트 관리 (프로필 이동 · 언팔로우)
+- 🔔 알림 (우상단): 일정 등록/수정 알림만
+
+---
+
+## [PENDING] Artist Profile — 총 Bring 수 제거, 도시별 Bring 수로 변경
+
+**발생 시점:** UX/IA 최종 확정 (Sprint 4 착수 전)
+**상태:** ⏳ PENDING — Sprint 4에서 해결 예정
+
+**현재 상태**
+Artist Profile 상단 stats에 "Bring 요청" 총계 표시 중.
+
+**최종 확정**
+- 상단 총 Bring 수 제거
+- 일정 블록 아래에 도시별 Bring 수 표시
+  예: Seoul Jun 15–22  D-7  Bring 48
+      Tokyo Jul 1–10   D-23 Bring 13
+
+---
+
+## [PENDING] Studio Dashboard — 추천 도시 TOP + CTA 구조 변경
+
+**발생 시점:** UX/IA 최종 확정 (Sprint 4 착수 전)
+**상태:** ⏳ PENDING — Sprint 4에서 해결 예정
+
+**최종 확정 구조**
+1. [+ Guest Work 등록] CTA — 최상단
+2. 추천 도시 TOP (Bring 순위): 1. Seoul Bring 48 / 2. Tokyo Bring 32 ...
+3. 도시 카드: Bring 수 · Follow 수 · 관심 고객 수
+4. 도시 카드 → Artist Calendar (해당 도시) 연결
+- 경쟁도 점수 제거 (Calendar에서 날짜별 🟢🟡🔴로만 표시)
 
 ---
 
