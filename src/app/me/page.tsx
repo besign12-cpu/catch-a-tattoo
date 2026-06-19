@@ -23,11 +23,11 @@ function countryName(code: string | null): string {
   return map[code] ?? code;
 }
 
-function roleLabel(role: "customer" | "artist" | "admin"): string {
+function roleLabel(role: "customer" | "artist" | "admin" | null | undefined): string {
   const map: Record<string, string> = {
     customer: "일반 회원", artist: "아티스트", admin: "관리자",
   };
-  return map[role] ?? role;
+  return map[role ?? "customer"] ?? "일반 회원";
 }
 
 function formatJoinDate(createdAt: string): string {
@@ -43,7 +43,13 @@ export default async function MePage() {
 
   if (!user) redirect("/auth/login");
 
-  const profile = await getUserProfile(user.id);
+  // getUserProfile 실패해도 user 정보로 기본 렌더링 보장
+  let profile = null;
+  try {
+    profile = await getUserProfile(user.id);
+  } catch {
+    // DB 일시 에러 등 — user 인증은 이미 완료됐으므로 계속 렌더
+  }
 
   const displayName = profile?.username ?? user.email?.split("@")[0] ?? "사용자";
   const email = profile?.email ?? user.email ?? "";

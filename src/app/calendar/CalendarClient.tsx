@@ -14,7 +14,8 @@ interface CalendarCity {
 }
 
 interface CalendarClientProps {
-  role: "customer" | "artist" | "admin";
+  /** null = 비로그인. CustomerCalendar를 표시하되 팔로우 일정 영역만 로그인 유도. */
+  role: "customer" | "artist" | "admin" | null;
   cities: CalendarCity[];
 }
 
@@ -65,7 +66,7 @@ const DEMAND_LABELS: Record<NonNullable<DemandLevel>, string> = {
 
 // ── Customer View 달력 ──────────────────────────────────────
 
-function CustomerCalendar() {
+function CustomerCalendar({ isGuest = false }: { isGuest?: boolean }) {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -170,27 +171,51 @@ function CustomerCalendar() {
           </p>
         </div>
 
-        {/* Empty State — Sprint 5에서 실데이터로 교체 */}
-        <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-neutral-100">
-            <MapPin size={20} className="text-neutral-400" aria-hidden="true" />
+        {isGuest ? (
+          /* 비로그인: 로그인 유도 */
+          <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-neutral-100">
+              <MapPin size={20} className="text-neutral-400" aria-hidden="true" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <p className="text-sm font-medium text-neutral-700">
+                로그인하면 일정을 볼 수 있습니다
+              </p>
+              <p className="text-xs text-neutral-400 leading-relaxed">
+                팔로우한 아티스트의 게스트워크<br />
+                일정을 달력에서 확인해보세요
+              </p>
+            </div>
+            <Link
+              href="/auth/login?next=/calendar"
+              className="mt-1 rounded-xl bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white active:opacity-80"
+            >
+              로그인
+            </Link>
           </div>
-          <div className="flex flex-col gap-1">
-            <p className="text-sm font-medium text-neutral-700">
-              팔로우한 아티스트 일정이 없습니다
-            </p>
-            <p className="text-xs text-neutral-400 leading-relaxed">
-              아티스트를 팔로우하면<br />
-              여기서 일정을 확인할 수 있습니다
-            </p>
+        ) : (
+          /* 로그인: 팔로우 일정 Empty State — Sprint 5에서 실데이터로 교체 */
+          <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-neutral-100">
+              <MapPin size={20} className="text-neutral-400" aria-hidden="true" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <p className="text-sm font-medium text-neutral-700">
+                팔로우한 아티스트 일정이 없습니다
+              </p>
+              <p className="text-xs text-neutral-400 leading-relaxed">
+                아티스트를 팔로우하면<br />
+                여기서 일정을 확인할 수 있습니다
+              </p>
+            </div>
+            <Link
+              href="/"
+              className="mt-1 rounded-xl bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white active:opacity-80"
+            >
+              아티스트 찾기
+            </Link>
           </div>
-          <Link
-            href="/"
-            className="mt-1 rounded-xl bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white active:opacity-80"
-          >
-            아티스트 찾기
-          </Link>
-        </div>
+        )}
       </div>
 
       {/* ── 범례 ─────────────────────────────────────── */}
@@ -458,13 +483,17 @@ function ArtistCalendar({ cities }: { cities: CalendarCity[] }) {
 // ── 메인 Export ─────────────────────────────────────────────
 
 export function CalendarClient({ role, cities }: CalendarClientProps) {
+  // null(비로그인) 또는 "customer" → CustomerCalendar
+  // "artist" | "admin" → ArtistCalendar
   const isArtist = role === "artist" || role === "admin";
+  // 비로그인 여부: CustomerCalendar 내 팔로우 일정 영역 로그인 유도에 사용
+  const isGuest = role === null;
 
   return (
     <div className="flex flex-col gap-4 pb-10">
       {isArtist
         ? <ArtistCalendar cities={cities} />
-        : <CustomerCalendar />
+        : <CustomerCalendar isGuest={isGuest} />
       }
     </div>
   );
