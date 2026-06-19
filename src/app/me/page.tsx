@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Settings } from "lucide-react";
+import { Settings, LayoutDashboard } from "lucide-react";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getUserProfile } from "@/lib/queries/user";
 import { PageContainer } from "@/components/layout/PageContainer";
@@ -99,6 +99,34 @@ export default async function MePage() {
         </section>
 
         <div className="px-4 flex flex-col gap-3">
+          {/* Artist Studio CTA — role이 artist/admin인 경우만 표시 */}
+          {(profile?.role === "artist" || profile?.role === "admin") && (
+            <Link
+              href="/studio"
+              className="
+                flex items-center justify-between
+                rounded-2xl bg-neutral-900
+                px-5 py-4
+                hover:opacity-90 active:opacity-80 transition-opacity
+              "
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10">
+                  <LayoutDashboard size={16} className="text-white" aria-hidden="true" />
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <p className="text-[13px] font-semibold text-white leading-tight">
+                    아티스트 스튜디오
+                  </p>
+                  <p className="text-[11px] text-neutral-400 leading-tight">
+                    일정 관리 · 프로필 수정
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs text-neutral-400">→</span>
+            </Link>
+          )}
+
           {/* 기본 정보 */}
           <div className="rounded-2xl bg-white border border-neutral-100 overflow-hidden">
             <p className="px-5 pt-4 pb-2 text-[11px] font-medium text-neutral-400 tracking-wide uppercase">

@@ -18,7 +18,7 @@ const NAV_ITEMS: Array<{
 
 export default function BottomNav() {
   const pathname = usePathname();
-  const { user, role, status } = useSession();
+  const { user, status } = useSession();
 
   // 인증 페이지에서는 BottomNav 숨김
   if (pathname.startsWith("/auth/")) return null;
@@ -38,12 +38,11 @@ export default function BottomNav() {
         {NAV_ITEMS.map(({ href, icon: Icon, label }) => {
           // 나 탭 분기
           // - 비로그인 → /auth/login
-          // - Artist(role=artist|admin) → /studio
-          // - Customer → /me
+          // - 로그인(role 무관) → /me
+          //   Artist는 /me에서 Studio CTA로 이동
           const targetHref = (() => {
             if (href !== "/me") return href;
             if (!user && status !== "loading") return "/auth/login";
-            if (role === "artist" || role === "admin") return "/studio";
             return "/me";
           })();
 
