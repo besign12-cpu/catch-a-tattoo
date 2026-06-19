@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { Plus, MapPin, Settings } from "lucide-react";
 
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { signOut } from "@/actions/auth";
 import { getMyArtistProfile, getMyPortfolio } from "@/lib/queries/studio";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { TopBar } from "@/components/layout/TopBar";
@@ -430,6 +431,21 @@ export default async function StudioPage() {
               </p>
             </div>
           )}
+
+          {/* ── 9. 로그아웃 ──────────────────────────────────── */}
+          <form action={signOut}>
+            <button
+              type="submit"
+              className="
+                w-full rounded-2xl border border-neutral-200 bg-white
+                py-4 text-sm text-neutral-400
+                hover:text-neutral-700 hover:border-neutral-300
+                transition-colors
+              "
+            >
+              로그아웃
+            </button>
+          </form>
         </div>
       )}
     </PageContainer>
