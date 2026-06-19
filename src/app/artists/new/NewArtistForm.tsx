@@ -3,6 +3,8 @@
 import { useFormState, useFormStatus } from "react-dom";
 import { createArtistProfile, type CreateArtistState } from "@/actions/artist";
 import { TagSelector } from "@/components/artist/TagSelector";
+import { CityDropdown } from "@/components/artist/CityDropdown";
+import type { CityDropdownOption } from "@/components/artist/CityDropdown";
 import type { Tag } from "@/types";
 
 // ── Submit 버튼 ──────────────────────────────────────────────
@@ -78,11 +80,12 @@ function Field({
 
 interface NewArtistFormProps {
   tags: Tag[];
+  cities: CityDropdownOption[];
 }
 
 const initialState: CreateArtistState = { status: "idle" };
 
-export function NewArtistForm({ tags }: NewArtistFormProps) {
+export function NewArtistForm({ tags, cities }: NewArtistFormProps) {
   const [state, formAction] = useFormState(createArtistProfile, initialState);
 
   return (
@@ -135,23 +138,12 @@ export function NewArtistForm({ tags }: NewArtistFormProps) {
           활동 지역
         </p>
 
-        <Field
-          id="baseCity"
-          name="baseCity"
+        {/* 자유텍스트 → cities 드롭다운으로 교체 */}
+        <CityDropdown
+          cities={cities}
+          required
           label="Base City"
-          placeholder="예: Seoul"
-          required
-          hint="주로 활동하는 도시명 (영문)"
-        />
-
-        <Field
-          id="baseCountry"
-          name="baseCountry"
-          label="Country Code"
-          placeholder="예: KR"
-          required
-          maxLength={2}
-          hint="2자리 국가 코드 (KR, JP, US, FR 등)"
+          hint="주로 활동하는 도시를 선택해주세요."
         />
       </section>
 

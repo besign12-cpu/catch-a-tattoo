@@ -8,6 +8,7 @@ import { getMyArtistProfile } from "@/lib/queries/studio";
 import { getAllTags } from "@/lib/queries/artists";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { EditProfileForm } from "./EditProfileForm";
+import type { CityDropdownOption } from "@/components/artist/CityDropdown";
 
 export const metadata: Metadata = {
   title: "프로필 수정",
@@ -38,6 +39,29 @@ export default async function EditProfilePage() {
   // 현재 프로필의 태그 ID 목록
   const initialTagIds = profile.tags.map((t) => t.id);
 
+  // ── cities 조회 (is_approved=true만) ─────────────────────
+  const { data: citiesData } = await supabase
+    .from("cities")
+    .select("id, name, country, country_name, region")
+    .eq("is_approved", true)
+    .order("name", { ascending: true });
+
+  const cities: CityDropdownOption[] = (citiesData ?? []).map(
+    (c: {
+      id: string;
+      name: string;
+      country: string;
+      country_name: string;
+      region: "asia" | "europe" | "americas" | "other";
+    }) => ({
+      id: c.id,
+      name: c.name,
+      country: c.country,
+      countryName: c.country_name,
+      region: c.region,
+    })
+  );
+
   return (
     <PageContainer>
       {/* 상단 헤더 */}
@@ -52,7 +76,6 @@ export default async function EditProfilePage() {
         <h1 className="flex-1 text-center text-[13px] font-medium text-neutral-900">
           프로필 수정
         </h1>
-        {/* 오른쪽 여백 균형 */}
         <div className="w-9" />
       </header>
 
@@ -67,6 +90,7 @@ export default async function EditProfilePage() {
         initialBaseCountry={profile.baseCountry ?? ""}
         initialTagIds={initialTagIds}
         allTags={allTags}
+        cities={cities}
       />
     </PageContainer>
   );
