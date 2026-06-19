@@ -160,6 +160,23 @@ export async function createGuestSchedule(
     is_active:     true,
   };
 
+  // 날짜 중복 재검증 (서버 사이드)
+  const { data: overlapping } = await admin
+    .from("guest_schedules")
+    .select("id, start_date, end_date")
+    .eq("artist_id", artistId)
+    .eq("is_active", true)
+    .lte("start_date", endDate)
+    .gte("end_date", startDate);
+
+  if (overlapping && overlapping.length > 0) {
+    const ov = overlapping[0] as { start_date: string; end_date: string };
+    return {
+      status: "error",
+      message: `${ov.start_date} ~ ${ov.end_date} 기간과 겹치는 일정이 이미 있습니다.`,
+    };
+  }
+
   const { error } = await admin.from("guest_schedules").insert(scheduleInsert);
 
   if (error)

@@ -7,7 +7,7 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getMyArtistProfile } from "@/lib/queries/studio";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { ScheduleNewClient } from "./ScheduleNewClient";
-import type { CityOption } from "./ScheduleNewClient";
+import type { CityOption, BookedRange } from "./ScheduleNewClient";
 
 export const metadata: Metadata = { title: "Guest Work 등록" };
 
@@ -54,6 +54,21 @@ export default async function ScheduleNewPage() {
     })
   );
 
+  // 기존 guest_schedules 조회 — 날짜 중복 방지용
+  const { data: schedulesData } = await supabase
+    .from("guest_schedules")
+    .select("id, start_date, end_date")
+    .eq("artist_id", profile.id)
+    .eq("is_active", true);
+
+  const bookedRanges: BookedRange[] = (schedulesData ?? []).map(
+    (s: { id: string; start_date: string; end_date: string }) => ({
+      id: s.id,
+      startDate: s.start_date,
+      endDate: s.end_date,
+    })
+  );
+
   return (
     <PageContainer className="bg-neutral-50">
       {/* TopBar */}
@@ -75,6 +90,7 @@ export default async function ScheduleNewPage() {
         <ScheduleNewClient
           cities={cities}
           artistHandle={profile.instagramHandle}
+          bookedRanges={bookedRanges}
         />
       </div>
     </PageContainer>

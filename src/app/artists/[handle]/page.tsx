@@ -12,6 +12,7 @@ import { ScheduleBlock } from "@/components/schedule/ScheduleBlock";
 import { ProfileSkeleton } from "@/components/ui/Skeleton";
 
 import { getArtistProfile } from "@/lib/queries/artists";
+import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getArtistByHandle } from "@/data/dummy";
 import { formatDateRange, calcDDay, isScheduleActive } from "@/lib/utils";
 import type { GuestSchedule } from "@/types";
@@ -87,9 +88,11 @@ function PortfolioPlaceholder() {
 function ScheduleBringRow({
   schedule,
   bringCount,
+  isOwner,
 }: {
   schedule: GuestSchedule;
   bringCount: number;
+  isOwner: boolean;
 }) {
   const status = isScheduleActive(schedule.startDate, schedule.endDate);
   const isActive = status === "active";
@@ -140,32 +143,54 @@ function ScheduleBringRow({
 
       {/* Bring — Sprint 5에서 Client Component + useBring 훅으로 교체 예정 */}
       {/* Server Component에서 onClick 불가 → 비활성 UI */}
-      <div
-        className={[
-          "shrink-0 rounded-xl px-3 py-2 text-[12px] font-semibold select-none cursor-default",
-          bringCount > 0
-            ? "bg-neutral-900 text-white"
-            : "border border-neutral-200 bg-neutral-50 text-neutral-400",
-        ].join(" ")}
-        aria-label={`${schedule.city} Bring This Artist`}
-        role="button"
-        aria-disabled="true"
-      >
-        Bring
-      </div>
+      {!isOwner && (
+        <div
+          className={[
+            "shrink-0 rounded-xl px-3 py-2 text-[12px] font-semibold select-none cursor-default",
+            bringCount > 0
+              ? "bg-neutral-900 text-white"
+              : "border border-neutral-200 bg-neutral-50 text-neutral-400",
+          ].join(" ")}
+          aria-label={`${schedule.city} Bring This Artist`}
+          role="button"
+          aria-disabled="true"
+        >
+          Bring
+        </div>
+      )}
+
+      {/* 본인 일정: 수정 링크 */}
+      {isOwner && (
+        <Link
+          href={`/studio/schedule/${schedule.id}`}
+          className="shrink-0 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-[12px] font-medium text-neutral-600 hover:border-neutral-300 hover:text-neutral-900 active:bg-neutral-50 transition-colors"
+          aria-label={`${schedule.city} 일정 수정`}
+        >
+          수정
+        </Link>
+      )}
     </div>
   );
 }
 
 // ── 프로필 콘텐츠 ────────────────────────────────────────────
 
-async function ProfileContent({ handle }: { handle: string }) {
+async function ProfileContent({
+  handle,
+  ownerArtistId,
+}: {
+  handle: string;
+  ownerArtistId: string | null;
+}) {
   const artist =
     (await getArtistProfile(handle).catch(() => null)) ??
     getArtistByHandle(handle) ??
     null;
 
   if (!artist) notFound();
+
+  // 본인 여부: 서버에서 받은 ownerArtistId와 비교
+  const isOwner = ownerArtistId === artist.id;
 
   // Sprint 5: city_follows (is_active=true) WHERE artist_id = artist.id 쿼리로 교체
   // 현재: 도시별 Bring 수 0으로 초기화
@@ -269,6 +294,7 @@ async function ProfileContent({ handle }: { handle: string }) {
                 <ScheduleBringRow
                   schedule={schedule}
                   bringCount={bringCounts[schedule.id] ?? 0}
+                  isOwner={isOwner}
                 />
               </div>
             ))}
@@ -351,6 +377,23 @@ async function ProfileContent({ handle }: { handle: string }) {
 export default async function ArtistProfilePage({ params }: Props) {
   const { handle } = await params;
 
+  // 로그인 유저의 artist_id 조회 → 본인 프로필 여부 판단
+  let ownerArtistId: string | null = null;
+  try {
+    const supabase = await getSupabaseServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: artistRow } = await supabase
+        .from("artist_profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      ownerArtistId = artistRow?.id ?? null;
+    }
+  } catch {
+    // 세션 조회 실패 → 비본인 처리 (에러 없이 계속)
+  }
+
   return (
     <PageContainer className="bg-neutral-50">
       {/* TopBar */}
@@ -372,7 +415,7 @@ export default async function ArtistProfilePage({ params }: Props) {
       </header>
 
       <Suspense fallback={<ProfileSkeleton />}>
-        <ProfileContent handle={handle} />
+        <ProfileContent handle={handle} ownerArtistId={ownerArtistId} />
       </Suspense>
     </PageContainer>
   );

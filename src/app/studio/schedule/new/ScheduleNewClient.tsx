@@ -18,9 +18,16 @@ export interface CityOption {
   lng: number | null;
 }
 
+export interface BookedRange {
+  id: string;
+  startDate: string;
+  endDate: string;
+}
+
 interface ScheduleNewClientProps {
   cities: CityOption[];
   artistHandle: string | null;
+  bookedRanges: BookedRange[];
 }
 
 type Step = 1 | 2 | 3 | 4 | 5;
@@ -51,6 +58,20 @@ function isPastDate(year: number, month: number, day: number): boolean {
   return new Date(year, month, day) < today;
 }
 
+// ── 날짜 중복 체크 ──────────────────────────────────────────────
+
+function isDateBooked(
+  year: number,
+  month: number,
+  day: number,
+  bookedRanges: BookedRange[]
+): boolean {
+  const dateStr = toDateStr(year, month, day);
+  return bookedRanges.some(
+    (r) => dateStr >= r.startDate && dateStr <= r.endDate
+  );
+}
+
 // ── Step 진행 바 ─────────────────────────────────────────────
 
 function StepIndicator({ step }: { step: Step }) {
@@ -74,7 +95,7 @@ function StepIndicator({ step }: { step: Step }) {
   );
 }
 
-// ── Step 1: 도시 선택 ─────────────────────────────────────────
+// ── Step 1: 도시 선택 (compact picker) ───────────────────────
 
 function Step1City({
   cities,
@@ -88,97 +109,146 @@ function Step1City({
   onNext: () => void;
 }) {
   const [query, setQuery] = useState("");
+  const [showList, setShowList] = useState(false);
 
-  const filtered = query.trim()
-    ? cities.filter(
-        (c) =>
-          c.name.toLowerCase().includes(query.toLowerCase()) ||
-          c.countryName.toLowerCase().includes(query.toLowerCase())
-      )
-    : cities;
+  // 검색어 있을 때만 목록 표시, 최대 8개
+  const filtered = query.trim().length >= 1
+    ? cities
+        .filter(
+          (c) =>
+            c.name.toLowerCase().includes(query.toLowerCase()) ||
+            c.countryName.toLowerCase().includes(query.toLowerCase())
+        )
+        .slice(0, 8)
+    : [];
 
-  const grouped: Record<string, CityOption[]> = {};
-  for (const c of filtered) {
-    if (!grouped[c.region]) grouped[c.region] = [];
-    grouped[c.region].push(c);
+  function handleSelect(city: CityOption) {
+    onSelect(city);
+    setQuery(city.name);
+    setShowList(false);
   }
 
-  const regionLabels: Record<string, string> = {
-    asia: "Asia", europe: "Europe", americas: "Americas", other: "Other",
-  };
-  const regionOrder = ["asia", "europe", "americas", "other"] as const;
+  function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    setQuery(e.target.value);
+    // 선택됐던 도시와 다른 텍스트 입력 시 선택 초기화
+    if (selectedCity && e.target.value !== selectedCity.name) {
+      onSelect(null as unknown as CityOption);
+    }
+    setShowList(true);
+  }
+
+  function handleInputFocus() {
+    if (!selectedCity) setShowList(true);
+  }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="px-4">
+    <div className="flex flex-col gap-6 px-4">
+      <div>
         <p className="text-[11px] font-semibold tracking-widest text-neutral-400 uppercase mb-1">
           Step 1
         </p>
         <h2 className="text-[17px] font-bold text-neutral-900">어느 도시로 가나요?</h2>
+        <p className="mt-1 text-sm text-neutral-400">도시명 또는 국가명으로 검색하세요</p>
       </div>
 
-      {/* 검색 */}
-      <div className="px-4">
-        <div className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5">
+      {/* 검색 인풋 */}
+      <div className="relative">
+        <div className={[
+          "flex items-center gap-2 rounded-xl border px-3 py-3 transition-colors",
+          showList && filtered.length > 0
+            ? "border-neutral-900 bg-white"
+            : selectedCity
+            ? "border-neutral-900 bg-white"
+            : "border-neutral-200 bg-neutral-50",
+        ].join(" ")}>
           <Search size={15} className="shrink-0 text-neutral-400" aria-hidden="true" />
           <input
             type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="도시 또는 국가 검색"
+            onChange={handleInputChange}
+            onFocus={handleInputFocus}
+            placeholder="예: Seoul, Tokyo, Paris..."
             className="flex-1 bg-transparent text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none"
             aria-label="도시 검색"
+            autoComplete="off"
           />
+          {selectedCity && (
+            <Check size={15} className="shrink-0 text-emerald-500" aria-hidden="true" />
+          )}
         </div>
-      </div>
 
-      {/* 도시 목록 */}
-      <div className="flex flex-col gap-4 px-4">
-        {regionOrder.map((region) => {
-          const list = grouped[region];
-          if (!list?.length) return null;
-          return (
-            <div key={region}>
-              <p className="mb-2 text-[10px] font-semibold tracking-widest text-neutral-400 uppercase">
-                {regionLabels[region]}
-              </p>
-              <div className="flex flex-col gap-1">
-                {list.map((city) => {
-                  const isSelected = selectedCity?.id === city.id;
-                  return (
-                    <button
-                      key={city.id}
-                      onClick={() => onSelect(city)}
-                      className={[
-                        "flex items-center gap-3 rounded-xl px-4 py-3 text-left transition-colors",
-                        isSelected
-                          ? "border border-neutral-900 bg-neutral-900 text-white"
-                          : "border border-neutral-100 bg-white text-neutral-700 hover:border-neutral-200",
-                      ].join(" ")}
-                    >
-                      <MapPin size={14} className={isSelected ? "text-white" : "text-neutral-400"} aria-hidden="true" />
-                      <span className="flex-1 text-sm font-medium">{city.name}</span>
-                      <span className={["text-[11px]", isSelected ? "text-neutral-300" : "text-neutral-400"].join(" ")}>
-                        {city.countryName}
-                      </span>
-                      {isSelected && <Check size={14} className="text-white" aria-hidden="true" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
+        {/* 검색 결과 드롭다운 */}
+        {showList && filtered.length > 0 && (
+          <div className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-lg">
+            {filtered.map((city) => (
+              <button
+                key={city.id}
+                type="button"
+                onClick={() => handleSelect(city)}
+                className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-neutral-50 active:bg-neutral-100 transition-colors border-b border-neutral-50 last:border-0"
+              >
+                <MapPin size={13} className="shrink-0 text-neutral-400" aria-hidden="true" />
+                <span className="flex-1 text-sm font-medium text-neutral-900">{city.name}</span>
+                <span className="text-[11px] text-neutral-400">{city.countryName}</span>
+              </button>
+            ))}
+          </div>
+        )}
 
-        {filtered.length === 0 && (
-          <p className="py-8 text-center text-sm text-neutral-400">
-            검색 결과가 없습니다
-          </p>
+        {/* 검색어 있지만 결과 없음 */}
+        {showList && query.trim().length >= 1 && filtered.length === 0 && (
+          <div className="absolute left-0 right-0 top-full z-20 mt-1 rounded-xl border border-neutral-200 bg-white py-4 text-center shadow-lg">
+            <p className="text-sm text-neutral-400">검색 결과가 없습니다</p>
+          </div>
         )}
       </div>
 
+      {/* 선택된 도시 확인 카드 */}
+      {selectedCity && (
+        <div className="flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100">
+            <MapPin size={15} className="text-emerald-600" aria-hidden="true" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-semibold text-neutral-900">{selectedCity.name}</p>
+            <p className="text-[11px] text-neutral-500">{selectedCity.countryName}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => { onSelect(null as unknown as CityOption); setQuery(""); setShowList(false); }}
+            className="text-[11px] text-neutral-400 hover:text-neutral-600 px-1"
+            aria-label="선택 취소"
+          >
+            변경
+          </button>
+        </div>
+      )}
+
+      {/* 힌트 */}
+      {!selectedCity && query.trim().length === 0 && (
+        <div className="flex flex-col gap-1.5">
+          <p className="text-[11px] font-semibold text-neutral-400 uppercase tracking-widest">자주 찾는 도시</p>
+          <div className="flex flex-wrap gap-2">
+            {["Seoul", "Tokyo", "New York", "London", "Paris", "Bangkok"].map((name) => {
+              const city = cities.find((c) => c.name === name);
+              if (!city) return null;
+              return (
+                <button
+                  key={city.id}
+                  type="button"
+                  onClick={() => handleSelect(city)}
+                  className="rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-[12px] font-medium text-neutral-700 hover:border-neutral-300 active:bg-neutral-50 transition-colors"
+                >
+                  {city.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* 다음 버튼 */}
-      <div className="px-4 pb-6">
+      <div className="pb-6">
         <button
           onClick={onNext}
           disabled={!selectedCity}
@@ -266,12 +336,14 @@ function Step3Date({
   onSelect,
   onNext,
   onBack,
+  bookedRanges,
 }: {
   startDate: string;
   endDate: string;
   onSelect: (start: string, end: string) => void;
   onNext: () => void;
   onBack: () => void;
+  bookedRanges: BookedRange[];
 }) {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
@@ -288,6 +360,7 @@ function Step3Date({
 
   function handleDayClick(day: number) {
     if (isPastDate(year, month, day)) return;
+    if (isDateBooked(year, month, day, bookedRanges)) return;
     const dateStr = toDateStr(year, month, day);
     if (picking === "start") {
       onSelect(dateStr, "");
@@ -342,6 +415,14 @@ function Step3Date({
         </div>
       </div>
 
+      {/* 중복 일정 안내 */}
+      {bookedRanges.length > 0 && (
+        <div className="flex items-center gap-1.5 px-4">
+          <span className="h-3 w-3 rounded-sm bg-red-50 border border-red-200 inline-block" aria-hidden="true" />
+          <span className="text-[11px] text-neutral-400">취소선 날짜는 이미 등록된 일정</span>
+        </div>
+      )}
+
       {/* 월 이동 */}
       <div className="flex items-center justify-between px-4">
         <button
@@ -374,18 +455,20 @@ function Step3Date({
       <div className="grid grid-cols-7 px-4 gap-y-1">
         {cells.map((day, idx) => {
           if (!day) return <div key={`e-${idx}`} />;
-          const past = isPastDate(year, month, day);
-          const start = isStart(day);
-          const end = isEnd(day);
+          const past   = isPastDate(year, month, day);
+          const booked = isDateBooked(year, month, day, bookedRanges);
+          const disabled = past || booked;
+          const start  = isStart(day);
+          const end    = isEnd(day);
           const inRange = isInRange(day);
           return (
             <button
               key={day}
               onClick={() => handleDayClick(day)}
-              disabled={past}
+              disabled={disabled}
               className={[
-                "flex flex-col items-center py-1",
-                past ? "opacity-25 cursor-not-allowed" : "cursor-pointer",
+                "flex flex-col items-center gap-0.5 py-1",
+                disabled ? "cursor-not-allowed" : "cursor-pointer",
               ].join(" ")}
             >
               <span
@@ -395,6 +478,10 @@ function Step3Date({
                     ? "bg-neutral-900 text-white"
                     : inRange
                     ? "bg-neutral-200 text-neutral-700"
+                    : booked
+                    ? "bg-red-50 text-red-300 line-through"
+                    : past
+                    ? "opacity-25 text-neutral-700"
                     : "text-neutral-700 hover:bg-neutral-100",
                 ].join(" ")}
               >
@@ -640,6 +727,7 @@ function Step5Detail({
 export function ScheduleNewClient({
   cities,
   artistHandle,
+  bookedRanges,
 }: ScheduleNewClientProps) {
   const [step, setStep] = useState<Step>(1);
   const [selectedCity, setSelectedCity] = useState<CityOption | null>(null);
@@ -677,6 +765,7 @@ export function ScheduleNewClient({
             onSelect={handleDateSelect}
             onNext={() => setStep(4)}
             onBack={() => setStep(2)}
+            bookedRanges={bookedRanges}
           />
         )}
         {step === 4 && selectedCity && (
