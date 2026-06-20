@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Plus, MapPin } from "lucide-react";
+import { CityDropdown } from "@/components/artist/CityDropdown";
+import type { CityDropdownOption } from "@/components/artist/CityDropdown";
 
 // ── 타입 ────────────────────────────────────────────────────
 
@@ -11,6 +13,7 @@ interface CalendarCity {
   name: string;
   country: string;
   countryName: string;
+  region: "asia" | "europe" | "americas" | "other";
 }
 
 interface CalendarClientProps {
@@ -241,8 +244,8 @@ function ArtistCalendar({ cities }: { cities: CalendarCity[] }) {
   const today = new Date();
   const [year, setYear]           = useState(today.getFullYear());
   const [month, setMonth]         = useState(today.getMonth());
-  const [selectedCity, setSelectedCity] = useState<string>(
-    cities[0]?.id ?? ""
+  const [selectedCity, setSelectedCity] = useState<CalendarCity | null>(
+    cities[0] ?? null
   );
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
@@ -290,40 +293,21 @@ function ArtistCalendar({ cities }: { cities: CalendarCity[] }) {
         </Link>
       </div>
 
-      {/* ── 도시 선택 드롭다운 ────────────────────────── */}
+      {/* ── 도시 선택 — CityDropdown 컴포넌트 통일 ──── */}
       <div className="px-4">
-        <div className="relative">
-          <select
-            value={selectedCity}
-            onChange={e => {
-              setSelectedCity(e.target.value);
-              setSelectedDay(null);
-            }}
-            className="
-              w-full appearance-none
-              rounded-xl border border-neutral-200 bg-white
-              px-4 py-3 pr-10
-              text-sm text-neutral-900
-              focus:border-neutral-400 focus:outline-none
-            "
-            aria-label="도시 선택"
-          >
-            {cities.length === 0 ? (
-              <option value="">도시 정보 없음</option>
-            ) : (
-              cities.map(city => (
-                <option key={city.id} value={city.id}>
-                  {city.name}, {city.countryName}
-                </option>
-              ))
-            )}
-          </select>
-          <ChevronRight
-            size={16}
-            className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rotate-90 text-neutral-400"
-            aria-hidden="true"
-          />
-        </div>
+        <CityDropdown
+          cities={cities as CityDropdownOption[]}
+          initialCityName={selectedCity?.name ?? ""}
+          initialCountry={selectedCity?.country ?? ""}
+          label=""
+          onSelect={(option) => {
+            if (!option) return;
+            const full = cities.find((c) => c.id === option.id) ?? null;
+            setSelectedCity(full);
+            setSelectedDay(null);
+          }}
+          value={selectedCity as CityDropdownOption | null}
+        />
       </div>
 
       {/* ── 월 이동 헤더 ─────────────────────────────── */}

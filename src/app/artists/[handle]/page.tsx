@@ -8,8 +8,8 @@ import { PageContainer } from "@/components/layout/PageContainer";
 import { Avatar } from "@/components/ui/Avatar";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import { TagList } from "@/components/ui/TagChip";
-import { ScheduleBlock } from "@/components/schedule/ScheduleBlock";
 import { ProfileSkeleton } from "@/components/ui/Skeleton";
+import { ScheduleBlock } from "@/components/schedule/ScheduleBlock";
 
 import { getArtistProfile } from "@/lib/queries/artists";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
@@ -82,10 +82,12 @@ function PortfolioPlaceholder() {
   );
 }
 
-// ── 일정 상태 행 ──────────────────────────────────────────────
-// 예약 가능 여부 + 수정 링크(본인만)
+// ── Guest Work 카드 ──────────────────────────────────────────
+// ── 예약 상태 행 ──────────────────────────────────────────────
+// ScheduleBlock 하단에 붙는 보조 행
+// 예약 가능/마감 표시 + 본인 수정 링크
 
-function ScheduleStatusRow({
+function ScheduleAvailRow({
   schedule,
   isOwner,
 }: {
@@ -93,39 +95,33 @@ function ScheduleStatusRow({
   isOwner: boolean;
 }) {
   const status = isScheduleActive(schedule.startDate, schedule.endDate);
-  const isPast = status === "ended";
+  const isEnded = status === "ended";
 
-  // 예약 가능 여부: note에 "마감"/"full"/"booked" 포함 시 마감으로 처리
-  // Sprint 5: 실제 예약 데이터 연결 예정
+  // 예약 가능 여부: note에 "마감"/"full"/"booked" 포함 시 마감
+  // Sprint 5: 실제 예약 데이터로 교체
   const fullyBooked =
-    schedule.note?.toLowerCase().includes("마감") ||
-    schedule.note?.toLowerCase().includes("full") ||
-    schedule.note?.toLowerCase().includes("booked") ||
-    false;
+    !isEnded && (
+      schedule.note?.toLowerCase().includes("마감") ||
+      schedule.note?.toLowerCase().includes("full") ||
+      schedule.note?.toLowerCase().includes("booked") ||
+      false
+    );
+
+  if (isEnded && !isOwner) return null;
 
   return (
-    <div className="flex items-center gap-2 px-1 py-0.5">
-      {/* 예약 상태 뱃지 */}
-      {!isPast && (
+    <div className="flex items-center gap-2 px-1">
+      {!isEnded && (
         <span
           className={[
-            "rounded-full px-2 py-0.5 text-[10px] font-semibold",
-            fullyBooked
-              ? "bg-neutral-100 text-neutral-400"
-              : "bg-emerald-50 text-emerald-700",
+            "text-[11px] font-medium",
+            fullyBooked ? "text-neutral-400" : "text-emerald-600",
           ].join(" ")}
         >
           {fullyBooked ? "Fully booked" : "Available"}
         </span>
       )}
 
-      {isPast && (
-        <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-medium text-neutral-400">
-          종료
-        </span>
-      )}
-
-      {/* 본인 일정: 수정 링크 */}
       {isOwner && (
         <Link
           href={`/studio/schedule/${schedule.id}`}
@@ -261,14 +257,9 @@ async function ProfileContent({
         {sortedSchedules.length > 0 ? (
           <div className="flex flex-col gap-3">
             {sortedSchedules.map((schedule) => (
-              <div key={schedule.id} className="flex flex-col gap-1.5">
-                {/* 일정 상세 블록 */}
+              <div key={schedule.id} className="flex flex-col gap-1">
                 <ScheduleBlock schedule={schedule} variant="card" />
-                {/* 예약 상태 + 수정 링크 */}
-                <ScheduleStatusRow
-                  schedule={schedule}
-                  isOwner={isOwner}
-                />
+                <ScheduleAvailRow schedule={schedule} isOwner={isOwner} />
               </div>
             ))}
           </div>
