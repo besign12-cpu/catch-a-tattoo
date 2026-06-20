@@ -22,6 +22,13 @@ interface CityDropdownProps {
   required?: boolean;
   label?: string;
   hint?: string;
+  /**
+   * 도시 선택 시 호출되는 콜백 (hidden input 없이 state로 처리할 때 사용)
+   * 설정 시 hidden input(baseCity/baseCountry)은 렌더하지 않음
+   */
+  onSelect?: (city: CityDropdownOption | null) => void;
+  /** 외부에서 선택 값을 제어할 때 사용 (onSelect와 함께) */
+  value?: CityDropdownOption | null;
 }
 
 // ── 지역 레이블 ──────────────────────────────────────────────
@@ -43,6 +50,8 @@ export function CityDropdown({
   required,
   label = "Base City",
   hint,
+  onSelect,
+  value,
 }: CityDropdownProps) {
   // 초기값: initialCityName과 일치하는 city 찾기
   const initialSelected =
@@ -52,9 +61,12 @@ export function CityDropdown({
         (initialCountry ? c.country === initialCountry.toUpperCase() : true)
     ) ?? null;
 
-  const [selected, setSelected] = useState<CityDropdownOption | null>(
+  // onSelect 콜백 모드: 외부에서 value로 제어
+  // 기본 모드: 내부 state로 관리
+  const [internalSelected, setInternalSelected] = useState<CityDropdownOption | null>(
     initialSelected
   );
+  const selected = onSelect !== undefined ? (value ?? null) : internalSelected;
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
@@ -75,7 +87,11 @@ export function CityDropdown({
   }
 
   function handleSelect(city: CityDropdownOption) {
-    setSelected(city);
+    if (onSelect) {
+      onSelect(city);
+    } else {
+      setInternalSelected(city);
+    }
     setOpen(false);
     setQuery("");
   }
@@ -88,17 +104,21 @@ export function CityDropdown({
         {required && <span className="ml-0.5 text-cat-purple">*</span>}
       </label>
 
-      {/* hidden inputs — Server Action이 기존 name으로 받음 */}
-      <input
-        type="hidden"
-        name="baseCity"
-        value={selected?.name ?? ""}
-      />
-      <input
-        type="hidden"
-        name="baseCountry"
-        value={selected?.country ?? ""}
-      />
+      {/* hidden inputs — Server Action이 기존 name으로 받음 (onSelect 콜백 없을 때만) */}
+      {!onSelect && (
+        <>
+          <input
+            type="hidden"
+            name="baseCity"
+            value={selected?.name ?? ""}
+          />
+          <input
+            type="hidden"
+            name="baseCountry"
+            value={selected?.country ?? ""}
+          />
+        </>
+      )}
 
       {/* 선택 버튼 */}
       <button

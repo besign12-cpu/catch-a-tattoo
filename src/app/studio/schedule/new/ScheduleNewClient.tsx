@@ -2,18 +2,16 @@
 
 import { useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
-import { ChevronLeft, ChevronRight, MapPin, Calendar, Check, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, MapPin, Calendar } from "lucide-react";
+import { CityDropdown } from "@/components/artist/CityDropdown";
+import type { CityDropdownOption } from "@/components/artist/CityDropdown";
 import { createGuestSchedule } from "@/actions/schedule";
 import type { CreateScheduleState } from "@/actions/schedule";
 
 // ── 타입 ────────────────────────────────────────────────────
 
-export interface CityOption {
-  id: string;
-  name: string;
-  country: string;
-  countryName: string;
-  region: "asia" | "europe" | "americas" | "other";
+// CityDropdownOption을 확장해 lat/lng 추가 (cities 테이블 기반)
+export interface CityOption extends CityDropdownOption {
   lat: number | null;
   lng: number | null;
 }
@@ -95,7 +93,7 @@ function StepIndicator({ step }: { step: Step }) {
   );
 }
 
-// ── Step 1: 도시 선택 (compact picker) ───────────────────────
+// ── Step 1: 도시 선택 (CityDropdown 컴포넌트 재사용) ────────────
 
 function Step1City({
   cities,
@@ -108,41 +106,15 @@ function Step1City({
   onSelect: (city: CityOption) => void;
   onNext: () => void;
 }) {
-  const [query, setQuery] = useState("");
-  const [showList, setShowList] = useState(false);
-
-  // 검색어 있을 때만 목록 표시, 최대 8개
-  const filtered = query.trim().length >= 1
-    ? cities
-        .filter(
-          (c) =>
-            c.name.toLowerCase().includes(query.toLowerCase()) ||
-            c.countryName.toLowerCase().includes(query.toLowerCase())
-        )
-        .slice(0, 8)
-    : [];
-
-  function handleSelect(city: CityOption) {
-    onSelect(city);
-    setQuery(city.name);
-    setShowList(false);
-  }
-
-  function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setQuery(e.target.value);
-    // 선택됐던 도시와 다른 텍스트 입력 시 선택 초기화
-    if (selectedCity && e.target.value !== selectedCity.name) {
-      onSelect(null as unknown as CityOption);
-    }
-    setShowList(true);
-  }
-
-  function handleInputFocus() {
-    if (!selectedCity) setShowList(true);
+  // CityDropdownOption → CityOption 변환 (lat/lng는 cities 배열에서 찾아 복원)
+  function handleDropdownSelect(option: CityDropdownOption | null) {
+    if (!option) return;
+    const full = cities.find((c) => c.id === option.id);
+    if (full) onSelect(full);
   }
 
   return (
-    <div className="flex flex-col gap-6 px-4">
+    <div className="flex flex-col gap-6 px-4 pb-8">
       <div>
         <p className="text-[11px] font-semibold tracking-widest text-neutral-400 uppercase mb-1">
           Step 1
@@ -151,117 +123,30 @@ function Step1City({
         <p className="mt-1 text-sm text-neutral-400">도시명 또는 국가명으로 검색하세요</p>
       </div>
 
-      {/* 검색 인풋 */}
-      <div className="relative">
-        <div className={[
-          "flex items-center gap-2 rounded-xl border px-3 py-3 transition-colors",
-          showList && filtered.length > 0
-            ? "border-neutral-900 bg-white"
-            : selectedCity
-            ? "border-neutral-900 bg-white"
-            : "border-neutral-200 bg-neutral-50",
-        ].join(" ")}>
-          <Search size={15} className="shrink-0 text-neutral-400" aria-hidden="true" />
-          <input
-            type="text"
-            value={query}
-            onChange={handleInputChange}
-            onFocus={handleInputFocus}
-            placeholder="예: Seoul, Tokyo, Paris..."
-            className="flex-1 bg-transparent text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none"
-            aria-label="도시 검색"
-            autoComplete="off"
-          />
-          {selectedCity && (
-            <Check size={15} className="shrink-0 text-emerald-500" aria-hidden="true" />
-          )}
-        </div>
+      <CityDropdown
+        cities={cities}
+        initialCityName={selectedCity?.name ?? ""}
+        initialCountry={selectedCity?.country ?? ""}
+        label="도시 선택"
+        required
+        onSelect={handleDropdownSelect}
+        value={selectedCity}
+        hint="cities 테이블 기준 도시만 선택 가능합니다"
+      />
 
-        {/* 검색 결과 드롭다운 */}
-        {showList && filtered.length > 0 && (
-          <div className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-lg">
-            {filtered.map((city) => (
-              <button
-                key={city.id}
-                type="button"
-                onClick={() => handleSelect(city)}
-                className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-neutral-50 active:bg-neutral-100 transition-colors border-b border-neutral-50 last:border-0"
-              >
-                <MapPin size={13} className="shrink-0 text-neutral-400" aria-hidden="true" />
-                <span className="flex-1 text-sm font-medium text-neutral-900">{city.name}</span>
-                <span className="text-[11px] text-neutral-400">{city.countryName}</span>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* 검색어 있지만 결과 없음 */}
-        {showList && query.trim().length >= 1 && filtered.length === 0 && (
-          <div className="absolute left-0 right-0 top-full z-20 mt-1 rounded-xl border border-neutral-200 bg-white py-4 text-center shadow-lg">
-            <p className="text-sm text-neutral-400">검색 결과가 없습니다</p>
-          </div>
-        )}
-      </div>
-
-      {/* 선택된 도시 확인 카드 */}
-      {selectedCity && (
-        <div className="flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100">
-            <MapPin size={15} className="text-emerald-600" aria-hidden="true" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[13px] font-semibold text-neutral-900">{selectedCity.name}</p>
-            <p className="text-[11px] text-neutral-500">{selectedCity.countryName}</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => { onSelect(null as unknown as CityOption); setQuery(""); setShowList(false); }}
-            className="text-[11px] text-neutral-400 hover:text-neutral-600 px-1"
-            aria-label="선택 취소"
-          >
-            변경
-          </button>
-        </div>
-      )}
-
-      {/* 힌트 */}
-      {!selectedCity && query.trim().length === 0 && (
-        <div className="flex flex-col gap-1.5">
-          <p className="text-[11px] font-semibold text-neutral-400 uppercase tracking-widest">자주 찾는 도시</p>
-          <div className="flex flex-wrap gap-2">
-            {["Seoul", "Tokyo", "New York", "London", "Paris", "Bangkok"].map((name) => {
-              const city = cities.find((c) => c.name === name);
-              if (!city) return null;
-              return (
-                <button
-                  key={city.id}
-                  type="button"
-                  onClick={() => handleSelect(city)}
-                  className="rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-[12px] font-medium text-neutral-700 hover:border-neutral-300 active:bg-neutral-50 transition-colors"
-                >
-                  {city.name}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* 다음 버튼 */}
-      <div className="pb-6">
-        <button
-          onClick={onNext}
-          disabled={!selectedCity}
-          className="w-full rounded-2xl bg-neutral-900 py-4 text-sm font-semibold text-white disabled:opacity-30 disabled:cursor-not-allowed active:opacity-80 transition-opacity"
-        >
-          {selectedCity ? `${selectedCity.name} 선택 완료` : "도시를 선택해주세요"}
-        </button>
-      </div>
+      <button
+        onClick={onNext}
+        disabled={!selectedCity}
+        className="w-full rounded-2xl bg-neutral-900 py-4 text-sm font-semibold text-white disabled:opacity-30 disabled:cursor-not-allowed active:opacity-80 transition-opacity"
+      >
+        {selectedCity ? `${selectedCity.name} 선택 완료` : "도시를 선택해주세요"}
+      </button>
     </div>
   );
 }
 
 // ── Step 2: 도시 인사이트 ────────────────────────────────────
+
 
 function Step2Insight({
   city,
@@ -419,7 +304,7 @@ function Step3Date({
       {bookedRanges.length > 0 && (
         <div className="flex items-center gap-1.5 px-4">
           <span className="h-3 w-3 rounded-sm bg-red-50 border border-red-200 inline-block" aria-hidden="true" />
-          <span className="text-[11px] text-neutral-400">취소선 날짜는 이미 등록된 일정</span>
+          <span className="text-[11px] text-neutral-400">이미 등록된 일정</span>
         </div>
       )}
 

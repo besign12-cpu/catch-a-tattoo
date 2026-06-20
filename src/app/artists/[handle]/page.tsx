@@ -83,56 +83,19 @@ function PortfolioPlaceholder() {
 }
 
 // ── Guest Work 카드 ──────────────────────────────────────────
-// ── 예약 상태 행 ──────────────────────────────────────────────
-// ScheduleBlock 하단에 붙는 보조 행
-// 예약 가능/마감 표시 + 본인 수정 링크
+// ── 예약 가능 여부 계산 헬퍼 ──────────────────────────────────
 
-function ScheduleAvailRow({
-  schedule,
-  isOwner,
-}: {
-  schedule: GuestSchedule;
-  isOwner: boolean;
-}) {
+function getAvailStatus(
+  schedule: GuestSchedule
+): "available" | "fully_booked" | null {
   const status = isScheduleActive(schedule.startDate, schedule.endDate);
-  const isEnded = status === "ended";
-
-  // 예약 가능 여부: note에 "마감"/"full"/"booked" 포함 시 마감
-  // Sprint 5: 실제 예약 데이터로 교체
+  if (status === "ended") return null;
   const fullyBooked =
-    !isEnded && (
-      schedule.note?.toLowerCase().includes("마감") ||
-      schedule.note?.toLowerCase().includes("full") ||
-      schedule.note?.toLowerCase().includes("booked") ||
-      false
-    );
-
-  if (isEnded && !isOwner) return null;
-
-  return (
-    <div className="flex items-center gap-2 px-1">
-      {!isEnded && (
-        <span
-          className={[
-            "text-[11px] font-medium",
-            fullyBooked ? "text-neutral-400" : "text-emerald-600",
-          ].join(" ")}
-        >
-          {fullyBooked ? "Fully booked" : "Available"}
-        </span>
-      )}
-
-      {isOwner && (
-        <Link
-          href={`/studio/schedule/${schedule.id}`}
-          className="ml-auto text-[11px] font-medium text-neutral-400 hover:text-neutral-600 transition-colors"
-          aria-label={`${schedule.city} 일정 수정`}
-        >
-          수정 →
-        </Link>
-      )}
-    </div>
-  );
+    schedule.note?.toLowerCase().includes("마감") ||
+    schedule.note?.toLowerCase().includes("full") ||
+    schedule.note?.toLowerCase().includes("booked") ||
+    false;
+  return fullyBooked ? "fully_booked" : "available";
 }
 
 // ── 프로필 콘텐츠 ────────────────────────────────────────────
@@ -258,8 +221,23 @@ async function ProfileContent({
           <div className="flex flex-col gap-3">
             {sortedSchedules.map((schedule) => (
               <div key={schedule.id} className="flex flex-col gap-1">
-                <ScheduleBlock schedule={schedule} variant="card" />
-                <ScheduleAvailRow schedule={schedule} isOwner={isOwner} />
+                <ScheduleBlock
+                  schedule={schedule}
+                  variant="card"
+                  availStatus={getAvailStatus(schedule)}
+                />
+                {/* 본인 일정: 수정 링크 */}
+                {isOwner && (
+                  <div className="flex justify-end px-1">
+                    <Link
+                      href={`/studio/schedule/${schedule.id}`}
+                      className="text-[11px] font-medium text-neutral-400 hover:text-neutral-600 transition-colors"
+                      aria-label={`${schedule.city} 일정 수정`}
+                    >
+                      수정 →
+                    </Link>
+                  </div>
+                )}
               </div>
             ))}
           </div>

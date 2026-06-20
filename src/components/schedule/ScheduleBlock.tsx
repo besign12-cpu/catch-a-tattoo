@@ -7,12 +7,15 @@ interface ScheduleBlockProps {
   schedule: GuestSchedule;
   variant?: "card" | "inline";
   className?: string;
+  /** 예약 가능 상태 — 카드 내부 예약 문의 아래 표시 */
+  availStatus?: "available" | "fully_booked" | null;
 }
 
 export function ScheduleBlock({
   schedule,
   variant = "card",
   className,
+  availStatus,
 }: ScheduleBlockProps) {
   const status = isScheduleActive(schedule.startDate, schedule.endDate);
   const dday = calcDDay(schedule.startDate, schedule.endDate);
@@ -127,6 +130,18 @@ export function ScheduleBlock({
           {schedule.note && (
             <span className="text-[11px] text-neutral-400 line-clamp-1">
               {schedule.note}
+            </span>
+          )}
+          {availStatus && (
+            <span
+              className={cn(
+                "text-[11px] font-medium mt-0.5",
+                availStatus === "available"
+                  ? "text-emerald-600"
+                  : "text-neutral-400"
+              )}
+            >
+              {availStatus === "available" ? "Available" : "Fully booked"}
             </span>
           )}
         </div>
