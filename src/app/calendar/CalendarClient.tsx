@@ -69,10 +69,19 @@ const DEMAND_LABELS: Record<NonNullable<DemandLevel>, string> = {
 
 // ── Customer View 달력 ──────────────────────────────────────
 
-function CustomerCalendar({ isGuest = false }: { isGuest?: boolean }) {
+function CustomerCalendar({
+  isGuest = false,
+  cities = [],
+}: {
+  isGuest?: boolean;
+  cities?: CalendarCity[];
+}) {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
+  const [selectedCity, setSelectedCity] = useState<CalendarCity | null>(
+    cities[0] ?? null
+  );
 
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay   = getFirstDayOfMonth(year, month);
@@ -97,6 +106,24 @@ function CustomerCalendar({ isGuest = false }: { isGuest?: boolean }) {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* ── 도시 선택 (비로그인/Customer 모두 표시) ─── */}
+      {cities.length > 0 && (
+        <div className="px-4 pt-2">
+          <CityDropdown
+            cities={cities as CityDropdownOption[]}
+            initialCityName={selectedCity?.name ?? ""}
+            initialCountry={selectedCity?.country ?? ""}
+            label=""
+            onSelect={(option) => {
+              if (!option) return;
+              const full = cities.find((c) => c.id === option.id) ?? null;
+              setSelectedCity(full);
+            }}
+            value={selectedCity as CityDropdownOption | null}
+          />
+        </div>
+      )}
+
       {/* ── 월 이동 헤더 ─────────────────────────────── */}
       <div className="flex items-center justify-between px-4 pt-2">
         <button
@@ -310,6 +337,24 @@ function ArtistCalendar({ cities }: { cities: CalendarCity[] }) {
         />
       </div>
 
+      {/* ── 도시 선택 (비로그인/Customer 모두 표시) ─── */}
+      {cities.length > 0 && (
+        <div className="px-4">
+          <CityDropdown
+            cities={cities as CityDropdownOption[]}
+            initialCityName={selectedCity?.name ?? ""}
+            initialCountry={selectedCity?.country ?? ""}
+            label=""
+            onSelect={(option) => {
+              if (!option) return;
+              const full = cities.find((c) => c.id === option.id) ?? null;
+              setSelectedCity(full);
+            }}
+            value={selectedCity as CityDropdownOption | null}
+          />
+        </div>
+      )}
+
       {/* ── 월 이동 헤더 ─────────────────────────────── */}
       <div className="flex items-center justify-between px-4">
         <button
@@ -477,7 +522,7 @@ export function CalendarClient({ role, cities }: CalendarClientProps) {
     <div className="flex flex-col gap-4 pb-10">
       {isArtist
         ? <ArtistCalendar cities={cities} />
-        : <CustomerCalendar isGuest={isGuest} />
+        : <CustomerCalendar isGuest={isGuest} cities={cities} />
       }
     </div>
   );
