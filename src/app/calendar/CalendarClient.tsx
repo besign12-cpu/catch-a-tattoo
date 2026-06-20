@@ -62,9 +62,9 @@ const DEMAND_COLORS: Record<NonNullable<DemandLevel>, string> = {
 };
 
 const DEMAND_LABELS: Record<NonNullable<DemandLevel>, string> = {
-  high: "🟢 수요 높음",
-  mid:  "🟡 수요 보통",
-  low:  "🔴 수요 낮음",
+  high: "🟢 1–4",
+  mid:  "🟡 5–8",
+  low:  "🔴 9+",
 };
 
 // ── Customer View 달력 ──────────────────────────────────────
@@ -428,7 +428,9 @@ function ArtistCalendar({ cities }: { cities: CalendarCity[] }) {
           {selectedDemand ? (
             <div className="mt-3 flex flex-col gap-2">
               <div className="flex items-center gap-2">
-                <span className="text-sm">{DEMAND_LABELS[selectedDemand]}</span>
+                <span className="text-[13px] font-medium text-neutral-900">
+                  Guest {DEMAND_LABELS[selectedDemand]}명
+                </span>
               </div>
               <p className="text-xs text-neutral-400">
                 이 날짜의 수요 데이터를 기반으로 일정을 등록해보세요.
@@ -460,17 +462,14 @@ function ArtistCalendar({ cities }: { cities: CalendarCity[] }) {
 
       {/* ── 수요 레벨 범례 ───────────────────────────── */}
       <div className="mx-4 rounded-2xl border border-neutral-100 bg-white px-4 py-3">
+        <p className="mb-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-widest">
+          Guest 수
+        </p>
         <div className="flex items-center gap-4">
           {(["high", "mid", "low"] as const).map(level => (
-            <div key={level} className="flex items-center gap-1.5">
-              <span
-                className={`h-2 w-2 flex-shrink-0 rounded-full ${DEMAND_COLORS[level]}`}
-                aria-hidden="true"
-              />
-              <span className="text-[11px] text-neutral-500">
-                {DEMAND_LABELS[level]}
-              </span>
-            </div>
+            <span key={level} className="text-[12px] text-neutral-700">
+              {DEMAND_LABELS[level]}
+            </span>
           ))}
         </div>
       </div>
