@@ -337,24 +337,6 @@ function ArtistCalendar({ cities }: { cities: CalendarCity[] }) {
         />
       </div>
 
-      {/* ── 도시 선택 (비로그인/Customer 모두 표시) ─── */}
-      {cities.length > 0 && (
-        <div className="px-4">
-          <CityDropdown
-            cities={cities as CityDropdownOption[]}
-            initialCityName={selectedCity?.name ?? ""}
-            initialCountry={selectedCity?.country ?? ""}
-            label=""
-            onSelect={(option) => {
-              if (!option) return;
-              const full = cities.find((c) => c.id === option.id) ?? null;
-              setSelectedCity(full);
-            }}
-            value={selectedCity as CityDropdownOption | null}
-          />
-        </div>
-      )}
-
       {/* ── 월 이동 헤더 ─────────────────────────────── */}
       <div className="flex items-center justify-between px-4">
         <button
@@ -477,33 +459,20 @@ function ArtistCalendar({ cities }: { cities: CalendarCity[] }) {
       )}
 
       {/* ── 수요 레벨 범례 ───────────────────────────── */}
-      <div className="mx-4 rounded-2xl border border-neutral-100 bg-white px-5 py-4">
-        <p className="mb-3 text-[11px] font-semibold tracking-widest text-neutral-400 uppercase">
-          수요 레벨 안내
-        </p>
-        <div className="flex flex-col gap-2">
+      <div className="mx-4 rounded-2xl border border-neutral-100 bg-white px-4 py-3">
+        <div className="flex items-center gap-4">
           {(["high", "mid", "low"] as const).map(level => (
-            <div key={level} className="flex items-center gap-2.5">
+            <div key={level} className="flex items-center gap-1.5">
               <span
-                className={`h-2.5 w-2.5 flex-shrink-0 rounded-full ${DEMAND_COLORS[level]}`}
+                className={`h-2 w-2 flex-shrink-0 rounded-full ${DEMAND_COLORS[level]}`}
                 aria-hidden="true"
               />
-              <div className="flex flex-col">
-                <span className="text-xs font-medium text-neutral-700">
-                  {DEMAND_LABELS[level]}
-                </span>
-                <span className="text-[11px] text-neutral-400">
-                  {level === "high" && "이 날짜에 이미 많은 고객이 기다리고 있어요"}
-                  {level === "mid"  && "적당한 수요가 있어요"}
-                  {level === "low"  && "아직 수요가 많지 않아요"}
-                </span>
-              </div>
+              <span className="text-[11px] text-neutral-500">
+                {DEMAND_LABELS[level]}
+              </span>
             </div>
           ))}
         </div>
-        <p className="mt-3 text-[11px] text-neutral-300">
-          * 수요 데이터는 Sprint 5에서 실데이터로 연결됩니다
-        </p>
       </div>
     </div>
   );
