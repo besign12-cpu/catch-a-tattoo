@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { ArrowLeft, Share2, MapPin, Users } from "lucide-react";
+import { ArrowLeft, Share2, MapPin } from "lucide-react";
 import { Suspense } from "react";
 
 import { PageContainer } from "@/components/layout/PageContainer";
@@ -14,7 +14,7 @@ import { ProfileSkeleton } from "@/components/ui/Skeleton";
 import { getArtistProfile } from "@/lib/queries/artists";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getArtistByHandle } from "@/data/dummy";
-import { formatDateRange, calcDDay, isScheduleActive } from "@/lib/utils";
+import { isScheduleActive } from "@/lib/utils";
 import type { GuestSchedule } from "@/types";
 
 interface Props {
@@ -82,91 +82,57 @@ function PortfolioPlaceholder() {
   );
 }
 
-// ── 도시별 Bring 행 ───────────────────────────────────────────
-// Sprint 5: city_follows (is_active=true) 실데이터로 교체 예정
+// ── 일정 상태 행 ──────────────────────────────────────────────
+// 예약 가능 여부 + 수정 링크(본인만)
 
-function ScheduleBringRow({
+function ScheduleStatusRow({
   schedule,
-  bringCount,
   isOwner,
 }: {
   schedule: GuestSchedule;
-  bringCount: number;
   isOwner: boolean;
 }) {
   const status = isScheduleActive(schedule.startDate, schedule.endDate);
-  const isActive = status === "active";
-  const dday = calcDDay(schedule.startDate, schedule.endDate);
-  const dateRange = formatDateRange(schedule.startDate, schedule.endDate);
+  const isPast = status === "ended";
+
+  // 예약 가능 여부: note에 "마감"/"full"/"booked" 포함 시 마감으로 처리
+  // Sprint 5: 실제 예약 데이터 연결 예정
+  const fullyBooked =
+    schedule.note?.toLowerCase().includes("마감") ||
+    schedule.note?.toLowerCase().includes("full") ||
+    schedule.note?.toLowerCase().includes("booked") ||
+    false;
 
   return (
-    <div
-      className={[
-        "flex items-center gap-3 rounded-xl px-4 py-3",
-        isActive
-          ? "border border-emerald-100 bg-emerald-50"
-          : "border border-neutral-100 bg-neutral-50",
-      ].join(" ")}
-    >
-      {/* 도시 + 날짜 */}
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <div className="flex items-center gap-1.5">
-          <MapPin
-            size={11}
-            className={isActive ? "text-emerald-500" : "text-neutral-400"}
-            aria-hidden="true"
-          />
-          <span className="text-[13px] font-semibold text-neutral-900 leading-tight">
-            {schedule.city}
-          </span>
-          {isActive && (
-            <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700">
-              진행 중
-            </span>
-          )}
-        </div>
-        <span className="text-[11px] text-neutral-400 leading-tight">
-          {dateRange} · {dday}
-        </span>
-      </div>
-
-      {/* Bring 수 */}
-      <div className="flex shrink-0 flex-col items-end gap-0.5">
-        <div className="flex items-center gap-1">
-          <Users size={10} className="text-neutral-400" aria-hidden="true" />
-          <span className="text-[13px] font-bold text-neutral-900 leading-tight">
-            {bringCount}
-          </span>
-        </div>
-        <span className="text-[10px] text-neutral-400 leading-tight">Bring</span>
-      </div>
-
-      {/* Bring — Sprint 5에서 Client Component + useBring 훅으로 교체 예정 */}
-      {/* Server Component에서 onClick 불가 → 비활성 UI */}
-      {!isOwner && (
-        <div
+    <div className="flex items-center gap-2 px-1 py-0.5">
+      {/* 예약 상태 뱃지 */}
+      {!isPast && (
+        <span
           className={[
-            "shrink-0 rounded-xl px-3 py-2 text-[12px] font-semibold select-none cursor-default",
-            bringCount > 0
-              ? "bg-neutral-900 text-white"
-              : "border border-neutral-200 bg-neutral-50 text-neutral-400",
+            "rounded-full px-2 py-0.5 text-[10px] font-semibold",
+            fullyBooked
+              ? "bg-neutral-100 text-neutral-400"
+              : "bg-emerald-50 text-emerald-700",
           ].join(" ")}
-          aria-label={`${schedule.city} Bring This Artist`}
-          role="button"
-          aria-disabled="true"
         >
-          Bring
-        </div>
+          {fullyBooked ? "Fully booked" : "Available"}
+        </span>
+      )}
+
+      {isPast && (
+        <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-medium text-neutral-400">
+          종료
+        </span>
       )}
 
       {/* 본인 일정: 수정 링크 */}
       {isOwner && (
         <Link
           href={`/studio/schedule/${schedule.id}`}
-          className="shrink-0 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-[12px] font-medium text-neutral-600 hover:border-neutral-300 hover:text-neutral-900 active:bg-neutral-50 transition-colors"
+          className="ml-auto text-[11px] font-medium text-neutral-400 hover:text-neutral-600 transition-colors"
           aria-label={`${schedule.city} 일정 수정`}
         >
-          수정
+          수정 →
         </Link>
       )}
     </div>
@@ -192,12 +158,7 @@ async function ProfileContent({
   // 본인 여부: 서버에서 받은 ownerArtistId와 비교
   const isOwner = ownerArtistId === artist.id;
 
-  // Sprint 5: city_follows (is_active=true) WHERE artist_id = artist.id 쿼리로 교체
-  // 현재: 도시별 Bring 수 0으로 초기화
-  const bringCounts: Record<string, number> = {};
-  artist.upcomingSchedules.forEach((s) => {
-    bringCounts[s.id] = 0;
-  });
+  // Sprint 5: Bring 실수요 데이터 연결 예정 (city_follows is_active=true)
 
   const isFollowing = false; // Sprint 5: useFollow 훅 연결 예정
 
@@ -259,6 +220,19 @@ async function ProfileContent({
             {isFollowing ? "팔로잉" : "팔로우"}
           </button>
 
+          {/* Bring 버튼 — 타인 로그인 시만 표시 */}
+          {/* Sprint 5: useBring 훅 연결, 로그인 여부 서버에서 전달 예정 */}
+          {!isOwner && (
+            <div
+              className="flex items-center justify-center rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm font-medium text-neutral-500 select-none cursor-default"
+              role="button"
+              aria-disabled="true"
+              aria-label={`${artist.displayName} Bring This Artist`}
+            >
+              Bring
+            </div>
+          )}
+
           {/* Instagram 버튼 */}
           <a
             href={instagramUrl}
@@ -290,10 +264,9 @@ async function ProfileContent({
               <div key={schedule.id} className="flex flex-col gap-1.5">
                 {/* 일정 상세 블록 */}
                 <ScheduleBlock schedule={schedule} variant="card" />
-                {/* 도시별 Bring 행 */}
-                <ScheduleBringRow
+                {/* 예약 상태 + 수정 링크 */}
+                <ScheduleStatusRow
                   schedule={schedule}
-                  bringCount={bringCounts[schedule.id] ?? 0}
                   isOwner={isOwner}
                 />
               </div>
