@@ -62,9 +62,9 @@ const DEMAND_COLORS: Record<NonNullable<DemandLevel>, string> = {
 };
 
 const DEMAND_LABELS: Record<NonNullable<DemandLevel>, string> = {
-  high: "🟢 1–4",
-  mid:  "🟡 5–8",
-  low:  "🔴 9+",
+  high: "여유 (1–4)",
+  mid:  "보통 (5–8)",
+  low:  "혼잡 (9+)",
 };
 
 // ── Customer View 달력 ──────────────────────────────────────
@@ -462,14 +462,17 @@ function ArtistCalendar({ cities }: { cities: CalendarCity[] }) {
 
       {/* ── 수요 레벨 범례 ───────────────────────────── */}
       <div className="mx-4 rounded-2xl border border-neutral-100 bg-white px-4 py-3">
-        <p className="mb-2 text-[10px] font-semibold text-neutral-400 uppercase tracking-widest">
-          Guest 수
-        </p>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-5">
           {(["high", "mid", "low"] as const).map(level => (
-            <span key={level} className="text-[12px] text-neutral-700">
-              {DEMAND_LABELS[level]}
-            </span>
+            <div key={level} className="flex items-center gap-1.5">
+              <span
+                className={`block h-2 w-2 rounded-full ${DEMAND_COLORS[level]}`}
+                aria-hidden="true"
+              />
+              <span className="text-[11px] text-neutral-600">
+                {DEMAND_LABELS[level]}
+              </span>
+            </div>
           ))}
         </div>
       </div>
