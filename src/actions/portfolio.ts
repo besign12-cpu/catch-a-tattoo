@@ -5,10 +5,6 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/types/database.types";
 
-// ── DB 타입 직접 추출 ─────────────────────────────────────────
-// database.types.ts에 Relationships: [] 추가 이후
-// SupabaseClient<Database>에서 .select().maybeSingle() 타입 추론 정상 작동
-
 type ArtistProfileRow =
   Database["public"]["Tables"]["artist_profiles"]["Row"];
 type PortfolioItemInsert =
@@ -41,11 +37,6 @@ function isValidImageUrl(url: string): boolean {
 
 // ── addPortfolioItem ──────────────────────────────────────────
 
-/**
- * 포트폴리오 이미지 추가
- * - 본인 artist_profiles id 확인 후 portfolio_items insert
- * - sort_order는 기존 최대값 + 1
- */
 export async function addPortfolioItem(
   _prev: AddPortfolioState,
   formData: FormData
@@ -73,11 +64,9 @@ export async function addPortfolioItem(
 
   const admin = getSupabaseAdminClient();
 
-  // 본인 아티스트 프로필 확인
-  // SupabaseClient<Database> + Relationships: [] 추가로 타입 추론 정상
   const { data: myProfile } = await admin
     .from("artist_profiles")
-    .select("id")
+    .select("id, instagram_handle")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -85,10 +74,9 @@ export async function addPortfolioItem(
     return { status: "error", message: "아티스트 프로필이 없습니다." };
   }
 
-  // DB Row 타입에서 직접 id 타입 추출 (as any 없이)
   const artistId: ArtistProfileRow["id"] = myProfile.id;
+  const handle: string | null = (myProfile as { id: string; instagram_handle: string | null }).instagram_handle;
 
-  // 현재 최대 sort_order 조회
   const { data: maxOrderData } = await admin
     .from("portfolio_items")
     .select("sort_order")
@@ -97,7 +85,6 @@ export async function addPortfolioItem(
     .limit(1)
     .maybeSingle();
 
-  // DB Row 타입에서 직접 sort_order 타입 추출 (as any 없이)
   const maxSortOrder: PortfolioItemRow["sort_order"] | null =
     maxOrderData?.sort_order ?? null;
   const nextSortOrder: number = maxSortOrder !== null ? maxSortOrder + 1 : 0;
@@ -117,18 +104,17 @@ export async function addPortfolioItem(
     };
   }
 
-  revalidatePath("/studio/portfolio");
-  revalidatePath("/studio");
+  if (handle) {
+    revalidatePath(`/artists/${handle}/portfolio`);
+    revalidatePath(`/artists/${handle}`);
+  }
+  revalidatePath("/");
 
   return { status: "success" };
 }
 
 // ── deletePortfolioItem ───────────────────────────────────────
 
-/**
- * 포트폴리오 이미지 삭제
- * - 본인 소유 확인 후 삭제
- */
 export async function deletePortfolioItem(
   _prev: DeletePortfolioState,
   formData: FormData
@@ -150,10 +136,9 @@ export async function deletePortfolioItem(
 
   const admin = getSupabaseAdminClient();
 
-  // 본인 아티스트 프로필 확인
   const { data: myProfile } = await admin
     .from("artist_profiles")
-    .select("id")
+    .select("id, instagram_handle")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -161,10 +146,9 @@ export async function deletePortfolioItem(
     return { status: "error", message: "아티스트 프로필이 없습니다." };
   }
 
-  // DB Row 타입에서 직접 id 타입 추출 (as any 없이)
   const artistId: ArtistProfileRow["id"] = myProfile.id;
+  const handle: string | null = (myProfile as { id: string; instagram_handle: string | null }).instagram_handle;
 
-  // 본인 소유 확인 후 삭제
   const { error } = await admin
     .from("portfolio_items")
     .delete()
@@ -178,8 +162,11 @@ export async function deletePortfolioItem(
     };
   }
 
-  revalidatePath("/studio/portfolio");
-  revalidatePath("/studio");
+  if (handle) {
+    revalidatePath(`/artists/${handle}/portfolio`);
+    revalidatePath(`/artists/${handle}`);
+  }
+  revalidatePath("/");
 
   return { status: "success" };
 }

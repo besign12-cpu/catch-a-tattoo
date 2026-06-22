@@ -46,14 +46,14 @@ async function verifyScheduleOwnership(
   scheduleId: string,
   userId: string
 ): Promise<
-  | { ok: true; artistId: string; scheduleRow: GuestScheduleRow }
+  | { ok: true; artistId: string; artistHandle: string | null; scheduleRow: GuestScheduleRow }
   | { ok: false; message: string }
 > {
   const admin = getSupabaseAdminClient();
 
   const { data: myProfile } = await admin
     .from("artist_profiles")
-    .select("id")
+    .select("id, instagram_handle")
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -62,6 +62,7 @@ async function verifyScheduleOwnership(
   }
 
   const artistId: ArtistProfileRow["id"] = myProfile.id;
+  const artistHandle: string | null = (myProfile as { id: string; instagram_handle: string | null }).instagram_handle;
 
   const { data: schedule } = await admin
     .from("guest_schedules")
@@ -77,6 +78,7 @@ async function verifyScheduleOwnership(
   return {
     ok: true,
     artistId,
+    artistHandle,
     scheduleRow: schedule as GuestScheduleRow,
   };
 }
@@ -123,13 +125,14 @@ export async function createGuestSchedule(
 
   const { data: myProfile } = await admin
     .from("artist_profiles")
-    .select("id")
+    .select("id, instagram_handle")
     .eq("user_id", user.id)
     .maybeSingle();
 
   if (!myProfile) return { status: "error", message: "아티스트 프로필이 없습니다." };
 
   const artistId: ArtistProfileRow["id"] = myProfile.id;
+  const artistHandle: string | null = (myProfile as { id: string; instagram_handle: string | null }).instagram_handle;
 
   const { data: cityData } = await admin
     .from("cities")
@@ -182,19 +185,15 @@ export async function createGuestSchedule(
   if (error)
     return { status: "error", message: "일정 등록에 실패했습니다. 다시 시도해주세요." };
 
-  revalidatePath("/studio");
+  // 아티스트 프로필 경로로 redirect
+  const targetPath = artistHandle ? `/artists/${artistHandle}` : "/";
+  revalidatePath(targetPath);
   revalidatePath("/");
-  redirect("/studio");
+  redirect(targetPath);
 }
 
 // ── updateGuestSchedule ───────────────────────────────────────
 
-/**
- * Guest Work 일정 수정
- * - 날짜 / 연락방법 / 메모 수정 (도시 변경 불가)
- * - 본인 소유 확인 필수
- * - 과거 종료 일정은 수정 불가
- */
 export async function updateGuestSchedule(
   _prev: UpdateScheduleState,
   formData: FormData
@@ -258,18 +257,14 @@ export async function updateGuestSchedule(
   if (error)
     return { status: "error", message: "일정 수정에 실패했습니다. 다시 시도해주세요." };
 
-  revalidatePath("/studio");
+  const targetPath = ownership.artistHandle ? `/artists/${ownership.artistHandle}` : "/";
+  revalidatePath(targetPath);
   revalidatePath("/");
-  redirect("/studio");
+  redirect(targetPath);
 }
 
 // ── deleteGuestSchedule ───────────────────────────────────────
 
-/**
- * Guest Work 일정 삭제
- * - 본인 소유 확인 필수
- * - 소프트 삭제 없이 실제 삭제
- */
 export async function deleteGuestSchedule(
   _prev: DeleteScheduleState,
   formData: FormData
@@ -299,7 +294,8 @@ export async function deleteGuestSchedule(
   if (error)
     return { status: "error", message: "일정 삭제에 실패했습니다. 다시 시도해주세요." };
 
-  revalidatePath("/studio");
+  const targetPath = ownership.artistHandle ? `/artists/${ownership.artistHandle}` : "/";
+  revalidatePath(targetPath);
   revalidatePath("/");
-  redirect("/studio");
+  redirect(targetPath);
 }

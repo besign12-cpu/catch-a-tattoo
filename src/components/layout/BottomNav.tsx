@@ -47,11 +47,18 @@ export default function BottomNav() {
           })();
 
           // 활성 상태 판단
-          // 나 탭: /me 또는 /studio 경로 모두 활성
+          // 나 탭: /me 또는 /artists/:handle/edit 등 관리 경로에서도 활성
           const isActive = (() => {
             if (href === "/") return pathname === "/";
             if (href === "/me") {
-              return pathname.startsWith("/me") || pathname.startsWith("/studio");
+              return (
+                pathname.startsWith("/me") ||
+                // 아티스트 관리 경로 (edit, schedule, portfolio)
+                (pathname.startsWith("/artists/") &&
+                  (pathname.includes("/edit") ||
+                    pathname.includes("/schedule/") ||
+                    pathname.includes("/portfolio")))
+              );
             }
             return pathname.startsWith(href);
           })();

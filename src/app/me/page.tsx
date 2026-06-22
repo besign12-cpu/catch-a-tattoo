@@ -100,9 +100,9 @@ export default async function MePage() {
 
         <div className="px-4 flex flex-col gap-3">
           {/* Artist Studio CTA — role이 artist/admin인 경우만 표시 */}
-          {(profile?.role === "artist" || profile?.role === "admin") && (
+          {(profile?.role === "artist" || profile?.role === "admin") && profile?.artistHandle && (
             <Link
-              href="/studio"
+              href={`/artists/${profile.artistHandle}`}
               className="
                 flex items-center justify-between
                 rounded-2xl bg-neutral-900
@@ -116,7 +116,7 @@ export default async function MePage() {
                 </div>
                 <div className="flex flex-col gap-0.5">
                   <p className="text-[13px] font-semibold text-white leading-tight">
-                    아티스트 스튜디오
+                    내 아티스트 프로필
                   </p>
                   <p className="text-[11px] text-neutral-400 leading-tight">
                     일정 관리 · 프로필 수정

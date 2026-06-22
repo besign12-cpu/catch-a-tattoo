@@ -2,8 +2,16 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // 로그인 필요 경로
-const PROTECTED_PATHS = ["/me", "/studio"];
-// 로그인 상태에서 접근 불가 경로 (이미 로그인 시 홈으로)
+const PROTECTED_PATHS = [
+  "/me",
+  "/artists/new",
+  // /artists/:handle/edit, /schedule/new, /schedule/:id, /portfolio
+  // 동적 경로는 prefix 매칭으로 처리
+];
+// /artists/:handle 하위 관리 경로 (동적이므로 별도 처리)
+const ARTIST_MANAGE_SUFFIXES = ["/edit", "/schedule/new", "/portfolio"];
+
+// 로그인 상태에서 접근 불가 경로
 const AUTH_PATHS = ["/auth/login", "/auth/signup"];
 
 export async function middleware(request: NextRequest) {
@@ -37,10 +45,19 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  // /artists/:handle/schedule/:id 도 보호 (동적 id 경로)
+  const isArtistManagePath =
+    pathname.startsWith("/artists/") &&
+    (ARTIST_MANAGE_SUFFIXES.some((s) => pathname.includes(s)) ||
+      /^\/artists\/[^/]+\/schedule\/[^/]+$/.test(pathname));
+
   // 보호 경로: 비로그인 → /auth/login 리다이렉트
-  const isProtected = PROTECTED_PATHS.some(
-    (p) => pathname === p || pathname.startsWith(p + "/")
-  );
+  const isProtected =
+    isArtistManagePath ||
+    PROTECTED_PATHS.some(
+      (p) => pathname === p || pathname.startsWith(p + "/")
+    );
+
   if (isProtected && !user) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/auth/login";
@@ -62,12 +79,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * 아래 경로는 제외:
-     * - _next/static, _next/image
-     * - favicon.ico, manifest.json
-     * - api routes
-     */
     "/((?!_next/static|_next/image|favicon.ico|manifest.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

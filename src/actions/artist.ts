@@ -198,6 +198,7 @@ export async function createArtistProfile(
   redirect(`/artists/${handle}`);
 }
 
+
 // ── updateArtistProfile ───────────────────────────────────────
 
 /**
@@ -349,3 +350,4 @@ export async function updateArtistProfile(
 
   return { status: "success", handle };
 }
+
