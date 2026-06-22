@@ -7,6 +7,7 @@ import { FeedCard } from "@/components/artist/FeedCard";
 import { SearchInput } from "@/components/search/SearchInput";
 import { HomeFilterBar, type PeriodFilter } from "@/components/home/HomeFilterBar";
 import { HomeFilterSheet } from "@/components/home/HomeFilterSheet";
+import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
 import type { FeedCard as FeedCardType } from "@/types";
 
 /** 이번 주 범위 계산 (월~일) */
@@ -137,7 +138,14 @@ export function HomeFeedClient({
     <>
       {/* sticky 헤더 */}
       <div className="sticky top-0 z-40 border-b border-neutral-100 bg-white px-4 pt-4 pb-0">
-        <SearchInput value={query} onChange={setQuery} className="mb-3" />
+        {/* 상단 행: 검색 + Language 버튼 */}
+        <div className="flex items-center gap-2 mb-3">
+          <div className="flex-1">
+            <SearchInput value={query} onChange={setQuery} />
+          </div>
+          {/* Language Switcher — Discover 우상단, 비로그인 접근 가능 */}
+          <LanguageSwitcher variant="topbar" />
+        </div>
         <HomeFilterBar
           period={period}
           onPeriodChange={setPeriod}

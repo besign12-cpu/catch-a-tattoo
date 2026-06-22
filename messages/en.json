@@ -1,0 +1,27 @@
+{
+  "_note": "번역 제외 고유 개념어: Guest Work, Bring, Bring This Artist, Follow, Based City, Artist Profile, Discovery, Demand Signal, CAT",
+  "common": {
+    "appName": "Catch A Tattoo",
+    "loading": "Loading...",
+    "back": "Back",
+    "share": "Share",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "logout": "Logout",
+    "settings": "Settings",
+    "profile": "Profile"
+  },
+  "nav": {
+    "discover": "Discover",
+    "following": "Following",
+    "calendar": "Calendar",
+    "me": "Me"
+  },
+  "language": {
+    "label": "Language",
+    "en": "English",
+    "ko": "한국어"
+  }
+}
