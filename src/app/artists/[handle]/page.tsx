@@ -16,6 +16,8 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getMyPortfolio } from "@/lib/queries/studio";
 import { getArtistByHandle } from "@/data/dummy";
 import { isScheduleActive } from "@/lib/utils";
+import { getBringStatus } from "@/actions/bring";
+import { BringButton } from "@/components/artist/BringButton";
 import type { GuestSchedule } from "@/types";
 
 interface Props {
@@ -250,10 +252,12 @@ async function ProfileContent({
   handle,
   ownerArtistId,
   activeTab,
+  isLoggedIn,
 }: {
   handle: string;
   ownerArtistId: string | null;
   activeTab: "profile" | "schedule" | "insights";
+  isLoggedIn: boolean;
 }) {
   const artist =
     (await getArtistProfile(handle).catch(() => null)) ??
@@ -264,6 +268,10 @@ async function ProfileContent({
 
   const isOwner = ownerArtistId === artist.id;
   const instagramUrl = `https://www.instagram.com/${artist.instagramHandle.replace("@", "")}`;
+
+  // Bring 상태 조회 (아티스트 Base City 기준)
+  const bringInfo = await getBringStatus(artist.id, artist.baseCity ?? "");
+  const { isBringing, bringCount, baseCity } = bringInfo;
 
   // 포트폴리오 (본인 탭에서도 사용)
   let portfolioItems = artist.portfolioItems;
@@ -348,16 +356,16 @@ async function ProfileContent({
                 </button>
               )}
 
-              {/* Bring 버튼 — 타인 로그인 시만 표시 */}
+              {/* Bring 버튼 — 타인에게만 표시 */}
               {!isOwner && (
-                <div
-                  className="flex items-center justify-center rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm font-medium text-neutral-500 select-none cursor-default"
-                  role="button"
-                  aria-disabled="true"
-                  aria-label={`${artist.displayName} Bring This Artist`}
-                >
-                  Bring
-                </div>
+                <BringButton
+                  artistId={artist.id}
+                  artistHandle={artist.instagramHandle}
+                  artistDisplayName={artist.displayName}
+                  isBringing={isBringing}
+                  baseCity={baseCity}
+                  isLoggedIn={isLoggedIn}
+                />
               )}
 
               {/* Instagram 버튼 */}
@@ -396,6 +404,12 @@ async function ProfileContent({
                   </span>
                 )}
               </h3>
+              {/* Bring 수 표시 */}
+              {bringCount > 0 && !isOwner && (
+                <span className="text-[11px] text-neutral-400">
+                  <span className="font-semibold text-neutral-700">{bringCount}</span> Bring
+                </span>
+              )}
             </div>
 
             {sortedSchedules.length > 0 ? (
@@ -531,10 +545,12 @@ export default async function ArtistProfilePage({ params, searchParams }: Props)
 
   // 로그인 유저의 artist_id 조회
   let ownerArtistId: string | null = null;
+  let isLoggedIn = false;
   try {
     const supabase = await getSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
+      isLoggedIn = true;
       const { data: artistRow } = await supabase
         .from("artist_profiles")
         .select("id")
@@ -571,6 +587,7 @@ export default async function ArtistProfilePage({ params, searchParams }: Props)
           handle={handle}
           ownerArtistId={ownerArtistId}
           activeTab={activeTab}
+          isLoggedIn={isLoggedIn}
         />
       </Suspense>
     </PageContainer>

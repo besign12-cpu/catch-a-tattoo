@@ -13,6 +13,7 @@ import { getCityArtists, type SearchResult } from "@/lib/queries/artists";
 import { DUMMY_ARTISTS } from "@/data/dummy";
 import { fromCitySlug } from "@/lib/mock-preferences";
 import { formatDateRange, calcDDay } from "@/lib/utils";
+import { getCityBringCount } from "@/actions/bring";
 import type { GuestSchedule, Tag } from "@/types";
 
 export const metadata: Metadata = { title: "도시" };
@@ -207,11 +208,16 @@ function ArtistInsightBanner({
   city,
   guestCount,
   bringCount,
+  artistHandle,
 }: {
   city: string;
   guestCount: number;
   bringCount: number;
+  artistHandle: string | null;
 }) {
+  const scheduleNewPath = artistHandle
+    ? `/artists/${artistHandle}/schedule/new`
+    : "/artists/new";
   return (
     <div className="rounded-2xl border border-neutral-800 bg-neutral-900 px-5 py-4">
       {/* 헤더 */}
@@ -245,7 +251,7 @@ function ArtistInsightBanner({
 
       {/* CTA */}
       <Link
-        href={`/studio/schedule/new`}
+        href={scheduleNewPath}
         className="
           mt-4 flex items-center justify-center gap-2
           w-full rounded-xl bg-white
@@ -265,9 +271,6 @@ function ArtistInsightBanner({
         날짜별 수요 확인 →
       </Link>
 
-      <p className="mt-2 text-center text-[10px] text-neutral-600">
-        * Bring 실수요는 Sprint 5에서 연결됩니다
-      </p>
     </div>
   );
 }
@@ -284,13 +287,14 @@ export default async function CityPage({
   const activeTab: TabType = sp.tab === "based" ? "based" : "guest";
   const { city, country } = fromCitySlug(citySlug);
 
-  // 로그인 여부 + role 확인 (Artist View 분기용)
+  // 로그인 여부 + role + artistHandle 확인 (Artist View 분기용)
   const supabase = await getSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   let isArtist = false;
+  let artistHandle: string | null = null;
   if (user) {
     const { data: userRow } = await supabase
       .from("users")
@@ -299,6 +303,15 @@ export default async function CityPage({
       .single();
     isArtist =
       userRow?.role === "artist" || userRow?.role === "admin";
+
+    if (isArtist) {
+      const { data: artistRow } = await supabase
+        .from("artist_profiles")
+        .select("instagram_handle")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      artistHandle = (artistRow as { instagram_handle: string | null } | null)?.instagram_handle ?? null;
+    }
   }
 
   // 아티스트 데이터 조회
@@ -333,8 +346,8 @@ export default async function CityPage({
   const allArtists = [...guests, ...based];
   const popularStyles = calcPopularStyles(allArtists);
 
-  // Sprint 5: city_follows (is_active=true) WHERE city = city 쿼리로 교체
-  const bringCount = 0;
+  // city_follows (is_active=true) 실데이터 조회
+  const bringCount = await getCityBringCount(city);
 
   return (
     <PageContainer className="bg-neutral-50">
@@ -406,6 +419,7 @@ export default async function CityPage({
             city={city}
             guestCount={guests.length}
             bringCount={bringCount}
+            artistHandle={artistHandle}
           />
         )}
 
