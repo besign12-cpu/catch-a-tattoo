@@ -43,12 +43,11 @@ export default async function MePage() {
 
   if (!user) redirect("/auth/login");
 
-  // getUserProfile 실패해도 user 정보로 기본 렌더링 보장
   let profile = null;
   try {
     profile = await getUserProfile(user.id);
   } catch {
-    // DB 일시 에러 등 — user 인증은 이미 완료됐으므로 계속 렌더
+    // DB 일시 에러 — user 인증 완료됐으므로 계속 렌더
   }
 
   const displayName = profile?.username ?? user.email?.split("@")[0] ?? "사용자";
@@ -99,7 +98,10 @@ export default async function MePage() {
         </section>
 
         <div className="px-4 flex flex-col gap-3">
-          {/* Artist Studio CTA — role이 artist/admin인 경우만 표시 */}
+
+          {/* ── 아티스트 프로필 CTA (단일) ─────────────────────
+              role이 artist/admin이고 handle이 있을 때만 표시
+              "@{handle} 프로필" 형태로 표시 */}
           {(profile?.role === "artist" || profile?.role === "admin") && profile?.artistHandle && (
             <Link
               href={`/artists/${profile.artistHandle}`}
@@ -116,10 +118,10 @@ export default async function MePage() {
                 </div>
                 <div className="flex flex-col gap-0.5">
                   <p className="text-[13px] font-semibold text-white leading-tight">
-                    내 아티스트 프로필
+                    @{profile.artistHandle} 프로필
                   </p>
                   <p className="text-[11px] text-neutral-400 leading-tight">
-                    일정 관리 · 프로필 수정
+                    Guest Work 관리 · 프로필 수정
                   </p>
                 </div>
               </div>
@@ -138,7 +140,7 @@ export default async function MePage() {
             )}
             {profile?.baseCity && (
               <InfoRow
-                label="Base City"
+                label="Based City"
                 value={`${profile.baseCity}${profile.baseCountry ? `, ${countryName(profile.baseCountry)}` : ""}`}
               />
             )}
@@ -155,27 +157,6 @@ export default async function MePage() {
             </div>
             <span className="text-xs text-neutral-300">Base City · 관심장르 →</span>
           </Link>
-
-          {/* 아티스트 프로필 연결 */}
-          {profile?.artistHandle ? (
-            <Link
-              href={`/artists/${profile.artistHandle}`}
-              className="flex items-center justify-between rounded-2xl bg-white border border-neutral-100 px-5 py-4 hover:border-neutral-200 transition-colors"
-            >
-              <div className="flex flex-col gap-0.5">
-                <p className="text-xs text-neutral-400">연결된 아티스트 프로필</p>
-                <p className="text-sm font-medium text-neutral-900">@{profile.artistHandle}</p>
-              </div>
-              <span className="text-xs text-neutral-300">보기 →</span>
-            </Link>
-          ) : (
-            <div className="rounded-2xl bg-neutral-50 border border-neutral-100 border-dashed px-5 py-4">
-              <p className="text-xs text-neutral-400">연결된 아티스트 프로필이 없습니다.</p>
-              <p className="mt-0.5 text-[11px] text-neutral-300">
-                아티스트 프로필 연결은 추후 지원 예정입니다.
-              </p>
-            </div>
-          )}
 
           {/* 로그아웃 */}
           <form action={signOut} className="mt-1">
