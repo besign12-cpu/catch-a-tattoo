@@ -17,7 +17,9 @@ import { getMyPortfolio } from "@/lib/queries/studio";
 import { getArtistByHandle } from "@/data/dummy";
 import { isScheduleActive } from "@/lib/utils";
 import { getBringStatus } from "@/actions/bring";
+import { getFollowStatus } from "@/actions/follow";
 import { BringButton } from "@/components/artist/BringButton";
+import { FollowButton } from "@/components/artist/FollowButton";
 import type { GuestSchedule } from "@/types";
 
 interface Props {
@@ -273,6 +275,9 @@ async function ProfileContent({
   const bringInfo = await getBringStatus(artist.id, artist.baseCity ?? "");
   const { isBringing, bringCount, baseCity } = bringInfo;
 
+  // Follow 상태 조회
+  const { isFollowing, followerCount } = await getFollowStatus(artist.id);
+
   // 포트폴리오 (본인 탭에서도 사용)
   let portfolioItems = artist.portfolioItems;
   if (isOwner && ownerArtistId) {
@@ -325,6 +330,11 @@ async function ProfileContent({
                 <p className="mb-2 text-xs text-neutral-400">
                   Based in {artist.baseCity}
                   {artist.baseCountry ? `, ${artist.baseCountry}` : ""}
+                  {followerCount > 0 && (
+                    <span className="ml-2 text-neutral-300">
+                      · 팔로워 <span className="font-medium text-neutral-500">{followerCount}</span>
+                    </span>
+                  )}
                 </p>
                 <TagList tags={artist.tags} size="sm" max={5} />
               </div>
@@ -348,12 +358,14 @@ async function ProfileContent({
                   프로필 수정
                 </Link>
               ) : (
-                <button
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-medium transition-colors active:opacity-80 bg-neutral-900 text-white"
-                  aria-label={`${artist.displayName} 팔로우`}
-                >
-                  팔로우
-                </button>
+                <FollowButton
+                  artistId={artist.id}
+                  artistHandle={artist.instagramHandle}
+                  artistDisplayName={artist.displayName}
+                  isFollowing={isFollowing}
+                  isLoggedIn={isLoggedIn}
+                  variant="profile"
+                />
               )}
 
               {/* Bring 버튼 — 타인에게만 표시 */}

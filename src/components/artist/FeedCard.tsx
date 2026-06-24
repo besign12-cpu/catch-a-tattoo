@@ -6,6 +6,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import { TagList } from "@/components/ui/TagChip";
 import { formatDateRange, calcDDay, isScheduleActive } from "@/lib/utils";
+import { FollowButton } from "@/components/artist/FollowButton";
 import type { FeedCard as FeedCardType } from "@/types";
 
 // ISO 국가 코드 → 국가명 (자주 쓰이는 것만)
@@ -25,9 +26,10 @@ function countryName(code: string) {
 interface FeedCardProps {
   data: FeedCardType;
   className?: string;
+  isLoggedIn?: boolean;
 }
 
-export function FeedCard({ data, className }: FeedCardProps) {
+export function FeedCard({ data, className, isLoggedIn = false }: FeedCardProps) {
   const { artist, schedule, isFollowing } = data;
   const status    = isScheduleActive(schedule.startDate, schedule.endDate);
   const isActive  = status === "active";
@@ -65,21 +67,14 @@ export function FeedCard({ data, className }: FeedCardProps) {
         </div>
 
         {/* 팔로우 버튼 */}
-        <button
-          className={cn(
-            "shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-medium leading-none transition-colors active:scale-95",
-            isFollowing
-              ? "border-neutral-200 bg-neutral-100 text-neutral-500"
-              : "border-neutral-300 bg-white text-neutral-800"
-          )}
-          aria-label={
-            isFollowing
-              ? `${artist.displayName} 팔로잉 중`
-              : `${artist.displayName} 팔로우`
-          }
-        >
-          {isFollowing ? "팔로잉" : "팔로우"}
-        </button>
+        <FollowButton
+          artistId={artist.id}
+          artistHandle={artist.instagramHandle}
+          artistDisplayName={artist.displayName}
+          isFollowing={isFollowing}
+          isLoggedIn={isLoggedIn}
+          variant="feed"
+        />
       </div>
 
       {/* 어디 / 언제 블록 — 라벨 없이 */}

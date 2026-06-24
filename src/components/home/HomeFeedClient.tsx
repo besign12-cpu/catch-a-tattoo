@@ -82,6 +82,7 @@ interface HomeFeedClientProps {
   basedItems: FeedCardType[];
   baseCity: string;
   citySlug: string;
+  isLoggedIn?: boolean;
 }
 
 export function HomeFeedClient({
@@ -89,6 +90,7 @@ export function HomeFeedClient({
   basedItems,
   baseCity,
   citySlug,
+  isLoggedIn = false,
 }: HomeFeedClientProps) {
   const [query, setQuery] = useState("");
   const [period, setPeriod] = useState<PeriodFilter>("all");
@@ -178,7 +180,7 @@ export function HomeFeedClient({
           ) : (
             <div className="space-y-2.5 px-3 pt-1">
               {filteredGuest.map((item) => (
-                <FeedCard key={item.schedule.id} data={item} />
+                <FeedCard key={item.schedule.id} data={item} isLoggedIn={isLoggedIn} />
               ))}
             </div>
           )}
@@ -195,7 +197,7 @@ export function HomeFeedClient({
           ) : (
             <div className="space-y-2.5 px-3 pt-1">
               {filteredBased.map((item) => (
-                <FeedCard key={item.schedule.id} data={item} />
+                <FeedCard key={item.schedule.id} data={item} isLoggedIn={isLoggedIn} />
               ))}
             </div>
           )}
