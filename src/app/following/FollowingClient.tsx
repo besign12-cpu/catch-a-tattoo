@@ -3,11 +3,13 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Bell, Calendar, Heart, ChevronRight } from "lucide-react";
+import { useFormState, useFormStatus } from "react-dom";
 import { TopBar } from "@/components/layout/TopBar";
 import { Avatar } from "@/components/ui/Avatar";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import { TagList } from "@/components/ui/TagChip";
-import { FollowButton } from "@/components/artist/FollowButton";
+import { toggleFollow, type FollowState } from "@/actions/follow";
+import { cn } from "@/lib/utils";
 import type { Tag } from "@/types";
 
 // ── 타입 ────────────────────────────────────────────────────
@@ -193,6 +195,83 @@ function ScheduleTab({ schedules }: { schedules: FollowingScheduleItem[] }) {
   );
 }
 
+// ── InlineFollowButton ────────────────────────────────────────
+//
+// Following 탭 전용 Follow/Unfollow 버튼.
+// router.refresh() 없이 로컬 isFollowing 상태만 토글.
+// → Unfollow 해도 카드는 유지, 버튼 상태만 변경.
+// → 실수로 Unfollow 시 같은 버튼으로 즉시 재Follow 가능.
+// → 페이지 이탈 후 재진입하면 DB 기준으로 반영됨.
+
+function InlineFollowSubmit({
+  isFollowing,
+  displayName,
+}: {
+  isFollowing: boolean;
+  displayName: string;
+}) {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className={cn(
+        "shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-medium leading-none transition-colors active:scale-95",
+        "disabled:opacity-50 disabled:cursor-not-allowed",
+        isFollowing
+          ? "border-neutral-200 bg-neutral-100 text-neutral-500"
+          : "border-neutral-300 bg-white text-neutral-800"
+      )}
+      aria-label={isFollowing ? `${displayName} 언팔로우` : `${displayName} 팔로우`}
+      aria-pressed={isFollowing}
+    >
+      {pending ? "···" : isFollowing ? "팔로잉" : "팔로우"}
+    </button>
+  );
+}
+
+const followInitialState: FollowState = { status: "idle" };
+
+function InlineFollowButton({
+  artistId,
+  artistHandle,
+  artistDisplayName,
+}: {
+  artistId: string;
+  artistHandle: string;
+  artistDisplayName: string;
+}) {
+  // 로컬 isFollowing 상태 — 초기값은 true (Following 탭에 있으므로)
+  const [localIsFollowing, setLocalIsFollowing] = useState(true);
+  const [state, formAction] = useFormState(toggleFollow, followInitialState);
+
+  // 성공 시 로컬 상태만 토글 (router.refresh 호출 안 함)
+  // → 카드는 유지, 버튼만 팔로우↔팔로잉 전환
+  const handleAction = async (formData: FormData) => {
+    const result = await formAction(formData);
+    // useFormState는 반환값을 직접 받지 않으므로
+    // state 변화는 다음 렌더에서 감지 — 대신 낙관적으로 즉시 토글
+    setLocalIsFollowing((prev) => !prev);
+    return result;
+  };
+
+  return (
+    <div>
+      <form action={handleAction}>
+        <input type="hidden" name="artistId" value={artistId} />
+        <input type="hidden" name="artistHandle" value={artistHandle} />
+        <InlineFollowSubmit
+          isFollowing={localIsFollowing}
+          displayName={artistDisplayName}
+        />
+      </form>
+      {state.status === "error" && (
+        <p className="mt-0.5 text-[10px] text-red-500">{state.message}</p>
+      )}
+    </div>
+  );
+}
+
 // ── 팔로우 탭 ────────────────────────────────────────────────
 
 function FollowTab({ artists }: { artists: FollowingArtistItem[] }) {
@@ -229,14 +308,11 @@ function FollowTab({ artists }: { artists: FollowingArtistItem[] }) {
             </div>
           </Link>
 
-          {/* 팔로잉 버튼 — FollowButton 실연결 */}
-          <FollowButton
+          {/* 팔로잉 버튼 — 카드 유지, 상태만 로컬 토글 */}
+          <InlineFollowButton
             artistId={artist.id}
             artistHandle={artist.instagramHandle}
             artistDisplayName={artist.displayName}
-            isFollowing={true}
-            isLoggedIn={true}
-            variant="feed"
           />
         </div>
       ))}
