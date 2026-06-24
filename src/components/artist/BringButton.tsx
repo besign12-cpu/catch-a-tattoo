@@ -80,6 +80,8 @@ interface BringButtonProps {
   isBringing: boolean;
   baseCity: string | null;
   isLoggedIn: boolean;
+  /** Follow 여부 — Follow 안 한 상태에서 Bring 비활성 */
+  isFollowing: boolean;
 }
 
 const initialState: BringState = { status: "idle" };
@@ -91,12 +93,12 @@ export function BringButton({
   isBringing: initialIsBringing,
   baseCity,
   isLoggedIn,
+  isFollowing,
 }: BringButtonProps) {
   const router = useRouter();
   const [state, formAction] = useFormState(toggleBring, initialState);
   const prevStatus = useRef(state.status);
 
-  // 성공 시 페이지 새로고침 (서버 revalidate 반영)
   useEffect(() => {
     if (state.status === "success" && prevStatus.current !== "success") {
       router.refresh();
@@ -104,13 +106,27 @@ export function BringButton({
     prevStatus.current = state.status;
   }, [state.status, router]);
 
-  // 비로그인 → 로그인 유도 버튼
+  // 비로그인 → 로그인 유도
   if (!isLoggedIn) {
     return (
       <button
         onClick={() => router.push(`/auth/login?next=/artists/${artistHandle}`)}
         className="flex items-center justify-center rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm font-medium text-neutral-500 active:bg-neutral-50 transition-colors"
         aria-label={`${artistDisplayName} Bring This Artist (로그인 필요)`}
+      >
+        Bring
+      </button>
+    );
+  }
+
+  // Follow 안 한 상태 → Bring 비활성 (툴팁으로 Follow 유도)
+  if (!isFollowing) {
+    return (
+      <button
+        disabled
+        className="flex items-center justify-center rounded-xl border border-neutral-100 bg-neutral-50 px-3 py-2.5 text-sm font-medium text-neutral-300 cursor-not-allowed select-none"
+        aria-label="팔로우 후 Bring 가능"
+        title="먼저 팔로우해주세요"
       >
         Bring
       </button>

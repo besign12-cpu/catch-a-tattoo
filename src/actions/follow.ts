@@ -65,7 +65,7 @@ export async function toggleFollow(
     .maybeSingle();
 
   if (existing) {
-    // 언팔로우: DELETE
+    // 언팔로우: follows DELETE
     const { error } = await admin
       .from("follows")
       .delete()
@@ -74,6 +74,18 @@ export async function toggleFollow(
     if (error) {
       return { status: "error", message: "언팔로우에 실패했습니다." };
     }
+
+    // Unfollow 시 해당 user + artist 의 활성 Bring 자동 취소
+    // (도시 무관하게 해당 아티스트에 대한 모든 활성 Bring 종료)
+    await admin
+      .from("city_follows")
+      .update({
+        is_active: false,
+        expired_at: new Date().toISOString(),
+      })
+      .eq("user_id", user.id)
+      .eq("artist_id", artistId)
+      .eq("is_active", true);
 
     if (artistHandle) revalidatePath(`/artists/${artistHandle}`);
     revalidatePath("/following");

@@ -135,13 +135,21 @@ export async function toggleBring(
 
 // ── getBringStatus ────────────────────────────────────────────
 //
-// 서버에서 현재 사용자의 Bring 여부와 Bring 수를 조회
-// Artist Profile 페이지 서버 컴포넌트에서 사용
+// Artist Profile 서버 컴포넌트에서 사용
+//
+// myCityBringCount:
+//   "My City Bring" = 현재 로그인 유저의 Base City 기준
+//   해당 아티스트의 활성 Bring 수.
+//   비로그인 또는 Base City 미설정 시 0.
+//   (Tokyo, Paris 등 다른 도시 Bring 미포함)
 
 export async function getBringStatus(
-  artistId: string,
-  city: string
-): Promise<{ isBringing: boolean; bringCount: number; baseCity: string | null }> {
+  artistId: string
+): Promise<{
+  isBringing: boolean;
+  myCityBringCount: number;
+  baseCity: string | null;
+}> {
   const supabase = await getSupabaseServerClient();
   const {
     data: { user },
@@ -149,19 +157,12 @@ export async function getBringStatus(
 
   const admin = getSupabaseAdminClient();
 
-  // 전체 활성 Bring 수 (해당 아티스트 × 해당 도시)
-  const { count: bringCount } = await admin
-    .from("city_follows")
-    .select("id", { count: "exact", head: true })
-    .eq("artist_id", artistId)
-    .eq("city", city)
-    .eq("is_active", true);
-
+  // 비로그인 → 모두 0
   if (!user) {
-    return { isBringing: false, bringCount: bringCount ?? 0, baseCity: null };
+    return { isBringing: false, myCityBringCount: 0, baseCity: null };
   }
 
-  // 현재 사용자 Base City
+  // 현재 사용자 Base City 조회
   const { data: userData } = await admin
     .from("users")
     .select("base_city")
@@ -170,11 +171,20 @@ export async function getBringStatus(
 
   const baseCity = userData?.base_city ?? null;
 
-  // 현재 사용자의 활성 Bring 여부 (Base City 기준)
+  // Base City 미설정 → Bring 불가
   if (!baseCity) {
-    return { isBringing: false, bringCount: bringCount ?? 0, baseCity: null };
+    return { isBringing: false, myCityBringCount: 0, baseCity: null };
   }
 
+  // My City Bring 수: 내 Base City 기준 해당 아티스트 활성 Bring 수
+  const { count: myCityBringCount } = await admin
+    .from("city_follows")
+    .select("id", { count: "exact", head: true })
+    .eq("artist_id", artistId)
+    .eq("city", baseCity)
+    .eq("is_active", true);
+
+  // 현재 사용자 본인의 Bring 여부
   const { data: myBring } = await admin
     .from("city_follows")
     .select("id")
@@ -186,7 +196,7 @@ export async function getBringStatus(
 
   return {
     isBringing: !!myBring,
-    bringCount: bringCount ?? 0,
+    myCityBringCount: myCityBringCount ?? 0,
     baseCity,
   };
 }

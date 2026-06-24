@@ -271,9 +271,9 @@ async function ProfileContent({
   const isOwner = ownerArtistId === artist.id;
   const instagramUrl = `https://www.instagram.com/${artist.instagramHandle.replace("@", "")}`;
 
-  // Bring 상태 조회 (아티스트 Base City 기준)
-  const bringInfo = await getBringStatus(artist.id, artist.baseCity ?? "");
-  const { isBringing, bringCount, baseCity } = bringInfo;
+  // Bring 상태 조회 (My City 기준)
+  const bringInfo = await getBringStatus(artist.id);
+  const { isBringing, myCityBringCount, baseCity } = bringInfo;
 
   // Follow 상태 조회
   const { isFollowing, followerCount } = await getFollowStatus(artist.id);
@@ -327,15 +327,19 @@ async function ProfileContent({
                   </h2>
                   {artist.isVerified && <VerifiedBadge size={16} />}
                 </div>
-                <p className="mb-2 text-xs text-neutral-400">
+                <p className="text-xs text-neutral-400">
                   Based in {artist.baseCity}
                   {artist.baseCountry ? `, ${artist.baseCountry}` : ""}
-                  {followerCount > 0 && (
-                    <span className="ml-2 text-neutral-300">
-                      · 팔로워 <span className="font-medium text-neutral-500">{followerCount}</span>
-                    </span>
-                  )}
                 </p>
+                {/* 팔로워 · My City Bring 항상 표시 */}
+                {!isOwner && (
+                  <p className="mt-0.5 mb-2 text-[12px] font-medium text-neutral-600">
+                    팔로워 {followerCount}
+                    <span className="mx-1.5 text-neutral-300">·</span>
+                    My City Bring {myCityBringCount}
+                  </p>
+                )}
+                {isOwner && <div className="mb-2" />}
                 <TagList tags={artist.tags} size="sm" max={5} />
               </div>
             </div>
@@ -377,6 +381,7 @@ async function ProfileContent({
                   isBringing={isBringing}
                   baseCity={baseCity}
                   isLoggedIn={isLoggedIn}
+                  isFollowing={isFollowing}
                 />
               )}
 
@@ -416,12 +421,6 @@ async function ProfileContent({
                   </span>
                 )}
               </h3>
-              {/* Bring 수 표시 */}
-              {bringCount > 0 && !isOwner && (
-                <span className="text-[11px] text-neutral-400">
-                  <span className="font-semibold text-neutral-700">{bringCount}</span> Bring
-                </span>
-              )}
             </div>
 
             {sortedSchedules.length > 0 ? (
