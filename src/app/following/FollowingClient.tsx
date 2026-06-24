@@ -6,6 +6,9 @@ import { Bell, Calendar, Heart, ChevronRight } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Avatar } from "@/components/ui/Avatar";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
+import { TagList } from "@/components/ui/TagChip";
+import { FollowButton } from "@/components/artist/FollowButton";
+import type { Tag } from "@/types";
 
 // ── 타입 ────────────────────────────────────────────────────
 // Sprint 5에서 실데이터로 교체 예정
@@ -30,6 +33,7 @@ export interface FollowingArtistItem {
   isVerified: boolean;
   baseCity: string | null;
   baseCountry: string | null;
+  tags: Tag[];
 }
 
 export interface FollowingClientProps {
@@ -219,19 +223,21 @@ function FollowTab({ artists }: { artists: FollowingArtistItem[] }) {
                   {artist.baseCountry ? `, ${artist.baseCountry}` : ""}
                 </span>
               )}
+              {artist.tags.length > 0 && (
+                <TagList tags={artist.tags} size="sm" max={3} className="mt-1" />
+              )}
             </div>
           </Link>
 
-          {/* 언팔로우 버튼 — Sprint 5 실동작 연결 예정 */}
-          <button
-            className="shrink-0 rounded-full border border-neutral-200 bg-neutral-100 px-3 py-1.5 text-[11px] font-medium text-neutral-500 active:opacity-70"
-            aria-label={`${artist.displayName} 팔로잉 중`}
-            onClick={() => {
-              // Sprint 5: useFollow 훅 연결 예정
-            }}
-          >
-            팔로잉
-          </button>
+          {/* 팔로잉 버튼 — FollowButton 실연결 */}
+          <FollowButton
+            artistId={artist.id}
+            artistHandle={artist.instagramHandle}
+            artistDisplayName={artist.displayName}
+            isFollowing={true}
+            isLoggedIn={true}
+            variant="feed"
+          />
         </div>
       ))}
     </div>
