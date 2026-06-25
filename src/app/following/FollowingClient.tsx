@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import { Bell, Calendar, Heart, ChevronRight } from "lucide-react";
 import { useFormState, useFormStatus } from "react-dom";
@@ -245,19 +245,22 @@ function InlineFollowButton({
   const [localIsFollowing, setLocalIsFollowing] = useState(true);
   const [state, formAction] = useFormState(toggleFollow, followInitialState);
 
-  // 성공 시 로컬 상태만 토글 (router.refresh 호출 안 함)
-  // → 카드는 유지, 버튼만 팔로우↔팔로잉 전환
-  const handleAction = async (formData: FormData) => {
-    const result = await formAction(formData);
-    // useFormState는 반환값을 직접 받지 않으므로
-    // state 변화는 다음 렌더에서 감지 — 대신 낙관적으로 즉시 토글
+  // Server Action 성공 시 로컬 상태만 토글
+  // - router.refresh() 없음
+  // - revalidatePath("/following") 없음 (follow.ts에서 제거됨)
+  // → 카드 유지, 버튼만 팔로잉 ↔ 팔로우 전환
+  // → 새로고침/재진입 시 DB 기준으로 반영
+  const prevStateRef = useRef<string>("idle");
+  if (state.status === "success" && prevStateRef.current !== "success") {
+    prevStateRef.current = "success";
     setLocalIsFollowing((prev) => !prev);
-    return result;
-  };
+  } else if (state.status !== "success") {
+    prevStateRef.current = state.status;
+  }
 
   return (
     <div>
-      <form action={handleAction}>
+      <form action={formAction}>
         <input type="hidden" name="artistId" value={artistId} />
         <input type="hidden" name="artistHandle" value={artistHandle} />
         <InlineFollowSubmit

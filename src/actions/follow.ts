@@ -88,7 +88,9 @@ export async function toggleFollow(
       .eq("is_active", true);
 
     if (artistHandle) revalidatePath(`/artists/${artistHandle}`);
-    revalidatePath("/following");
+    // /following 은 revalidate 하지 않음
+    // → Following 페이지에서 Unfollow 후 카드 유지 (로컬 상태만 변경)
+    // → 새로고침/재진입 시 DB 기준으로 반영됨
     revalidatePath("/");
 
     return { status: "success", action: "unfollow" };
@@ -111,7 +113,7 @@ export async function toggleFollow(
   }
 
   if (artistHandle) revalidatePath(`/artists/${artistHandle}`);
-  revalidatePath("/following");
+  // /following 은 revalidate 하지 않음 (로컬 상태로 처리)
   revalidatePath("/");
 
   return { status: "success", action: "follow" };
