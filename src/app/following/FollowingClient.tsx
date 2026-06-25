@@ -178,48 +178,22 @@ function ScheduleTab({ schedules }: { schedules: FollowingScheduleItem[] }) {
 
 // ── 팔로우 탭 ─────────────────────────────────────────────────
 //
-// local state 기준 렌더링.
-// fetch POST /api/follow → 성공 시 isFollowing만 toggle.
-// 카드 제거 없음 → 새로고침/재진입 시 DB 기준으로 반영.
+// artists와 handleToggle을 부모(FollowingClient)에서 받음.
+// 탭 전환으로 언마운트/리마운트 되어도 state는 부모에서 유지됨.
 
 interface LocalArtist extends FollowingArtistItem {
   isFollowing: boolean;
 }
 
-function FollowTab({ initialArtists }: { initialArtists: FollowingArtistItem[] }) {
-  // local state: 초기값은 모두 isFollowing=true (Following 탭이므로)
-  const [artists, setArtists] = useState<LocalArtist[]>(
-    initialArtists.map(a => ({ ...a, isFollowing: true }))
-  );
-  const [pendingId, setPendingId] = useState<string | null>(null);
-
-  const handleToggle = useCallback(async (artistId: string, artistHandle: string) => {
-    if (pendingId) return; // 이미 처리 중이면 무시
-    setPendingId(artistId);
-
-    try {
-      // Server Action 대신 fetch → 서버 재렌더 완전 차단
-      const res = await fetch("/api/follow", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ artistId, artistHandle }),
-      });
-
-      if (res.ok) {
-        // 성공: isFollowing만 토글, 카드는 유지
-        setArtists(prev =>
-          prev.map(a =>
-            a.id === artistId ? { ...a, isFollowing: !a.isFollowing } : a
-          )
-        );
-      }
-    } catch {
-      // 네트워크 오류 — 상태 변경 없이 무시
-    } finally {
-      setPendingId(null);
-    }
-  }, [pendingId]);
-
+function FollowTab({
+  artists,
+  pendingId,
+  onToggle,
+}: {
+  artists: LocalArtist[];
+  pendingId: string | null;
+  onToggle: (artistId: string, artistHandle: string) => void;
+}) {
   if (artists.length === 0) return <EmptyState tab="follow" />;
 
   return (
@@ -229,7 +203,6 @@ function FollowTab({ initialArtists }: { initialArtists: FollowingArtistItem[] }
 
         return (
           <div key={artist.id} className="flex items-center gap-3 py-3">
-            {/* 아티스트 정보 */}
             <Link
               href={`/artists/${artist.instagramHandle}`}
               className="flex flex-1 items-center gap-3 min-w-0"
@@ -254,9 +227,8 @@ function FollowTab({ initialArtists }: { initialArtists: FollowingArtistItem[] }
               </div>
             </Link>
 
-            {/* 팔로우 토글 버튼 — 로컬 상태만 변경, 카드 유지 */}
             <button
-              onClick={() => handleToggle(artist.id, artist.instagramHandle)}
+              onClick={() => onToggle(artist.id, artist.instagramHandle)}
               disabled={isPending}
               className={cn(
                 "shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-medium leading-none transition-colors active:scale-95",
@@ -283,10 +255,44 @@ function FollowTab({ initialArtists }: { initialArtists: FollowingArtistItem[] }
 
 export function FollowingClient({
   schedules,
-  artists,
+  artists: initialArtists,
   isLoggedIn,
 }: FollowingClientProps) {
   const [activeTab, setActiveTab] = useState<TabType>("schedule");
+
+  // ── artists local state: 최상위에서 관리 ──────────────────
+  // 탭 전환으로 FollowTab이 언마운트/리마운트 되어도 state 유지
+  // 초기 mount 시 1회만 initialArtists로 설정됨
+  const [localArtists, setLocalArtists] = useState<LocalArtist[]>(
+    () => initialArtists.map(a => ({ ...a, isFollowing: true }))
+  );
+  const [pendingId, setPendingId] = useState<string | null>(null);
+
+  const handleToggle = useCallback(async (artistId: string, artistHandle: string) => {
+    if (pendingId) return;
+    setPendingId(artistId);
+
+    try {
+      const res = await fetch("/api/follow", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ artistId, artistHandle }),
+      });
+
+      if (res.ok) {
+        // isFollowing만 토글, 카드 제거 없음
+        setLocalArtists(prev =>
+          prev.map(a =>
+            a.id === artistId ? { ...a, isFollowing: !a.isFollowing } : a
+          )
+        );
+      }
+    } catch {
+      // 네트워크 오류 — 무시
+    } finally {
+      setPendingId(null);
+    }
+  }, [pendingId]);
 
   return (
     <div className="flex flex-col">
@@ -326,7 +332,11 @@ export function FollowingClient({
       ) : activeTab === "schedule" ? (
         <ScheduleTab schedules={schedules} />
       ) : (
-        <FollowTab initialArtists={artists} />
+        <FollowTab
+          artists={localArtists}
+          pendingId={pendingId}
+          onToggle={handleToggle}
+        />
       )}
     </div>
   );
