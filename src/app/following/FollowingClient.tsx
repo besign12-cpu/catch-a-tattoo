@@ -1,19 +1,29 @@
 "use client";
 
-import { useState, useRef } from "react";
+/**
+ * FollowingClient
+ *
+ * 핵심 정책:
+ * - artists를 local state로 복사 → 화면은 local state 기준 렌더링
+ * - Unfollow/Follow는 fetch POST /api/follow 로 처리
+ *   (Server Action / useFormState 사용 금지 → 서버 재렌더 완전 차단)
+ * - Unfollow 성공 → item의 isFollowing만 false, 카드는 유지
+ * - Follow 재클릭 → isFollowing=true
+ * - router.refresh() 금지
+ * - 새로고침 / 재진입 시 DB 기준으로 반영
+ */
+
+import { useState, useCallback } from "react";
 import Link from "next/link";
 import { Bell, Calendar, Heart, ChevronRight } from "lucide-react";
-import { useFormState, useFormStatus } from "react-dom";
 import { TopBar } from "@/components/layout/TopBar";
 import { Avatar } from "@/components/ui/Avatar";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import { TagList } from "@/components/ui/TagChip";
-import { toggleFollow, type FollowState } from "@/actions/follow";
 import { cn } from "@/lib/utils";
 import type { Tag } from "@/types";
 
-// ── 타입 ────────────────────────────────────────────────────
-// Sprint 5에서 실데이터로 교체 예정
+// ── 타입 ─────────────────────────────────────────────────────
 
 export interface FollowingScheduleItem {
   id: string;
@@ -25,7 +35,7 @@ export interface FollowingScheduleItem {
   country: string;
   startDate: string;
   endDate: string;
-  isActive: boolean; // 진행 중 여부
+  isActive: boolean;
 }
 
 export interface FollowingArtistItem {
@@ -44,55 +54,49 @@ export interface FollowingClientProps {
   isLoggedIn: boolean;
 }
 
-// ── 탭 타입 ─────────────────────────────────────────────────
+// ── 탭 타입 ──────────────────────────────────────────────────
 
 type TabType = "schedule" | "follow";
 
-// ── 날짜 포맷 유틸 (ScheduleBlock 의존 없이 간단 처리) ──────
+// ── 날짜 유틸 ────────────────────────────────────────────────
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
   return `${d.getMonth() + 1}/${d.getDate()}`;
 }
-
 function formatDateRange(start: string, end: string): string {
   return `${formatDate(start)} – ${formatDate(end)}`;
 }
-
 function calcDDay(startDate: string, endDate: string): string {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const start = new Date(startDate);
   const end   = new Date(endDate);
   end.setHours(23, 59, 59, 999);
-
   if (today >= start && today <= end) return "진행 중";
   if (today > end) return "종료";
   const diff = Math.ceil((start.getTime() - today.getTime()) / 86400000);
   return `D-${diff}`;
 }
 
-// ── 비로그인 Empty State ─────────────────────────────────────
+// ── 빈 상태 ──────────────────────────────────────────────────
 
-function UnauthenticatedState({ tab }: { tab: TabType }) {
-  const message =
+function EmptyState({ tab }: { tab: TabType }) {
+  const msg =
     tab === "schedule"
       ? { title: "팔로우한 아티스트 일정이 없습니다", sub: "아티스트를 팔로우하면\n일정을 여기서 확인할 수 있습니다" }
-      : { title: "팔로우한 아티스트가 없습니다", sub: "아티스트를 팔로우하면\n여기에 표시됩니다" };
+      : { title: "팔로우한 아티스트가 없습니다",      sub: "아티스트를 팔로우하면\n여기에 표시됩니다" };
 
   return (
     <div className="flex flex-col items-center gap-4 px-8 py-16 text-center">
       <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-neutral-100">
         {tab === "schedule"
           ? <Calendar size={22} className="text-neutral-400" aria-hidden="true" />
-          : <Heart size={22} className="text-neutral-400" aria-hidden="true" />
-        }
+          : <Heart    size={22} className="text-neutral-400" aria-hidden="true" />}
       </div>
       <div className="flex flex-col gap-1">
-        <p className="text-[15px] font-semibold text-neutral-800">{message.title}</p>
-        <p className="text-sm text-neutral-400 leading-relaxed whitespace-pre-line">
-          {message.sub}
-        </p>
+        <p className="text-[15px] font-semibold text-neutral-800">{msg.title}</p>
+        <p className="text-sm text-neutral-400 leading-relaxed whitespace-pre-line">{msg.sub}</p>
       </div>
       <Link
         href="/"
@@ -104,14 +108,11 @@ function UnauthenticatedState({ tab }: { tab: TabType }) {
   );
 }
 
-// ── 일정 탭 ─────────────────────────────────────────────────
+// ── 일정 탭 (서버 props 그대로 — local state 불필요) ──────────
 
 function ScheduleTab({ schedules }: { schedules: FollowingScheduleItem[] }) {
-  if (schedules.length === 0) {
-    return <UnauthenticatedState tab="schedule" />;
-  }
+  if (schedules.length === 0) return <EmptyState tab="schedule" />;
 
-  // 진행 중 → 예정 순 정렬
   const sorted = [...schedules].sort((a, b) => {
     if (a.isActive && !b.isActive) return -1;
     if (!a.isActive && b.isActive) return 1;
@@ -121,9 +122,8 @@ function ScheduleTab({ schedules }: { schedules: FollowingScheduleItem[] }) {
   return (
     <div className="flex flex-col gap-3 px-4 py-4">
       {sorted.map(item => {
-        const dday = calcDDay(item.startDate, item.endDate);
+        const dday      = calcDDay(item.startDate, item.endDate);
         const dateRange = formatDateRange(item.startDate, item.endDate);
-        const isActive = item.isActive;
 
         return (
           <Link
@@ -131,7 +131,6 @@ function ScheduleTab({ schedules }: { schedules: FollowingScheduleItem[] }) {
             href={`/artists/${item.artistHandle}`}
             className="block overflow-hidden rounded-2xl border border-neutral-100 bg-white active:opacity-80"
           >
-            {/* 아티스트 행 */}
             <div className="flex items-center gap-2.5 px-3 pt-3 pb-2">
               <Avatar name={item.artistName} size="sm" />
               <div className="min-w-0 flex-1">
@@ -142,50 +141,32 @@ function ScheduleTab({ schedules }: { schedules: FollowingScheduleItem[] }) {
                   {item.isVerified && <VerifiedBadge size={12} />}
                 </div>
               </div>
-              {/* 진행 중 뱃지 */}
-              {isActive && (
+              {item.isActive && (
                 <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
                   진행 중
                 </span>
               )}
             </div>
-
-            {/* 일정 블록 */}
-            <div
-              className={[
-                "mx-3 mb-3 flex items-stretch rounded-xl px-3 py-2.5",
-                isActive
-                  ? "border border-emerald-100 bg-emerald-50"
-                  : "border border-neutral-100 bg-neutral-50",
-              ].join(" ")}
-            >
-              {/* 도시 */}
-              <div className="flex flex-1 flex-col gap-0">
-                <span className="text-sm font-medium text-neutral-900 leading-snug">
-                  {item.city}
-                </span>
-                <span className="text-[11px] text-neutral-400 leading-snug">
-                  {item.country}
-                </span>
+            <div className={cn(
+              "mx-3 mb-3 flex items-stretch rounded-xl px-3 py-2.5",
+              item.isActive
+                ? "border border-emerald-100 bg-emerald-50"
+                : "border border-neutral-100 bg-neutral-50"
+            )}>
+              <div className="flex flex-1 flex-col">
+                <span className="text-sm font-medium text-neutral-900 leading-snug">{item.city}</span>
+                <span className="text-[11px] text-neutral-400 leading-snug">{item.country}</span>
               </div>
-
               <div className="mx-3 w-px self-stretch bg-neutral-200" />
-
-              {/* 날짜 */}
-              <div className="flex flex-1 flex-col gap-0">
-                <span className="text-sm font-medium text-neutral-900 leading-snug">
-                  {dateRange}
-                </span>
-                <span
-                  className={[
-                    "text-[11px] leading-snug font-medium",
-                    isActive ? "text-emerald-600" : "text-neutral-400",
-                  ].join(" ")}
-                >
+              <div className="flex flex-1 flex-col">
+                <span className="text-sm font-medium text-neutral-900 leading-snug">{dateRange}</span>
+                <span className={cn(
+                  "text-[11px] leading-snug font-medium",
+                  item.isActive ? "text-emerald-600" : "text-neutral-400"
+                )}>
                   {dday}
                 </span>
               </div>
-
               <ChevronRight size={16} className="ml-1 self-center text-neutral-300" aria-hidden="true" />
             </div>
           </Link>
@@ -195,135 +176,110 @@ function ScheduleTab({ schedules }: { schedules: FollowingScheduleItem[] }) {
   );
 }
 
-// ── InlineFollowButton ────────────────────────────────────────
+// ── 팔로우 탭 ─────────────────────────────────────────────────
 //
-// Following 탭 전용 Follow/Unfollow 버튼.
-// router.refresh() 없이 로컬 isFollowing 상태만 토글.
-// → Unfollow 해도 카드는 유지, 버튼 상태만 변경.
-// → 실수로 Unfollow 시 같은 버튼으로 즉시 재Follow 가능.
-// → 페이지 이탈 후 재진입하면 DB 기준으로 반영됨.
+// local state 기준 렌더링.
+// fetch POST /api/follow → 성공 시 isFollowing만 toggle.
+// 카드 제거 없음 → 새로고침/재진입 시 DB 기준으로 반영.
 
-function InlineFollowSubmit({
-  isFollowing,
-  displayName,
-}: {
+interface LocalArtist extends FollowingArtistItem {
   isFollowing: boolean;
-  displayName: string;
-}) {
-  const { pending } = useFormStatus();
-  return (
-    <button
-      type="submit"
-      disabled={pending}
-      className={cn(
-        "shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-medium leading-none transition-colors active:scale-95",
-        "disabled:opacity-50 disabled:cursor-not-allowed",
-        isFollowing
-          ? "border-neutral-200 bg-neutral-100 text-neutral-500"
-          : "border-neutral-300 bg-white text-neutral-800"
-      )}
-      aria-label={isFollowing ? `${displayName} 언팔로우` : `${displayName} 팔로우`}
-      aria-pressed={isFollowing}
-    >
-      {pending ? "···" : isFollowing ? "팔로잉" : "팔로우"}
-    </button>
-  );
 }
 
-const followInitialState: FollowState = { status: "idle" };
-
-function InlineFollowButton({
-  artistId,
-  artistHandle,
-  artistDisplayName,
-}: {
-  artistId: string;
-  artistHandle: string;
-  artistDisplayName: string;
-}) {
-  // 로컬 isFollowing 상태 — 초기값은 true (Following 탭에 있으므로)
-  const [localIsFollowing, setLocalIsFollowing] = useState(true);
-  const [state, formAction] = useFormState(toggleFollow, followInitialState);
-
-  // Server Action 성공 시 로컬 상태만 토글
-  // - router.refresh() 없음
-  // - revalidatePath("/following") 없음 (follow.ts에서 제거됨)
-  // → 카드 유지, 버튼만 팔로잉 ↔ 팔로우 전환
-  // → 새로고침/재진입 시 DB 기준으로 반영
-  const prevStateRef = useRef<string>("idle");
-  if (state.status === "success" && prevStateRef.current !== "success") {
-    prevStateRef.current = "success";
-    setLocalIsFollowing((prev) => !prev);
-  } else if (state.status !== "success") {
-    prevStateRef.current = state.status;
-  }
-
-  return (
-    <div>
-      <form action={formAction}>
-        <input type="hidden" name="artistId" value={artistId} />
-        <input type="hidden" name="artistHandle" value={artistHandle} />
-        <InlineFollowSubmit
-          isFollowing={localIsFollowing}
-          displayName={artistDisplayName}
-        />
-      </form>
-      {state.status === "error" && (
-        <p className="mt-0.5 text-[10px] text-red-500">{state.message}</p>
-      )}
-    </div>
+function FollowTab({ initialArtists }: { initialArtists: FollowingArtistItem[] }) {
+  // local state: 초기값은 모두 isFollowing=true (Following 탭이므로)
+  const [artists, setArtists] = useState<LocalArtist[]>(
+    initialArtists.map(a => ({ ...a, isFollowing: true }))
   );
-}
+  const [pendingId, setPendingId] = useState<string | null>(null);
 
-// ── 팔로우 탭 ────────────────────────────────────────────────
+  const handleToggle = useCallback(async (artistId: string, artistHandle: string) => {
+    if (pendingId) return; // 이미 처리 중이면 무시
+    setPendingId(artistId);
 
-function FollowTab({ artists }: { artists: FollowingArtistItem[] }) {
-  if (artists.length === 0) {
-    return <UnauthenticatedState tab="follow" />;
-  }
+    try {
+      // Server Action 대신 fetch → 서버 재렌더 완전 차단
+      const res = await fetch("/api/follow", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ artistId, artistHandle }),
+      });
+
+      if (res.ok) {
+        // 성공: isFollowing만 토글, 카드는 유지
+        setArtists(prev =>
+          prev.map(a =>
+            a.id === artistId ? { ...a, isFollowing: !a.isFollowing } : a
+          )
+        );
+      }
+    } catch {
+      // 네트워크 오류 — 상태 변경 없이 무시
+    } finally {
+      setPendingId(null);
+    }
+  }, [pendingId]);
+
+  if (artists.length === 0) return <EmptyState tab="follow" />;
 
   return (
     <div className="flex flex-col divide-y divide-neutral-50 px-4 py-2">
-      {artists.map(artist => (
-        <div key={artist.id} className="flex items-center gap-3 py-3">
-          {/* 아바타 + 이름 */}
-          <Link
-            href={`/artists/${artist.instagramHandle}`}
-            className="flex flex-1 items-center gap-3 min-w-0"
-          >
-            <Avatar name={artist.displayName} size="sm" />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1">
-                <span className="text-[14px] font-medium text-neutral-900 truncate leading-tight">
-                  {artist.displayName}
-                </span>
-                {artist.isVerified && <VerifiedBadge size={12} />}
-              </div>
-              {artist.baseCity && (
-                <span className="text-[12px] text-neutral-400 leading-tight">
-                  {artist.baseCity}
-                  {artist.baseCountry ? `, ${artist.baseCountry}` : ""}
-                </span>
-              )}
-              {artist.tags.length > 0 && (
-                <TagList tags={artist.tags} size="sm" max={3} className="mt-1" />
-              )}
-            </div>
-          </Link>
+      {artists.map(artist => {
+        const isPending = pendingId === artist.id;
 
-          {/* 팔로잉 버튼 — 카드 유지, 상태만 로컬 토글 */}
-          <InlineFollowButton
-            artistId={artist.id}
-            artistHandle={artist.instagramHandle}
-            artistDisplayName={artist.displayName}
-          />
-        </div>
-      ))}
+        return (
+          <div key={artist.id} className="flex items-center gap-3 py-3">
+            {/* 아티스트 정보 */}
+            <Link
+              href={`/artists/${artist.instagramHandle}`}
+              className="flex flex-1 items-center gap-3 min-w-0"
+            >
+              <Avatar name={artist.displayName} size="sm" />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1">
+                  <span className="text-[14px] font-medium text-neutral-900 truncate leading-tight">
+                    {artist.displayName}
+                  </span>
+                  {artist.isVerified && <VerifiedBadge size={12} />}
+                </div>
+                {artist.baseCity && (
+                  <span className="text-[12px] text-neutral-400 leading-tight">
+                    {artist.baseCity}
+                    {artist.baseCountry ? `, ${artist.baseCountry}` : ""}
+                  </span>
+                )}
+                {artist.tags.length > 0 && (
+                  <TagList tags={artist.tags} size="sm" max={3} className="mt-1" />
+                )}
+              </div>
+            </Link>
+
+            {/* 팔로우 토글 버튼 — 로컬 상태만 변경, 카드 유지 */}
+            <button
+              onClick={() => handleToggle(artist.id, artist.instagramHandle)}
+              disabled={isPending}
+              className={cn(
+                "shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-medium leading-none transition-colors active:scale-95",
+                "disabled:opacity-50 disabled:cursor-not-allowed",
+                artist.isFollowing
+                  ? "border-neutral-200 bg-neutral-100 text-neutral-500"
+                  : "border-neutral-300 bg-white text-neutral-800"
+              )}
+              aria-pressed={artist.isFollowing}
+              aria-label={artist.isFollowing
+                ? `${artist.displayName} 언팔로우`
+                : `${artist.displayName} 팔로우`}
+            >
+              {isPending ? "···" : artist.isFollowing ? "팔로잉" : "팔로우"}
+            </button>
+          </div>
+        );
+      })}
     </div>
   );
 }
 
-// ── 메인 Export ─────────────────────────────────────────────
+// ── 메인 Export ───────────────────────────────────────────────
 
 export function FollowingClient({
   schedules,
@@ -332,54 +288,46 @@ export function FollowingClient({
 }: FollowingClientProps) {
   const [activeTab, setActiveTab] = useState<TabType>("schedule");
 
-  // 알림 버튼 (우상단) — Sprint 5에서 실동작 연결 예정
-  const bellButton = isLoggedIn ? (
-    <button
-      className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-500 hover:bg-neutral-100 transition-colors active:opacity-70"
-      aria-label="알림"
-      onClick={() => {
-        // Sprint 5: 알림 패널 연결 예정
-      }}
-    >
-      <Bell size={20} strokeWidth={1.6} aria-hidden="true" />
-    </button>
-  ) : null;
-
   return (
-    <>
-      <TopBar title="팔로우" right={bellButton} />
-
-      {/* ── 탭 바 ──────────────────────────────────────────── */}
-      <div className="sticky top-[52px] z-30 flex border-b border-neutral-100 bg-white">
-        {(["schedule", "follow"] as const).map(tab => {
-          const label = tab === "schedule" ? "일정" : "팔로우";
-          const isActive = activeTab === tab;
-          return (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={[
-                "flex flex-1 items-center justify-center py-3 text-[14px] font-medium transition-colors",
-                isActive
-                  ? "border-b-2 border-neutral-900 text-neutral-900"
-                  : "text-neutral-400",
-              ].join(" ")}
-              aria-selected={isActive}
-              role="tab"
-            >
-              {label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* ── 탭 콘텐츠 ──────────────────────────────────────── */}
-      <div role="tabpanel">
-        {activeTab === "schedule"
-          ? <ScheduleTab schedules={schedules} />
-          : <FollowTab artists={artists} />
+    <div className="flex flex-col">
+      <TopBar
+        title="Following"
+        right={
+          <button
+            className="flex h-9 w-9 items-center justify-center rounded-full text-neutral-500 hover:bg-neutral-100"
+            aria-label="알림"
+          >
+            <Bell size={18} />
+          </button>
         }
+      />
+
+      {/* 탭 바 */}
+      <div className="flex border-b border-neutral-100">
+        {(["schedule", "follow"] as TabType[]).map(tab => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={cn(
+              "flex-1 py-3 text-[13px] font-medium transition-colors",
+              activeTab === tab
+                ? "border-b-2 border-neutral-900 text-neutral-900"
+                : "text-neutral-400"
+            )}
+          >
+            {tab === "schedule" ? "일정" : "팔로우"}
+          </button>
+        ))}
       </div>
-    </>
+
+      {/* 탭 콘텐츠 */}
+      {!isLoggedIn ? (
+        <EmptyState tab={activeTab} />
+      ) : activeTab === "schedule" ? (
+        <ScheduleTab schedules={schedules} />
+      ) : (
+        <FollowTab initialArtists={artists} />
+      )}
+    </div>
   );
 }
