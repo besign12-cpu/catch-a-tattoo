@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Settings, LayoutDashboard } from "lucide-react";
-import { getTranslations } from "next-intl/server";
+
+import { getT } from "@/i18n/translations.server";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getUserProfile } from "@/lib/queries/user";
 import { PageContainer } from "@/components/layout/PageContainer";
@@ -33,8 +34,8 @@ export default async function MePage() {
 
   if (!user) redirect("/auth/login");
 
-  const t  = await getTranslations("me");
-  const tc = await getTranslations("common");
+  const t  = await getT("me");
+  const tc = await getT("common");
 
   let profile = null;
   try {

@@ -3,66 +3,48 @@
 /**
  * LanguageSwitcher
  *
- * 언어 전환 방식:
- * - /ko/[현재경로] 또는 /en/[현재경로] 로 이동
- * - middleware가 NEXT_LOCALE 쿠키 설정 + rewrite로 실제 페이지 렌더
- * - localStorage에도 저장 (영속화)
- * - 현재 경로 유지 (/ → /ko, /following → /ko/following)
+ * - 현재 경로 유지하며 locale prefix만 전환
+ * - /following → KO 클릭 → /ko/following
+ * - /ko/following → EN 클릭 → /following
+ * - NEXT_LOCALE 쿠키: middleware가 설정 (rewrite 시)
+ * - localStorage: 탭 간 동기화 (선택적)
  */
 
 import { usePathname } from "next/navigation";
 import { locales, localeNames, type Locale } from "@/i18n/config";
+import { getClientLocale } from "@/i18n/translations";
 
 const LS_KEY = "CAT_LOCALE";
 
-/** 현재 locale 감지 (쿠키 우선) */
-function detectCurrentLocale(): Locale {
-  if (typeof document === "undefined") return "en";
-  const m = document.cookie.match(/NEXT_LOCALE=([^;]+)/);
-  const v = m?.[1];
-  if (v === "ko" || v === "en") return v;
-  if (typeof localStorage !== "undefined") {
-    const ls = localStorage.getItem(LS_KEY);
-    if (ls === "ko" || ls === "en") return ls;
-  }
-  return "en";
+/** 현재 locale prefix 제거 */
+function stripLocale(path: string): string {
+  if (path === "/ko") return "/";
+  if (path.startsWith("/ko/")) return path.slice(3) || "/";
+  if (path === "/en") return "/";
+  if (path.startsWith("/en/")) return path.slice(3) || "/";
+  return path;
 }
 
-/** pathname에서 locale prefix 제거 */
-function stripLocale(pathname: string): string {
-  if (pathname.startsWith("/ko/")) return pathname.slice(3);
-  if (pathname === "/ko") return "/";
-  if (pathname.startsWith("/en/")) return pathname.slice(3);
-  if (pathname === "/en") return "/";
-  return pathname;
-}
-
-interface LanguageSwitcherProps {
-  currentLocale?: Locale;
+interface Props {
   variant?: "topbar" | "settings";
 }
 
-export function LanguageSwitcher({
-  currentLocale,
-  variant = "topbar",
-}: LanguageSwitcherProps) {
+export function LanguageSwitcher({ variant = "topbar" }: Props) {
   const pathname = usePathname();
-  const locale: Locale =
-    currentLocale ??
-    (typeof window !== "undefined" ? detectCurrentLocale() : "en");
+  const locale: Locale = getClientLocale();
 
   function handleSwitch(next: Locale) {
     if (next === locale) return;
     if (typeof localStorage !== "undefined") {
       localStorage.setItem(LS_KEY, next);
     }
-    // 현재 경로에서 locale prefix 제거 후 새 locale prefix 붙이기
-    const basePath = stripLocale(pathname);
-    const target =
-      next === "en"
-        ? basePath                       // en: /following
-        : `/ko${basePath === "/" ? "" : basePath}`; // ko: /ko/following
+    // 현재 경로에서 locale prefix 제거 후 새 prefix 붙이기
+    const base   = stripLocale(pathname);
+    const target = next === "en"
+      ? base
+      : `/ko${base === "/" ? "" : base}`;
 
+    // window.location 사용: 서버에서 쿠키 재설정 후 새 locale로 렌더
     window.location.href = target;
   }
 
@@ -79,7 +61,6 @@ export function LanguageSwitcher({
                 ? "bg-neutral-900 text-white"
                 : "bg-white text-neutral-400 hover:text-neutral-700",
             ].join(" ")}
-            aria-label={`Switch to ${localeNames[loc]}`}
             aria-pressed={locale === loc}
           >
             {loc.toUpperCase()}

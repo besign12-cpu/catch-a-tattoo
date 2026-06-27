@@ -21,8 +21,9 @@ import { getFollowStatus } from "@/actions/follow";
 import { BringButton } from "@/components/artist/BringButton";
 import { FollowButton } from "@/components/artist/FollowButton";
 import { InstagramLink } from "@/components/artist/InstagramLink";
+import { getT } from "@/i18n/translations.server";
 import { collectProfileView } from "@/lib/analytics/collect";
-import { getTranslations } from "next-intl/server";
+
 import type { GuestSchedule } from "@/types";
 
 interface Props {
@@ -270,7 +271,7 @@ async function ProfileContent({
   isLoggedIn: boolean;
   userId: string | null;
 }) {
-  const t = await getTranslations("artist");
+  const t = await getT("artist");
   const artist =
     (await getArtistProfile(handle).catch(() => null)) ??
     getArtistByHandle(handle) ??

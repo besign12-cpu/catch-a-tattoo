@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
-import { getLocale, getMessages } from "next-intl/server";
-import { NextIntlClientProvider } from "next-intl";
+import { cookies } from "next/headers";
 import "./globals.css";
 import BottomNav from "@/components/layout/BottomNav";
 
@@ -12,21 +11,12 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: {
-    default: "Catch A Tattoo",
-    template: "%s · Catch A Tattoo",
-  },
-  description:
-    "Discover tattoo artists' Guest Work schedules worldwide",
+  title: { default: "Catch A Tattoo", template: "%s · Catch A Tattoo" },
+  description: "Discover tattoo artists' Guest Work schedules worldwide",
   manifest: "/manifest.json",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "Catch A Tattoo",
-  },
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "Catch A Tattoo" },
   openGraph: {
-    type: "website",
-    siteName: "Catch A Tattoo",
+    type: "website", siteName: "Catch A Tattoo",
     title: "Catch A Tattoo",
     description: "Discover tattoo artists' Guest Work schedules worldwide",
   },
@@ -41,21 +31,15 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default async function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const locale   = await getLocale();
-  const messages = await getMessages();
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const cookieStore = await cookies();
+  const locale = cookieStore.get("NEXT_LOCALE")?.value === "ko" ? "ko" : "en";
 
   return (
     <html lang={locale} className={inter.variable}>
       <body>
-        <NextIntlClientProvider locale={locale} messages={messages}>
-          {children}
-          <BottomNav />
-        </NextIntlClientProvider>
+        {children}
+        <BottomNav />
       </body>
     </html>
   );

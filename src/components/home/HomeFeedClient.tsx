@@ -3,13 +3,13 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
-import { useTranslations } from "next-intl";
 import { FeedCard } from "@/components/artist/FeedCard";
 import { SearchInput } from "@/components/search/SearchInput";
 import { HomeFilterBar, type PeriodFilter } from "@/components/home/HomeFilterBar";
 import { HomeFilterSheet } from "@/components/home/HomeFilterSheet";
 import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
 import { useAnalytics } from "@/lib/hooks/useAnalytics";
+import { useT } from "@/lib/hooks/useT";
 import type { FeedCard as FeedCardType } from "@/types";
 
 /** 이번 주 범위 계산 (월~일) */
@@ -100,7 +100,7 @@ export function HomeFeedClient({
   const [draftTags, setDraftTags] = useState<string[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  const t = useTranslations("discover");
+  const t = useT("discover");
   const { trackArtistSearch, trackStyleSearch, trackCombinedSearch } = useAnalytics();
 
   // filteredGuest/Based는 useMemo 이후에 참조해야 하므로 수집은 useEffect로 처리

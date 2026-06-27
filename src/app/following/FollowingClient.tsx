@@ -16,12 +16,13 @@
 import { useState, useCallback } from "react";
 import Link from "next/link";
 import { Bell, Calendar, Heart, ChevronRight } from "lucide-react";
-import { useTranslations } from "next-intl";
+
 import { TopBar } from "@/components/layout/TopBar";
 import { Avatar } from "@/components/ui/Avatar";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
 import { TagList } from "@/components/ui/TagChip";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/hooks/useT";
 import type { Tag } from "@/types";
 
 // ── 타입 ─────────────────────────────────────────────────────
@@ -83,7 +84,7 @@ function calcDDay(startDate: string, endDate: string): string {
 // ── 빈 상태 ──────────────────────────────────────────────────
 
 function EmptyState({ tab }: { tab: TabType }) {
-  const t = useTranslations("following");
+  const t = useT("following");
   const isSchedule = tab === "schedule";
 
   return (
@@ -197,7 +198,7 @@ function FollowTab({
   pendingId: string | null;
   onToggle: (artistId: string, artistHandle: string) => void;
 }) {
-  const t = useTranslations("artist");
+  const t = useT("artist");
   if (artists.length === 0) return <EmptyState tab="follow" />;
 
   return (
@@ -263,7 +264,7 @@ export function FollowingClient({
   isLoggedIn,
 }: FollowingClientProps) {
   const [activeTab, setActiveTab] = useState<TabType>("schedule");
-  const t = useTranslations("following");
+  const t = useT("following");
 
   // ── artists local state: 최상위에서 관리 ──────────────────
   // 탭 전환으로 FollowTab이 언마운트/리마운트 되어도 state 유지

@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { ChevronRight, Search, Check, MapPin, Bell } from "lucide-react";
-import { useTranslations } from "next-intl";
+
+import { useT } from "@/lib/hooks/useT";
 import {
   updateBaseCity,
   updateInterestTags,
@@ -45,7 +46,7 @@ export interface SettingsClientProps {
 
 function SaveButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
-  const tc = useTranslations("common");
+  const tc = useT("common");
   return (
     <button
       type="submit"
@@ -65,7 +66,7 @@ function BaseCitySection({
   daysUntilChange,
   cities,
 }: Pick<SettingsClientProps, "currentBaseCity" | "currentBaseCountry" | "daysUntilChange" | "cities">) {
-  const t = useTranslations("settings");
+  const t = useT("settings");
   const [showPicker, setShowPicker] = useState(false);
   const [selectedCity, setSelectedCity] = useState<SettingsCityOption | null>(null);
   const [query, setQuery] = useState("");
@@ -240,7 +241,7 @@ function InterestTagsSection({
   tags: Tag[];
   savedTagIds: string[];
 }) {
-  const t = useTranslations("settings");
+  const t = useT("settings");
   // 저장된 태그로 초기화
   const [selected, setSelected] = useState<Set<string>>(new Set(savedTagIds));
   const initialState: UpdateInterestsState = { status: "idle" };
@@ -345,7 +346,7 @@ function NotificationSection({
   savedNotifSchedule: boolean;
   savedNotifBring: boolean;
 }) {
-  const t = useTranslations("settings");
+  const t = useT("settings");
   const [scheduleAlert, setScheduleAlert] = useState(savedNotifSchedule);
   const [bringAlert,    setBringAlert]    = useState(savedNotifBring);
 

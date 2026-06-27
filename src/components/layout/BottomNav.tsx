@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useTranslations } from "next-intl";
 import { Compass, Heart, Calendar, User } from "lucide-react";
 import { useSession } from "@/lib/hooks/useSession";
+import { useT } from "@/lib/hooks/useT";
 
 const NAV_HREFS = ["/", "/following", "/calendar", "/me"] as const;
 const NAV_ICONS = [Compass, Heart, Calendar, User] as const;
@@ -13,7 +13,7 @@ const NAV_KEYS  = ["discover", "following", "calendar", "me"] as const;
 export default function BottomNav() {
   const pathname = usePathname();
   const { user, status } = useSession();
-  const t = useTranslations("nav");
+  const t = useT("nav");
 
   // 인증 페이지에서는 BottomNav 숨김
   if (pathname.startsWith("/auth/")) return null;

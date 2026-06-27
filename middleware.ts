@@ -5,46 +5,45 @@ const PROTECTED_PATHS = ["/me", "/artists/new"];
 const ARTIST_MANAGE_SUFFIXES = ["/edit", "/schedule/new", "/portfolio"];
 const AUTH_PATHS = ["/auth/login", "/auth/signup"];
 
+/** /ko/* 또는 /en/* prefix 제거 */
+function stripLocale(pathname: string): string {
+  if (pathname === "/ko") return "/";
+  if (pathname.startsWith("/ko/")) return pathname.slice(3) || "/";
+  if (pathname === "/en") return "/";
+  if (pathname.startsWith("/en/")) return pathname.slice(3) || "/";
+  return pathname;
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // ── /ko URL prefix 처리 ──────────────────────────────────
-  // rewrite: URL은 /ko/xxx 유지, 내부적으로 /xxx 렌더 → 404 없음
-  // + NEXT_LOCALE=ko 쿠키 설정
+  // ── /ko/* → rewrite + 쿠키 설정 ─────────────────────────
   if (pathname === "/ko" || pathname.startsWith("/ko/")) {
-    const rewritePath =
-      pathname === "/ko" ? "/" : pathname.slice(3) || "/";
+    const target = stripLocale(pathname);
+    const url    = request.nextUrl.clone();
+    url.pathname = target;
 
-    const rewriteUrl = request.nextUrl.clone();
-    rewriteUrl.pathname = rewritePath;
-
-    const response = NextResponse.rewrite(rewriteUrl);
-    response.cookies.set("NEXT_LOCALE", "ko", {
-      path: "/",
-      maxAge: 60 * 60 * 24 * 365,
-      sameSite: "lax",
+    const res = NextResponse.rewrite(url);
+    res.cookies.set("NEXT_LOCALE", "ko", {
+      path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax",
     });
-    return response;
+    return res;
   }
 
-  // ── /en URL prefix 처리 ──────────────────────────────────
+  // ── /en/* → rewrite + 쿠키 설정 ─────────────────────────
   if (pathname === "/en" || pathname.startsWith("/en/")) {
-    const rewritePath =
-      pathname === "/en" ? "/" : pathname.slice(3) || "/";
+    const target = stripLocale(pathname);
+    const url    = request.nextUrl.clone();
+    url.pathname = target;
 
-    const rewriteUrl = request.nextUrl.clone();
-    rewriteUrl.pathname = rewritePath;
-
-    const response = NextResponse.rewrite(rewriteUrl);
-    response.cookies.set("NEXT_LOCALE", "en", {
-      path: "/",
-      maxAge: 60 * 60 * 24 * 365,
-      sameSite: "lax",
+    const res = NextResponse.rewrite(url);
+    res.cookies.set("NEXT_LOCALE", "en", {
+      path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax",
     });
-    return response;
+    return res;
   }
 
-  // ── Supabase 인증 처리 ────────────────────────────────────
+  // ── Supabase 인증 ─────────────────────────────────────────
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -75,23 +74,21 @@ export async function middleware(request: NextRequest) {
 
   const isProtected =
     isArtistManagePath ||
-    PROTECTED_PATHS.some(
-      (p) => pathname === p || pathname.startsWith(p + "/")
-    );
+    PROTECTED_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
 
   if (isProtected && !user) {
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/auth/login";
-    redirectUrl.searchParams.set("next", pathname);
-    return NextResponse.redirect(redirectUrl);
+    const url = request.nextUrl.clone();
+    url.pathname = "/auth/login";
+    url.searchParams.set("next", pathname);
+    return NextResponse.redirect(url);
   }
 
   const isAuthPath = AUTH_PATHS.some((p) => pathname === p);
   if (isAuthPath && user) {
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = "/";
-    redirectUrl.search = "";
-    return NextResponse.redirect(redirectUrl);
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    url.search = "";
+    return NextResponse.redirect(url);
   }
 
   return supabaseResponse;
