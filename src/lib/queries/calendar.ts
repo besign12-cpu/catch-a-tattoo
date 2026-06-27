@@ -210,3 +210,60 @@ export async function getCityCalendarData(
     topStyles,
   };
 }
+
+// ── getCitySchedules ───────────────────────────────────────────
+//
+// Customer Calendar 도시 탐색용:
+// 특정 도시의 해당 월 Guest Work 일정 조회 (팔로우 무관)
+
+export async function getCitySchedules(
+  cityName: string,
+  year: number,
+  month: number  // 0-indexed
+): Promise<CalendarScheduleItem[]> {
+  const admin = getSupabaseAdminClient();
+
+  const monthStart = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+  const lastDay    = new Date(year, month + 1, 0).getDate();
+  const monthEnd   = `${year}-${String(month + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+
+  const { data: scheduleRows } = await admin
+    .from("guest_schedules")
+    .select("id, artist_id, city, country, start_date, end_date")
+    .eq("city", cityName)
+    .eq("is_active", true)
+    .lte("start_date", monthEnd)
+    .gte("end_date", monthStart)
+    .order("start_date", { ascending: true });
+
+  if (!scheduleRows || scheduleRows.length === 0) return [];
+
+  const artistIds = Array.from(new Set(scheduleRows.map((s) => s.artist_id)));
+
+  const { data: profileRows } = await admin
+    .from("artist_profiles")
+    .select("id, display_name, instagram_handle, is_verified")
+    .in("id", artistIds);
+
+  const profileMap = new Map(
+    (profileRows ?? []).map((p) => [
+      p.id,
+      { name: p.display_name, handle: p.instagram_handle ?? p.id, verified: p.is_verified },
+    ])
+  );
+
+  return scheduleRows.map((s) => {
+    const profile = profileMap.get(s.artist_id);
+    return {
+      id:           s.id,
+      artistId:     s.artist_id,
+      artistName:   profile?.name   ?? "Unknown",
+      artistHandle: profile?.handle ?? s.artist_id,
+      isVerified:   profile?.verified ?? false,
+      city:         s.city,
+      country:      s.country,
+      startDate:    s.start_date,
+      endDate:      s.end_date,
+    };
+  });
+}

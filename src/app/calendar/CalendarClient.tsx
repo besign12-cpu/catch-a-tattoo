@@ -22,6 +22,10 @@ interface CalendarClientProps {
   cities: CalendarCity[];
   artistHandle: string | null;
   followingSchedules: CalendarScheduleItem[];
+  /** Customer Calendar 초기 도시 일정 (base_city 기준) */
+  initialCitySchedules: CalendarScheduleItem[];
+  /** Customer Calendar 초기 선택 도시명 */
+  initialCustomerCity: string | null;
   initialCityData: CityCalendarData | null;
   initialYear: number;
   initialMonth: number;
@@ -93,12 +97,18 @@ function guestCountToLevel(count: number): DemandLevel {
 
 function CustomerCalendar({
   isGuest,
+  cities,
   followingSchedules,
+  initialCitySchedules,
+  initialCustomerCity,
   initialYear,
   initialMonth,
 }: {
   isGuest: boolean;
+  cities: CalendarCity[];
   followingSchedules: CalendarScheduleItem[];
+  initialCitySchedules: CalendarScheduleItem[];
+  initialCustomerCity: string | null;
   initialYear: number;
   initialMonth: number;
 }) {
@@ -107,20 +117,43 @@ function CustomerCalendar({
   const [month, setMonth] = useState(initialMonth);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [monthSchedules, setMonthSchedules] = useState<CalendarScheduleItem[]>(followingSchedules);
+  // 도시 탐색용 state
+  const [selectedCity, setSelectedCity] = useState<CalendarCity | null>(
+    cities.find(c => c.name === initialCustomerCity) ?? cities[0] ?? null
+  );
+  const [citySchedules, setCitySchedules] = useState<CalendarScheduleItem[]>(initialCitySchedules);
   const [loading, setLoading] = useState(false);
+  const [cityLoading, setCityLoading] = useState(false);
+
+  // 탭: "following"(팔로우 일정) | "city"(도시 탐색)
+  const [viewMode, setViewMode] = useState<"following" | "city">("city");
+
+  // 현재 표시할 일정 (viewMode에 따라)
+  const activeSchedules = viewMode === "following" ? monthSchedules : citySchedules;
 
   // 월 변경 시 팔로우 일정 재조회
   useEffect(() => {
-    if (isGuest) return;
+    if (isGuest || viewMode !== "following") return;
     setLoading(true);
     fetch(`/api/calendar/following?year=${year}&month=${month}`)
       .then(res => res.ok ? res.json() : [])
       .then(data => setMonthSchedules(Array.isArray(data) ? data : []))
       .catch(() => setMonthSchedules([]))
       .finally(() => setLoading(false));
-  }, [year, month, isGuest]);
+  }, [year, month, isGuest, viewMode]);
 
-  const scheduleMap = buildScheduleMap(monthSchedules, year, month);
+  // 월/도시 변경 시 도시 일정 재조회
+  useEffect(() => {
+    if (!selectedCity || viewMode !== "city") return;
+    setCityLoading(true);
+    fetch(`/api/calendar/city-schedules?city=${encodeURIComponent(selectedCity.name)}&year=${year}&month=${month}`)
+      .then(res => res.ok ? res.json() : [])
+      .then(data => setCitySchedules(Array.isArray(data) ? data : []))
+      .catch(() => setCitySchedules([]))
+      .finally(() => setCityLoading(false));
+  }, [year, month, selectedCity, viewMode]);
+
+  const scheduleMap = buildScheduleMap(activeSchedules, year, month);
 
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay    = getFirstDayOfMonth(year, month);
@@ -141,17 +174,57 @@ function CustomerCalendar({
     else setMonth(m => m + 1);
   }
 
-  const selectedSchedules = selectedDay ? (scheduleMap.get(selectedDay) ?? []) : [];
-
-  // 이번 달 전체 일정 (날짜 오름차순)
-  const allMonthSchedules = [...monthSchedules].sort(
+  // 정렬된 전체 일정 (리스트용)
+  const allMonthSchedules = [...activeSchedules].sort(
     (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
   );
 
+  const isLoadingAny = loading || cityLoading;
+  const selectedSchedules = selectedDay ? (scheduleMap.get(selectedDay) ?? []) : [];
+
   return (
     <div className="flex flex-col gap-4">
+      {/* viewMode 토글 — 팔로우 일정 | 도시 탐색 */}
+      {!isGuest && (
+        <div className="mx-4 mt-2 flex rounded-xl border border-neutral-100 bg-neutral-50 p-1">
+          {(["city", "following"] as const).map(mode => (
+            <button
+              key={mode}
+              onClick={() => { setViewMode(mode); setSelectedDay(null); }}
+              className={[
+                "flex-1 rounded-lg py-2 text-[12px] font-medium transition-colors",
+                viewMode === mode
+                  ? "bg-white text-neutral-900 shadow-sm"
+                  : "text-neutral-400",
+              ].join(" ")}
+            >
+              {mode === "city" ? "도시 탐색" : "팔로우 일정"}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* 도시 탐색 모드: CityDropdown */}
+      {viewMode === "city" && cities.length > 0 && (
+        <div className="px-4">
+          <CityDropdown
+            cities={cities as CityDropdownOption[]}
+            initialCityName={selectedCity?.name ?? ""}
+            initialCountry={selectedCity?.country ?? ""}
+            label=""
+            onSelect={(option) => {
+              if (!option) return;
+              const full = cities.find(c => c.id === option.id) ?? null;
+              setSelectedCity(full);
+              setSelectedDay(null);
+            }}
+            value={selectedCity as CityDropdownOption | null}
+          />
+        </div>
+      )}
+
       {/* 월 이동 헤더 */}
-      <div className="flex items-center justify-between px-4 pt-4">
+      <div className="flex items-center justify-between px-4">
         <button onClick={prevMonth}
           className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-400 hover:bg-neutral-100"
           aria-label="이전 달">
@@ -159,7 +232,7 @@ function CustomerCalendar({
         </button>
         <span className="text-[15px] font-semibold text-neutral-900">
           {formatYearMonth(year, month)}
-          {loading && <span className="ml-2 text-xs text-neutral-300">···</span>}
+          {isLoadingAny && <span className="ml-2 text-xs text-neutral-300">···</span>}
         </span>
         <button onClick={nextMonth}
           className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-400 hover:bg-neutral-100"
@@ -238,7 +311,9 @@ function CustomerCalendar({
       <div className="mx-4 rounded-2xl border border-neutral-100 bg-white">
         <div className="border-b border-neutral-50 px-5 py-3">
           <p className="text-[11px] font-semibold tracking-widest text-neutral-400 uppercase">
-            이번 달 일정
+            {viewMode === "city" && selectedCity
+              ? `${selectedCity.name} Guest Work`
+              : "팔로우 아티스트 일정"}
           </p>
         </div>
 
@@ -263,16 +338,22 @@ function CustomerCalendar({
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-neutral-100">
               <MapPin size={20} className="text-neutral-400" aria-hidden="true" />
             </div>
-            <div className="flex flex-col gap-1">
-              <p className="text-sm font-medium text-neutral-700">팔로우한 아티스트 일정이 없습니다</p>
-              <p className="text-xs text-neutral-400 leading-relaxed">
-                아티스트를 팔로우하면<br />여기서 일정을 확인할 수 있습니다
-              </p>
-            </div>
-            <Link href="/"
-              className="mt-1 rounded-xl bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white active:opacity-80">
-              아티스트 찾기
-            </Link>
+            <p className="text-sm font-medium text-neutral-700">
+              {viewMode === "city"
+                ? `${selectedCity?.name ?? "선택 도시"}에 이번 달 Guest Work가 없습니다`
+                : "팔로우한 아티스트 일정이 없습니다"}
+            </p>
+            <p className="text-xs text-neutral-400 leading-relaxed">
+              {viewMode === "city"
+                ? "다른 도시를 선택하거나 다음 달을 확인해보세요"
+                : "아티스트를 팔로우하면 여기서 일정을 확인할 수 있습니다"}
+            </p>
+            {viewMode === "following" && (
+              <Link href="/"
+                className="mt-1 rounded-xl bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white active:opacity-80">
+                아티스트 찾기
+              </Link>
+            )}
           </div>
         ) : (
           <div className="flex flex-col divide-y divide-neutral-50">
@@ -538,6 +619,8 @@ export function CalendarClient({
   cities,
   artistHandle,
   followingSchedules,
+  initialCitySchedules,
+  initialCustomerCity,
   initialCityData,
   initialYear,
   initialMonth,
@@ -556,7 +639,10 @@ export function CalendarClient({
       ) : (
         <CustomerCalendar
           isGuest={isGuest}
+          cities={cities}
           followingSchedules={followingSchedules}
+          initialCitySchedules={initialCitySchedules}
+          initialCustomerCity={initialCustomerCity}
           initialYear={initialYear}
           initialMonth={initialMonth}
         />

@@ -3,7 +3,7 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { TopBar } from "@/components/layout/TopBar";
 import { CalendarClient } from "./CalendarClient";
-import { getFollowingCalendar, getCityCalendarData } from "@/lib/queries/calendar";
+import { getFollowingCalendar, getCityCalendarData, getCitySchedules } from "@/lib/queries/calendar";
 
 export const metadata: Metadata = { title: "캘린더" };
 
@@ -61,14 +61,20 @@ export default async function CalendarPage() {
     })
   );
 
-  // Customer: 이번 달 팔로우 일정 조회
+  // Customer: 이번 달 팔로우 일정 + 초기 도시(base_city) 일정 조회
   const now = new Date();
   const currentYear  = now.getFullYear();
   const currentMonth = now.getMonth();
 
   let followingSchedules: Awaited<ReturnType<typeof getFollowingCalendar>> = [];
+  let initialCitySchedules: Awaited<ReturnType<typeof getCitySchedules>> = [];
+  const initialCustomerCity = baseCity ?? cities[0]?.name ?? null;
+
   if (user && role !== "artist" && role !== "admin") {
     followingSchedules = await getFollowingCalendar(user.id, currentYear, currentMonth);
+    if (initialCustomerCity) {
+      initialCitySchedules = await getCitySchedules(initialCustomerCity, currentYear, currentMonth);
+    }
   }
 
   // Artist: 초기 도시(base_city 또는 cities[0]) 데이터 조회
@@ -88,6 +94,8 @@ export default async function CalendarPage() {
         cities={cities}
         artistHandle={artistHandle}
         followingSchedules={followingSchedules}
+        initialCitySchedules={initialCitySchedules}
+        initialCustomerCity={initialCustomerCity}
         initialCityData={initialCityData}
         initialYear={currentYear}
         initialMonth={currentMonth}
