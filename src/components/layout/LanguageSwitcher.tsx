@@ -1,29 +1,8 @@
 "use client";
 
-/**
- * LanguageSwitcher
- *
- * - 현재 경로 유지하며 locale prefix만 전환
- * - /following → KO 클릭 → /ko/following
- * - /ko/following → EN 클릭 → /following
- * - NEXT_LOCALE 쿠키: middleware가 설정 (rewrite 시)
- * - localStorage: 탭 간 동기화 (선택적)
- */
-
 import { usePathname } from "next/navigation";
 import { locales, localeNames, type Locale } from "@/i18n/config";
 import { getClientLocale } from "@/i18n/translations";
-
-const LS_KEY = "CAT_LOCALE";
-
-/** 현재 locale prefix 제거 */
-function stripLocale(path: string): string {
-  if (path === "/ko") return "/";
-  if (path.startsWith("/ko/")) return path.slice(3) || "/";
-  if (path === "/en") return "/";
-  if (path.startsWith("/en/")) return path.slice(3) || "/";
-  return path;
-}
 
 interface Props {
   variant?: "topbar" | "settings";
@@ -35,16 +14,19 @@ export function LanguageSwitcher({ variant = "topbar" }: Props) {
 
   function handleSwitch(next: Locale) {
     if (next === locale) return;
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem(LS_KEY, next);
-    }
-    // 현재 경로에서 locale prefix 제거 후 새 prefix 붙이기
-    const base   = stripLocale(pathname);
-    const target = next === "en"
-      ? base
-      : `/ko${base === "/" ? "" : base}`;
 
-    // window.location 사용: 서버에서 쿠키 재설정 후 새 locale로 렌더
+    let target: string;
+    if (next === "ko") {
+      // 현재 /path → /ko/path
+      target = pathname === "/" ? "/ko" : `/ko${pathname}`;
+    } else {
+      // 현재 /ko/path → /path
+      if (pathname === "/ko") target = "/";
+      else if (pathname.startsWith("/ko/")) target = pathname.slice(3) || "/";
+      else target = pathname;
+    }
+
+    // window.location: 서버에서 미들웨어가 쿠키 설정 + 실제 /ko 라우트 렌더
     window.location.href = target;
   }
 
@@ -87,9 +69,8 @@ export function LanguageSwitcher({ variant = "topbar" }: Props) {
           <span className="text-sm font-medium">{localeNames[loc]}</span>
           {locale === loc && (
             <svg width="16" height="16" viewBox="0 0 24 24"
-              fill="none" stroke="currentColor"
-              strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-              aria-hidden="true">
+              fill="none" stroke="currentColor" strokeWidth="2.5"
+              strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <polyline points="20 6 9 17 4 12" />
             </svg>
           )}
