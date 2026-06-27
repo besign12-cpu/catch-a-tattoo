@@ -3,78 +3,84 @@
 /**
  * LanguageSwitcher
  *
- * - CAT_LOCALE 쿠키를 설정하고 페이지를 새로고침
- * - URL prefix 방식이 아닌 쿠키 기반 locale 전환
- * - Discover TopBar 우상단에 위치 (비로그인 접근 가능)
- * - /me/settings Language 섹션에서도 재사용 가능
+ * 언어 전환 방식:
+ * 1. /ko 또는 /en URL로 이동
+ * 2. middleware가 NEXT_LOCALE 쿠키 설정 후 / 로 리다이렉트
+ * 3. localStorage에도 저장 (탭 간 동기화)
+ * 4. 서버에서 NEXT_LOCALE 쿠키 기준으로 locale 결정
  */
 
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { locales, localeNames, type Locale } from "@/i18n/config";
 
-interface LanguageSwitcherProps {
-  /** 현재 locale (서버에서 내려줌) */
-  currentLocale?: Locale;
-  /** 버튼 스타일 변형 */
-  variant?: "topbar" | "settings";
-}
+const LS_KEY = "CAT_LOCALE";
 
-/** 쿠키에서 현재 locale 읽기 */
-function getLocaleFromCookie(): Locale {
-  if (typeof document === "undefined") return "en";
-  const match = document.cookie.match(/CAT_LOCALE=([^;]+)/);
-  const val = match?.[1];
+/** localStorage에서 locale 읽기 */
+function getLocaleFromStorage(): Locale {
+  if (typeof localStorage === "undefined") return "en";
+  const val = localStorage.getItem(LS_KEY);
   return val === "ko" ? "ko" : "en";
 }
 
-/** CAT_LOCALE 쿠키 설정 (1년) */
-function setLocaleCookie(locale: Locale) {
-  const expires = new Date();
-  expires.setFullYear(expires.getFullYear() + 1);
-  document.cookie = `CAT_LOCALE=${locale};path=/;expires=${expires.toUTCString()};SameSite=Lax`;
+/** 현재 locale 감지 (쿠키 우선, localStorage 보조) */
+function detectCurrentLocale(): Locale {
+  if (typeof document === "undefined") return "en";
+  // 쿠키에서 읽기
+  const cookieMatch = document.cookie.match(/NEXT_LOCALE=([^;]+)/);
+  const cookieVal   = cookieMatch?.[1];
+  if (cookieVal === "ko" || cookieVal === "en") return cookieVal;
+  // localStorage 보조
+  return getLocaleFromStorage();
+}
+
+interface LanguageSwitcherProps {
+  currentLocale?: Locale;
+  variant?: "topbar" | "settings";
 }
 
 export function LanguageSwitcher({
   currentLocale,
   variant = "topbar",
 }: LanguageSwitcherProps) {
-  const [locale, setLocaleState] = useState<Locale>(
-    currentLocale ?? (typeof window !== "undefined" ? getLocaleFromCookie() : "en")
+  const router = useRouter();
+  const locale = currentLocale ?? (
+    typeof window !== "undefined" ? detectCurrentLocale() : "en"
   );
 
   const handleSwitch = useCallback(
     (next: Locale) => {
       if (next === locale) return;
-      setLocaleState(next);
-      setLocaleCookie(next);
-      // 현재 페이지 새로고침으로 서버에서 새 locale 적용
-      window.location.reload();
+      // localStorage 저장 (영속화)
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem(LS_KEY, next);
+      }
+      // /ko 또는 /en 으로 이동 → middleware가 쿠키 설정 + 홈 리다이렉트
+      router.push(`/${next}`);
     },
-    [locale]
+    [locale, router]
   );
 
-  // TopBar 변형: 현재 언어 코드 + 드롭다운
+  // TopBar 변형: EN | KO 토글
   if (variant === "topbar") {
     return (
-      <div className="relative flex items-center">
-        <div className="flex items-center gap-0.5 rounded-lg border border-neutral-200 overflow-hidden">
-          {locales.map((loc) => (
-            <button
-              key={loc}
-              onClick={() => handleSwitch(loc)}
-              className={[
-                "px-2 py-1 text-[11px] font-medium transition-colors",
-                locale === loc
-                  ? "bg-neutral-900 text-white"
-                  : "bg-white text-neutral-400 hover:text-neutral-700",
-              ].join(" ")}
-              aria-label={`Switch to ${localeNames[loc]}`}
-              aria-pressed={locale === loc}
-            >
-              {loc.toUpperCase()}
-            </button>
-          ))}
-        </div>
+      <div className="flex items-center gap-0.5 rounded-lg border border-neutral-200 overflow-hidden">
+        {locales.map((loc) => (
+          <button
+            key={loc}
+            onClick={() => handleSwitch(loc)}
+            className={[
+              "px-2 py-1 text-[11px] font-medium transition-colors",
+              locale === loc
+                ? "bg-neutral-900 text-white"
+                : "bg-white text-neutral-400 hover:text-neutral-700",
+            ].join(" ")}
+            aria-label={`Switch to ${localeNames[loc]}`}
+            aria-pressed={locale === loc}
+          >
+            {loc.toUpperCase()}
+          </button>
+        ))}
       </div>
     );
   }
@@ -97,14 +103,9 @@ export function LanguageSwitcher({
           <span className="text-sm font-medium">{localeNames[loc]}</span>
           {locale === loc && (
             <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+              width="16" height="16" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor"
+              strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
               aria-hidden="true"
             >
               <polyline points="20 6 9 17 4 12" />

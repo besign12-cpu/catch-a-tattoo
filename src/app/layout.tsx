@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import { getLocale, getMessages } from "next-intl/server";
+import { NextIntlClientProvider } from "next-intl";
 import "./globals.css";
 import BottomNav from "@/components/layout/BottomNav";
 
@@ -15,7 +17,7 @@ export const metadata: Metadata = {
     template: "%s · Catch A Tattoo",
   },
   description:
-    "전 세계 타투이스트의 게스트워크 일정을 찾고 팔로우하는 플랫폼",
+    "Discover tattoo artists' Guest Work schedules worldwide",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -26,7 +28,7 @@ export const metadata: Metadata = {
     type: "website",
     siteName: "Catch A Tattoo",
     title: "Catch A Tattoo",
-    description: "전 세계 타투이스트의 게스트워크 일정 플랫폼",
+    description: "Discover tattoo artists' Guest Work schedules worldwide",
   },
 };
 
@@ -39,16 +41,21 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const locale   = await getLocale();
+  const messages = await getMessages();
+
   return (
-    <html lang="ko" className={inter.variable}>
+    <html lang={locale} className={inter.variable}>
       <body>
-        {children}
-        <BottomNav />
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          {children}
+          <BottomNav />
+        </NextIntlClientProvider>
       </body>
     </html>
   );

@@ -2,23 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Compass, Heart, Calendar, User } from "lucide-react";
 import { useSession } from "@/lib/hooks/useSession";
 
-const NAV_ITEMS: Array<{
-  href: string;
-  icon: React.ElementType;
-  label: string;
-}> = [
-  { href: "/",          icon: Compass,  label: "Discover" },
-  { href: "/following", icon: Heart,    label: "팔로우"   },
-  { href: "/calendar",  icon: Calendar, label: "캘린더"   },
-  { href: "/me",        icon: User,     label: "나"        },
-];
+const NAV_HREFS = ["/", "/following", "/calendar", "/me"] as const;
+const NAV_ICONS = [Compass, Heart, Calendar, User] as const;
+const NAV_KEYS  = ["discover", "following", "calendar", "me"] as const;
 
 export default function BottomNav() {
   const pathname = usePathname();
   const { user, status } = useSession();
+  const t = useTranslations("nav");
 
   // 인증 페이지에서는 BottomNav 숨김
   if (pathname.startsWith("/auth/")) return null;
@@ -35,7 +30,9 @@ export default function BottomNav() {
       aria-label="하단 네비게이션"
     >
       <ul className="flex items-center justify-around px-2 h-16">
-        {NAV_ITEMS.map(({ href, icon: Icon, label }) => {
+        {NAV_HREFS.map((href, i) => {
+          const Icon  = NAV_ICONS[i];
+          const label = t(NAV_KEYS[i]);
           // 나 탭 분기
           // - 비로그인 → /auth/login
           // - 로그인(role 무관) → /me

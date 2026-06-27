@@ -8,12 +8,7 @@ const ARTIST_MANAGE_SUFFIXES = ["/edit", "/schedule/new", "/portfolio"];
 // 로그인 상태에서 접근 불가 경로
 const AUTH_PATHS = ["/auth/login", "/auth/signup"];
 
-/**
- * /ko prefix 처리:
- * - /ko/... 요청이 오면 pathname에서 /ko를 제거한 경로로 보호 경로 판단
- * - 실제 locale 라우팅은 쿠키 기반 (URL prefix 방식 미사용)
- * - Sprint 5-2: 구조 준비 단계, URL은 / 와 /ko 모두 같은 콘텐츠 렌더
- */
+// locale prefix 제거
 function stripLocalePrefix(pathname: string): string {
   if (pathname.startsWith("/ko/")) return pathname.slice(3);
   if (pathname === "/ko") return "/";
@@ -21,6 +16,41 @@ function stripLocalePrefix(pathname: string): string {
 }
 
 export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // ── /ko URL prefix 처리 ──────────────────────────────────
+  // /ko 또는 /ko/* 요청: NEXT_LOCALE=ko 쿠키 설정 후 / 또는 /* 로 리다이렉트
+  if (pathname === "/ko" || pathname.startsWith("/ko/")) {
+    const redirectPath = stripLocalePrefix(pathname) || "/";
+    const redirectUrl  = request.nextUrl.clone();
+    redirectUrl.pathname = redirectPath;
+
+    const response = NextResponse.redirect(redirectUrl);
+    response.cookies.set("NEXT_LOCALE", "ko", {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365, // 1년
+      sameSite: "lax",
+    });
+    return response;
+  }
+
+  // ── /en URL prefix 처리 ──────────────────────────────────
+  // /en 또는 /en/* 요청: NEXT_LOCALE=en 쿠키 설정 후 / 또는 /* 로 리다이렉트
+  if (pathname === "/en" || pathname.startsWith("/en/")) {
+    const redirectPath = pathname === "/en" ? "/" : pathname.slice(3);
+    const redirectUrl  = request.nextUrl.clone();
+    redirectUrl.pathname = redirectPath;
+
+    const response = NextResponse.redirect(redirectUrl);
+    response.cookies.set("NEXT_LOCALE", "en", {
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
+      sameSite: "lax",
+    });
+    return response;
+  }
+
+  // ── Supabase 인증 처리 ────────────────────────────────────
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -48,9 +78,7 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { pathname } = request.nextUrl;
-  // locale prefix를 제거한 경로로 보호 경로 판단
-  const normalizedPath = stripLocalePrefix(pathname);
+  const normalizedPath = pathname;
 
   const isArtistManagePath =
     normalizedPath.startsWith("/artists/") &&

@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { FeedCard } from "@/components/artist/FeedCard";
 import { SearchInput } from "@/components/search/SearchInput";
 import { HomeFilterBar, type PeriodFilter } from "@/components/home/HomeFilterBar";
@@ -99,6 +100,7 @@ export function HomeFeedClient({
   const [draftTags, setDraftTags] = useState<string[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
 
+  const t = useTranslations("discover");
   const { trackArtistSearch, trackStyleSearch, trackCombinedSearch } = useAnalytics();
 
   // filteredGuest/Based는 useMemo 이후에 참조해야 하므로 수집은 useEffect로 처리
@@ -198,22 +200,19 @@ export function HomeFeedClient({
       {isFiltering && totalFiltered === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <p className="text-[14px] font-medium text-neutral-500">
-            No artists match these filters.
-          </p>
-          <p className="mt-1 text-[12px] text-neutral-400">
-            조건을 바꿔서 다시 시도해보세요.
+            {t("noGuests")}
           </p>
         </div>
       ) : (
         <div className="pb-6">
           {/* Upcoming Guest Artists 섹션 */}
           <SectionHeader
-            title={`Upcoming Guest Artists in ${baseCity}`}
+            title={t("guestArtists", { city: baseCity })}
             href={`/city/${citySlug}?tab=guest`}
           />
           {filteredGuest.length === 0 ? (
             <p className="px-4 py-4 text-[12px] text-neutral-400">
-              조건에 맞는 게스트 아티스트가 없습니다.
+              {t("noGuests")}
             </p>
           ) : (
             <div className="space-y-2.5 px-3 pt-1">
@@ -225,12 +224,12 @@ export function HomeFeedClient({
 
           {/* Based Artists 섹션 */}
           <SectionHeader
-            title={`Based Artists in ${baseCity}`}
+            title={t("basedArtists", { city: baseCity })}
             href={`/city/${citySlug}?tab=based`}
           />
           {filteredBased.length === 0 ? (
             <p className="px-4 py-4 text-[12px] text-neutral-400">
-              조건에 맞는 베이스드 아티스트가 없습니다.
+              {t("noBased")}
             </p>
           ) : (
             <div className="space-y-2.5 px-3 pt-1">
