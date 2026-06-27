@@ -16,58 +16,39 @@ export type UpdateInterestsState =
   | { status: "error"; message: string }
   | { status: "success" };
 
+export type UpdateNotifState =
+  | { status: "idle" }
+  | { status: "error"; message: string }
+  | { status: "success" };
+
 // ── updateBaseCity ────────────────────────────────────────────
 
-/**
- * Base City 변경
- * 1. update_base_city RPC 호출 (30일 제한 체크 + users 업데이트)
- * 2. 성공 시 expire_bring_by_base_city_change RPC 호출 (기존 Bring 종료)
- * 3. revalidatePath
- */
 export async function updateBaseCity(
   _prev: UpdateBaseCityState,
   formData: FormData
 ): Promise<UpdateBaseCityState> {
   const supabase = await getSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) {
-    return { status: "error", message: "로그인이 필요합니다." };
-  }
+  if (!user) return { status: "error", message: "로그인이 필요합니다." };
 
-  const cityId  = (formData.get("cityId")  as string | null)?.trim() ?? "";
+  const cityId   = (formData.get("cityId")   as string | null)?.trim() ?? "";
   const cityName = (formData.get("cityName") as string | null)?.trim() ?? "";
-  const country = (formData.get("country") as string | null)?.trim().toUpperCase() ?? "";
+  const country  = (formData.get("country")  as string | null)?.trim().toUpperCase() ?? "";
 
-  if (!cityId || !cityName) {
-    return { status: "error", message: "도시를 선택해주세요." };
-  }
-  if (!country || country.length !== 2) {
-    return { status: "error", message: "국가 정보가 올바르지 않습니다." };
-  }
+  if (!cityId || !cityName) return { status: "error", message: "도시를 선택해주세요." };
+  if (!country || country.length !== 2) return { status: "error", message: "국가 정보가 올바르지 않습니다." };
 
   const admin = getSupabaseAdminClient();
 
-  // update_base_city RPC — 30일 제한 체크 + users 업데이트
-  const { data: rpcResult, error: rpcError } = await admin.rpc(
-    "update_base_city",
-    {
-      p_user_id:     user.id,
-      p_base_city:   cityName,
-      p_base_country: country,
-    }
-  );
+  const { data: rpcResult, error: rpcError } = await admin.rpc("update_base_city", {
+    p_user_id:      user.id,
+    p_base_city:    cityName,
+    p_base_country: country,
+  });
 
-  if (rpcError) {
-    return {
-      status: "error",
-      message: "Base City 변경 중 오류가 발생했습니다.",
-    };
-  }
+  if (rpcError) return { status: "error", message: "Base City 변경 중 오류가 발생했습니다." };
 
-  // RPC 반환값 파싱: { success: boolean, error?: string, days_left?: number }
   const result = rpcResult as { success: boolean; error?: string; days_left?: number };
 
   if (!result.success) {
@@ -78,17 +59,10 @@ export async function updateBaseCity(
         daysLeft: result.days_left,
       };
     }
-    return {
-      status: "error",
-      message: "Base City 변경에 실패했습니다.",
-    };
+    return { status: "error", message: "Base City 변경에 실패했습니다." };
   }
 
-  // 기존 Bring 종료 — expire_bring_by_base_city_change RPC
-  // 실패해도 Base City 변경은 이미 완료됐으므로 에러로 처리하지 않음
-  await admin.rpc("expire_bring_by_base_city_change", {
-    p_user_id: user.id,
-  });
+  await admin.rpc("expire_bring_by_base_city_change", { p_user_id: user.id });
 
   revalidatePath("/me/settings");
   revalidatePath("/me");
@@ -98,34 +72,81 @@ export async function updateBaseCity(
 }
 
 // ── updateInterestTags ────────────────────────────────────────
+//
+// user_interests 테이블에 REPLACE (DELETE + INSERT) 방식으로 저장
+// 최대 6개 제한
 
-/**
- * 관심 장르 태그 저장
- * - users 테이블에 직접 저장 컬럼 없음 → Sprint 5에서 user_interests 테이블 추가 예정
- * - 현재: UI 구조만 구현, 실저장은 placeholder
- */
 export async function updateInterestTags(
   _prev: UpdateInterestsState,
   formData: FormData
 ): Promise<UpdateInterestsState> {
   const supabase = await getSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) {
-    return { status: "error", message: "로그인이 필요합니다." };
-  }
+  if (!user) return { status: "error", message: "로그인이 필요합니다." };
 
-  // Sprint 5: user_interests 테이블 생성 후 실저장 구현 예정
-  // 현재: tagIds만 파싱 후 성공 반환 (UI 흐름 확인용)
   const tagIds = formData.getAll("tagIds") as string[];
 
   if (tagIds.length > 6) {
     return { status: "error", message: "관심 장르는 최대 6개까지 선택할 수 있습니다." };
   }
 
-  // TODO Sprint 5: user_interests insert/upsert
+  const admin = getSupabaseAdminClient();
+
+  // 기존 관심 장르 전체 삭제
+  const { error: deleteError } = await admin
+    .from("user_interests")
+    .delete()
+    .eq("user_id", user.id);
+
+  if (deleteError) {
+    return { status: "error", message: "저장에 실패했습니다. 다시 시도해주세요." };
+  }
+
+  // 새 관심 장르 삽입 (선택 항목 없으면 삽입 생략)
+  if (tagIds.length > 0) {
+    const rows = tagIds.map((tagId) => ({ user_id: user.id, tag_id: tagId }));
+    const { error: insertError } = await admin.from("user_interests").insert(rows);
+
+    if (insertError) {
+      return { status: "error", message: "저장에 실패했습니다. 다시 시도해주세요." };
+    }
+  }
+
+  revalidatePath("/me/settings");
+  return { status: "success" };
+}
+
+// ── updateNotifications ───────────────────────────────────────
+//
+// users.notif_schedule / users.notif_bring 컬럼 업데이트
+
+export async function updateNotifications(
+  _prev: UpdateNotifState,
+  formData: FormData
+): Promise<UpdateNotifState> {
+  const supabase = await getSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) return { status: "error", message: "로그인이 필요합니다." };
+
+  // checkbox: "on" / null
+  const notifSchedule = formData.get("notifSchedule") === "on";
+  const notifBring    = formData.get("notifBring")    === "on";
+
+  const admin = getSupabaseAdminClient();
+
+  const { error } = await admin
+    .from("users")
+    .update({
+      notif_schedule: notifSchedule,
+      notif_bring:    notifBring,
+    })
+    .eq("id", user.id);
+
+  if (error) {
+    return { status: "error", message: "알림 설정 저장에 실패했습니다." };
+  }
 
   revalidatePath("/me/settings");
   return { status: "success" };

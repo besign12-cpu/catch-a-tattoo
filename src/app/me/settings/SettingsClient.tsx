@@ -3,8 +3,16 @@
 import { useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { ChevronRight, Search, Check, MapPin, Bell } from "lucide-react";
-import { updateBaseCity, updateInterestTags } from "@/actions/settings";
-import type { UpdateBaseCityState, UpdateInterestsState } from "@/actions/settings";
+import {
+  updateBaseCity,
+  updateInterestTags,
+  updateNotifications,
+} from "@/actions/settings";
+import type {
+  UpdateBaseCityState,
+  UpdateInterestsState,
+  UpdateNotifState,
+} from "@/actions/settings";
 import type { Tag } from "@/types";
 
 // ── 타입 ────────────────────────────────────────────────────
@@ -21,9 +29,15 @@ export interface SettingsClientProps {
   currentBaseCity: string | null;
   currentBaseCountry: string | null;
   baseCityChangedAt: string | null;
-  daysUntilChange: number | null; // null = 변경 가능
+  daysUntilChange: number | null;
   cities: SettingsCityOption[];
   tags: Tag[];
+  /** 저장된 관심 장르 tag ID 목록 */
+  savedTagIds: string[];
+  /** 저장된 일정 알림 설정 */
+  savedNotifSchedule: boolean;
+  /** 저장된 Bring 알림 설정 */
+  savedNotifBring: boolean;
 }
 
 // ── Submit 버튼 ──────────────────────────────────────────────
@@ -48,10 +62,7 @@ function BaseCitySection({
   currentBaseCountry,
   daysUntilChange,
   cities,
-}: Pick<
-  SettingsClientProps,
-  "currentBaseCity" | "currentBaseCountry" | "daysUntilChange" | "cities"
->) {
+}: Pick<SettingsClientProps, "currentBaseCity" | "currentBaseCountry" | "daysUntilChange" | "cities">) {
   const [showPicker, setShowPicker] = useState(false);
   const [selectedCity, setSelectedCity] = useState<SettingsCityOption | null>(null);
   const [query, setQuery] = useState("");
@@ -100,7 +111,6 @@ function BaseCitySection({
         </span>
       </div>
 
-      {/* 30일 제한 안내 */}
       {!canChange && daysUntilChange !== null && (
         <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
           <p className="text-[12px] font-semibold text-amber-800">변경 제한 중</p>
@@ -112,7 +122,6 @@ function BaseCitySection({
         </div>
       )}
 
-      {/* Bring 종료 안내 */}
       {canChange && (
         <div className="mb-3 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2.5">
           <p className="text-[11px] text-blue-700 leading-relaxed">
@@ -121,7 +130,6 @@ function BaseCitySection({
         </div>
       )}
 
-      {/* 성공 메시지 */}
       {state.status === "success" && (
         <div className="mb-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-2.5">
           <p className="text-[12px] font-semibold text-emerald-700">
@@ -130,14 +138,12 @@ function BaseCitySection({
         </div>
       )}
 
-      {/* 에러 메시지 */}
       {state.status === "error" && (
         <div className="mb-3 rounded-xl border border-red-100 bg-red-50 px-4 py-2.5">
           <p className="text-[12px] text-red-700">{state.message}</p>
         </div>
       )}
 
-      {/* 도시 선택 버튼 */}
       {canChange && !showPicker && (
         <button
           onClick={() => setShowPicker(true)}
@@ -148,10 +154,8 @@ function BaseCitySection({
         </button>
       )}
 
-      {/* 도시 선택 피커 */}
       {canChange && showPicker && (
         <div className="flex flex-col gap-3">
-          {/* 검색 */}
           <div className="flex items-center gap-2 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2">
             <Search size={14} className="shrink-0 text-neutral-400" aria-hidden="true" />
             <input
@@ -165,7 +169,6 @@ function BaseCitySection({
             />
           </div>
 
-          {/* 도시 목록 */}
           <div className="max-h-64 overflow-y-auto flex flex-col gap-3">
             {regionOrder.map((region) => {
               const list = grouped[region];
@@ -207,9 +210,7 @@ function BaseCitySection({
               );
             })}
             {filtered.length === 0 && (
-              <p className="py-4 text-center text-sm text-neutral-400">
-                검색 결과가 없습니다
-              </p>
+              <p className="py-4 text-center text-sm text-neutral-400">검색 결과가 없습니다</p>
             )}
           </div>
 
@@ -223,7 +224,6 @@ function BaseCitySection({
         </div>
       )}
 
-      {/* 저장 폼 */}
       {canChange && selectedCity && !showPicker && (
         <form action={formAction} className="mt-3">
           <input type="hidden" name="cityId"   value={selectedCity.id} />
@@ -242,15 +242,24 @@ const TAG_GROUPS: Record<string, string> = {
   color: "Color", main: "메인 스타일", art: "세부 스타일",
 };
 
-function InterestTagsSection({ tags }: { tags: Tag[] }) {
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+function InterestTagsSection({
+  tags,
+  savedTagIds,
+}: {
+  tags: Tag[];
+  savedTagIds: string[];
+}) {
+  // 저장된 태그로 초기화
+  const [selected, setSelected] = useState<Set<string>>(new Set(savedTagIds));
   const initialState: UpdateInterestsState = { status: "idle" };
   const [state, formAction] = useFormState(updateInterestTags, initialState);
 
   function toggle(id: string) {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) { next.delete(id); } else {
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
         if (next.size >= 6) return prev;
         next.add(id);
       }
@@ -270,9 +279,7 @@ function InterestTagsSection({ tags }: { tags: Tag[] }) {
         <p className="text-[11px] font-semibold tracking-widest text-neutral-400 uppercase">
           관심 장르
         </p>
-        <span className="text-[11px] text-neutral-300">
-          {selected.size}/6
-        </span>
+        <span className="text-[11px] text-neutral-300">{selected.size}/6</span>
       </div>
 
       {state.status === "success" && (
@@ -312,7 +319,6 @@ function InterestTagsSection({ tags }: { tags: Tag[] }) {
                       ].join(" ")}
                     >
                       {tag.name}
-                      {/* hidden input for form submission */}
                     </button>
                   );
                 })}
@@ -321,14 +327,10 @@ function InterestTagsSection({ tags }: { tags: Tag[] }) {
           );
         })}
 
-        {/* hidden inputs — 선택된 태그 ID */}
+        {/* 선택된 태그 ID → hidden input */}
         {Array.from(selected).map((id) => (
           <input key={id} type="hidden" name="tagIds" value={id} />
         ))}
-
-        <p className="text-[11px] text-neutral-300">
-          * 관심 장르 실저장은 Sprint 5에서 연결됩니다
-        </p>
 
         <SaveButton label="관심 장르 저장" />
       </form>
@@ -338,9 +340,18 @@ function InterestTagsSection({ tags }: { tags: Tag[] }) {
 
 // ── 알림 설정 섹션 ───────────────────────────────────────────
 
-function NotificationSection() {
-  const [scheduleAlert, setScheduleAlert] = useState(true);
-  const [bringAlert, setBringAlert]       = useState(false);
+function NotificationSection({
+  savedNotifSchedule,
+  savedNotifBring,
+}: {
+  savedNotifSchedule: boolean;
+  savedNotifBring: boolean;
+}) {
+  const [scheduleAlert, setScheduleAlert] = useState(savedNotifSchedule);
+  const [bringAlert,    setBringAlert]    = useState(savedNotifBring);
+
+  const initialState: UpdateNotifState = { status: "idle" };
+  const [state, formAction] = useFormState(updateNotifications, initialState);
 
   return (
     <div className="rounded-2xl border border-neutral-100 bg-white px-5 py-4">
@@ -348,12 +359,26 @@ function NotificationSection() {
         알림 설정
       </p>
 
-      <div className="flex flex-col divide-y divide-neutral-50">
-        <div className="flex items-center justify-between py-3">
+      {state.status === "success" && (
+        <div className="mb-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-2.5">
+          <p className="text-[12px] font-semibold text-emerald-700">알림 설정이 저장되었습니다.</p>
+        </div>
+      )}
+
+      {state.status === "error" && (
+        <div className="mb-3 rounded-xl border border-red-100 bg-red-50 px-4 py-2.5">
+          <p className="text-[12px] text-red-700">{state.message}</p>
+        </div>
+      )}
+
+      <form action={formAction} className="flex flex-col gap-2">
+        {/* 일정 알림 */}
+        <div className="flex items-center justify-between py-3 border-b border-neutral-50">
           <div>
             <p className="text-[13px] font-medium text-neutral-900">일정 알림</p>
             <p className="text-[11px] text-neutral-400">팔로우 아티스트 일정 등록/수정</p>
           </div>
+          {/* 토글: onClick으로 state 변경, hidden input으로 form 전달 */}
           <button
             type="button"
             onClick={() => setScheduleAlert((v) => !v)}
@@ -372,8 +397,12 @@ function NotificationSection() {
               ].join(" ")}
             />
           </button>
+          {scheduleAlert && (
+            <input type="hidden" name="notifSchedule" value="on" />
+          )}
         </div>
 
+        {/* Bring 알림 */}
         <div className="flex items-center justify-between py-3">
           <div>
             <p className="text-[13px] font-medium text-neutral-900">Bring 알림</p>
@@ -397,15 +426,20 @@ function NotificationSection() {
               ].join(" ")}
             />
           </button>
+          {bringAlert && (
+            <input type="hidden" name="notifBring" value="on" />
+          )}
         </div>
-      </div>
 
-      <div className="mt-2 flex items-center gap-1.5 rounded-xl bg-neutral-50 px-3 py-2">
-        <Bell size={12} className="shrink-0 text-neutral-400" aria-hidden="true" />
-        <p className="text-[11px] text-neutral-400">
-          알림 실연결은 Sprint 5에서 진행됩니다
-        </p>
-      </div>
+        <div className="flex items-center gap-1.5 rounded-xl bg-neutral-50 px-3 py-2 mb-2">
+          <Bell size={12} className="shrink-0 text-neutral-400" aria-hidden="true" />
+          <p className="text-[11px] text-neutral-400">
+            알림 발송은 추후 지원 예정입니다. 설정만 저장됩니다.
+          </p>
+        </div>
+
+        <SaveButton label="알림 설정 저장" />
+      </form>
     </div>
   );
 }
@@ -418,6 +452,9 @@ export function SettingsClient({
   daysUntilChange,
   cities,
   tags,
+  savedTagIds,
+  savedNotifSchedule,
+  savedNotifBring,
 }: SettingsClientProps) {
   return (
     <div className="flex flex-col gap-4 px-4 py-4 pb-10">
@@ -427,8 +464,11 @@ export function SettingsClient({
         daysUntilChange={daysUntilChange}
         cities={cities}
       />
-      <InterestTagsSection tags={tags} />
-      <NotificationSection />
+      <InterestTagsSection tags={tags} savedTagIds={savedTagIds} />
+      <NotificationSection
+        savedNotifSchedule={savedNotifSchedule}
+        savedNotifBring={savedNotifBring}
+      />
     </div>
   );
 }

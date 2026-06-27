@@ -24,6 +24,9 @@ export type Database = {
           created_at: string;
           // Sprint 4 — 007_users_base_city.sql
           base_city_changed_at: string | null;
+          // Sprint 5-8 — 008_user_interests.sql
+          notif_schedule: boolean;
+          notif_bring: boolean;
         };
         Insert: {
           id: string;
@@ -36,6 +39,9 @@ export type Database = {
           push_token?: string | null;
           created_at?: string;
           base_city_changed_at?: string | null;
+          // Sprint 5-8
+          notif_schedule?: boolean;
+          notif_bring?: boolean;
         };
         Update: {
           id?: string;
@@ -48,6 +54,29 @@ export type Database = {
           push_token?: string | null;
           created_at?: string;
           base_city_changed_at?: string | null;
+          notif_schedule?: boolean;
+          notif_bring?: boolean;
+        };
+        Relationships: [];
+      };
+
+
+      // Sprint 5-8 — 008_user_interests.sql
+      user_interests: {
+        Row: {
+          user_id: string;
+          tag_id: string;
+          created_at: string;
+        };
+        Insert: {
+          user_id: string;
+          tag_id: string;
+          created_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          tag_id?: string;
+          created_at?: string;
         };
         Relationships: [];
       };
