@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { ChevronRight, Search, Check, MapPin, Bell } from "lucide-react";
+import { useTranslations } from "next-intl";
 import {
   updateBaseCity,
   updateInterestTags,
@@ -44,13 +45,14 @@ export interface SettingsClientProps {
 
 function SaveButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
+  const tc = useTranslations("common");
   return (
     <button
       type="submit"
       disabled={pending}
       className="w-full rounded-2xl bg-neutral-900 py-3.5 text-sm font-semibold text-white disabled:opacity-40 disabled:cursor-not-allowed active:opacity-80 transition-opacity"
     >
-      {pending ? "저장 중..." : label}
+      {pending ? tc("saving") : label}
     </button>
   );
 }
@@ -63,6 +65,7 @@ function BaseCitySection({
   daysUntilChange,
   cities,
 }: Pick<SettingsClientProps, "currentBaseCity" | "currentBaseCountry" | "daysUntilChange" | "cities">) {
+  const t = useTranslations("settings");
   const [showPicker, setShowPicker] = useState(false);
   const [selectedCity, setSelectedCity] = useState<SettingsCityOption | null>(null);
   const [query, setQuery] = useState("");
@@ -92,7 +95,7 @@ function BaseCitySection({
   return (
     <div className="rounded-2xl border border-neutral-100 bg-white px-5 py-4">
       <p className="mb-3 text-[11px] font-semibold tracking-widest text-neutral-400 uppercase">
-        Base City
+        {t("baseCity")}
       </p>
 
       {/* 현재 Base City */}
@@ -100,24 +103,22 @@ function BaseCitySection({
         <MapPin size={14} className="shrink-0 text-neutral-400" aria-hidden="true" />
         <div className="min-w-0 flex-1">
           <p className="text-[13px] font-semibold text-neutral-900">
-            {currentBaseCity ?? "미설정"}
+            {currentBaseCity ?? t("baseCityNotSet")}
           </p>
           {currentBaseCountry && (
             <p className="text-[11px] text-neutral-400">{currentBaseCountry}</p>
           )}
         </div>
         <span className="shrink-0 rounded-full bg-neutral-200 px-2 py-0.5 text-[10px] font-medium text-neutral-500">
-          현재
+          {t("baseCityCurrent")}
         </span>
       </div>
 
       {!canChange && daysUntilChange !== null && (
         <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-          <p className="text-[12px] font-semibold text-amber-800">변경 제한 중</p>
+          <p className="text-[12px] font-semibold text-amber-800">{t("baseCityLocked")}</p>
           <p className="mt-0.5 text-[11px] text-amber-600 leading-relaxed">
-            Base City는 30일에 한 번만 변경할 수 있습니다.
-            <br />
-            <span className="font-semibold">{daysUntilChange}일 후</span> 변경 가능합니다.
+            {t("baseCityLockedDesc", { days: daysUntilChange })}
           </p>
         </div>
       )}
@@ -125,7 +126,7 @@ function BaseCitySection({
       {canChange && (
         <div className="mb-3 rounded-xl border border-blue-100 bg-blue-50 px-4 py-2.5">
           <p className="text-[11px] text-blue-700 leading-relaxed">
-            Base City를 변경하면 기존 Bring This Artist 수요가 모두 종료됩니다.
+            {t("baseCityBringWarning")}
           </p>
         </div>
       )}
@@ -133,7 +134,7 @@ function BaseCitySection({
       {state.status === "success" && (
         <div className="mb-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-2.5">
           <p className="text-[12px] font-semibold text-emerald-700">
-            Base City가 {state.city}으로 변경되었습니다.
+            {t("baseCitySuccess", { city: state.city })}
           </p>
         </div>
       )}
@@ -149,7 +150,7 @@ function BaseCitySection({
           onClick={() => setShowPicker(true)}
           className="flex w-full items-center justify-between rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-700 hover:border-neutral-300 active:bg-neutral-50 transition-colors"
         >
-          <span>{selectedCity ? selectedCity.name : "도시 변경"}</span>
+          <span>{selectedCity ? selectedCity.name : t("baseCityChange")}</span>
           <ChevronRight size={15} className="text-neutral-400" aria-hidden="true" />
         </button>
       )}
@@ -162,9 +163,9 @@ function BaseCitySection({
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="도시 검색"
+              placeholder={t("searchCity")}
               className="flex-1 bg-transparent text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none"
-              aria-label="도시 검색"
+              aria-label={t("searchCity")}
               autoFocus
             />
           </div>
@@ -185,16 +186,10 @@ function BaseCitySection({
                         <button
                           key={city.id}
                           type="button"
-                          onClick={() => {
-                            setSelectedCity(city);
-                            setShowPicker(false);
-                            setQuery("");
-                          }}
+                          onClick={() => { setSelectedCity(city); setShowPicker(false); setQuery(""); }}
                           className={[
                             "flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-left transition-colors",
-                            isSelected
-                              ? "bg-neutral-900 text-white"
-                              : "bg-neutral-50 text-neutral-700 hover:bg-neutral-100",
+                            isSelected ? "bg-neutral-900 text-white" : "bg-neutral-50 text-neutral-700 hover:bg-neutral-100",
                           ].join(" ")}
                         >
                           <span className="flex-1 text-[13px] font-medium">{city.name}</span>
@@ -210,7 +205,7 @@ function BaseCitySection({
               );
             })}
             {filtered.length === 0 && (
-              <p className="py-4 text-center text-sm text-neutral-400">검색 결과가 없습니다</p>
+              <p className="py-4 text-center text-sm text-neutral-400">{t("noCity")}</p>
             )}
           </div>
 
@@ -219,7 +214,7 @@ function BaseCitySection({
             onClick={() => { setShowPicker(false); setQuery(""); }}
             className="text-center text-[12px] text-neutral-400 active:opacity-70 py-1"
           >
-            취소
+            {t("baseCityChange")}
           </button>
         </div>
       )}
@@ -229,7 +224,7 @@ function BaseCitySection({
           <input type="hidden" name="cityId"   value={selectedCity.id} />
           <input type="hidden" name="cityName" value={selectedCity.name} />
           <input type="hidden" name="country"  value={selectedCity.country} />
-          <SaveButton label={`${selectedCity.name}으로 변경`} />
+          <SaveButton label={t("baseCitySave", { city: selectedCity.name })} />
         </form>
       )}
     </div>
@@ -238,10 +233,6 @@ function BaseCitySection({
 
 // ── 관심 장르 섹션 ───────────────────────────────────────────
 
-const TAG_GROUPS: Record<string, string> = {
-  color: "Color", main: "메인 스타일", art: "세부 스타일",
-};
-
 function InterestTagsSection({
   tags,
   savedTagIds,
@@ -249,6 +240,7 @@ function InterestTagsSection({
   tags: Tag[];
   savedTagIds: string[];
 }) {
+  const t = useTranslations("settings");
   // 저장된 태그로 초기화
   const [selected, setSelected] = useState<Set<string>>(new Set(savedTagIds));
   const initialState: UpdateInterestsState = { status: "idle" };
@@ -277,14 +269,16 @@ function InterestTagsSection({
     <div className="rounded-2xl border border-neutral-100 bg-white px-5 py-4">
       <div className="mb-3 flex items-center justify-between">
         <p className="text-[11px] font-semibold tracking-widest text-neutral-400 uppercase">
-          관심 장르
+          {t("interestGenres")}
         </p>
-        <span className="text-[11px] text-neutral-300">{selected.size}/6</span>
+        <span className="text-[11px] text-neutral-300">
+          {t("interestCount", { count: selected.size })}
+        </span>
       </div>
 
       {state.status === "success" && (
         <div className="mb-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-2.5">
-          <p className="text-[12px] font-semibold text-emerald-700">저장되었습니다.</p>
+          <p className="text-[12px] font-semibold text-emerald-700">{t("interestSaved")}</p>
         </div>
       )}
 
@@ -298,10 +292,15 @@ function InterestTagsSection({
         {(["color", "main", "art"] as const).map((group) => {
           const groupTags = grouped[group];
           if (!groupTags?.length) return null;
+          const groupLabel: Record<string, string> = {
+            color: t("color"),
+            main:  t("mainStyle"),
+            art:   t("subStyle"),
+          };
           return (
             <div key={group}>
               <p className="mb-2 text-[10px] font-semibold tracking-widest text-neutral-400 uppercase">
-                {TAG_GROUPS[group]}
+                {groupLabel[group]}
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {groupTags.map((tag) => {
@@ -327,12 +326,11 @@ function InterestTagsSection({
           );
         })}
 
-        {/* 선택된 태그 ID → hidden input */}
         {Array.from(selected).map((id) => (
           <input key={id} type="hidden" name="tagIds" value={id} />
         ))}
 
-        <SaveButton label="관심 장르 저장" />
+        <SaveButton label={t("interestSave")} />
       </form>
     </div>
   );
@@ -347,6 +345,7 @@ function NotificationSection({
   savedNotifSchedule: boolean;
   savedNotifBring: boolean;
 }) {
+  const t = useTranslations("settings");
   const [scheduleAlert, setScheduleAlert] = useState(savedNotifSchedule);
   const [bringAlert,    setBringAlert]    = useState(savedNotifBring);
 
@@ -356,12 +355,12 @@ function NotificationSection({
   return (
     <div className="rounded-2xl border border-neutral-100 bg-white px-5 py-4">
       <p className="mb-3 text-[11px] font-semibold tracking-widest text-neutral-400 uppercase">
-        알림 설정
+        {t("notifications")}
       </p>
 
       {state.status === "success" && (
         <div className="mb-3 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-2.5">
-          <p className="text-[12px] font-semibold text-emerald-700">알림 설정이 저장되었습니다.</p>
+          <p className="text-[12px] font-semibold text-emerald-700">{t("notifSaved")}</p>
         </div>
       )}
 
@@ -375,10 +374,9 @@ function NotificationSection({
         {/* 일정 알림 */}
         <div className="flex items-center justify-between py-3 border-b border-neutral-50">
           <div>
-            <p className="text-[13px] font-medium text-neutral-900">일정 알림</p>
-            <p className="text-[11px] text-neutral-400">팔로우 아티스트 일정 등록/수정</p>
+            <p className="text-[13px] font-medium text-neutral-900">{t("notifSchedule")}</p>
+            <p className="text-[11px] text-neutral-400">{t("notifScheduleDesc")}</p>
           </div>
-          {/* 토글: onClick으로 state 변경, hidden input으로 form 전달 */}
           <button
             type="button"
             onClick={() => setScheduleAlert((v) => !v)}
@@ -386,27 +384,23 @@ function NotificationSection({
               "relative h-6 w-10 rounded-full transition-colors duration-200",
               scheduleAlert ? "bg-neutral-900" : "bg-neutral-200",
             ].join(" ")}
-            aria-label={`일정 알림 ${scheduleAlert ? "끄기" : "켜기"}`}
+            aria-label={t("notifSchedule")}
             role="switch"
             aria-checked={scheduleAlert}
           >
-            <span
-              className={[
-                "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200",
-                scheduleAlert ? "translate-x-4" : "translate-x-0.5",
-              ].join(" ")}
-            />
+            <span className={[
+              "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200",
+              scheduleAlert ? "translate-x-4" : "translate-x-0.5",
+            ].join(" ")} />
           </button>
-          {scheduleAlert && (
-            <input type="hidden" name="notifSchedule" value="on" />
-          )}
+          {scheduleAlert && <input type="hidden" name="notifSchedule" value="on" />}
         </div>
 
         {/* Bring 알림 */}
         <div className="flex items-center justify-between py-3">
           <div>
-            <p className="text-[13px] font-medium text-neutral-900">Bring 알림</p>
-            <p className="text-[11px] text-neutral-400">내 Bring 수요 임계값 도달</p>
+            <p className="text-[13px] font-medium text-neutral-900">{t("notifBring")}</p>
+            <p className="text-[11px] text-neutral-400">{t("notifBringDesc")}</p>
           </div>
           <button
             type="button"
@@ -415,30 +409,24 @@ function NotificationSection({
               "relative h-6 w-10 rounded-full transition-colors duration-200",
               bringAlert ? "bg-neutral-900" : "bg-neutral-200",
             ].join(" ")}
-            aria-label={`Bring 알림 ${bringAlert ? "끄기" : "켜기"}`}
+            aria-label={t("notifBring")}
             role="switch"
             aria-checked={bringAlert}
           >
-            <span
-              className={[
-                "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200",
-                bringAlert ? "translate-x-4" : "translate-x-0.5",
-              ].join(" ")}
-            />
+            <span className={[
+              "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform duration-200",
+              bringAlert ? "translate-x-4" : "translate-x-0.5",
+            ].join(" ")} />
           </button>
-          {bringAlert && (
-            <input type="hidden" name="notifBring" value="on" />
-          )}
+          {bringAlert && <input type="hidden" name="notifBring" value="on" />}
         </div>
 
         <div className="flex items-center gap-1.5 rounded-xl bg-neutral-50 px-3 py-2 mb-2">
           <Bell size={12} className="shrink-0 text-neutral-400" aria-hidden="true" />
-          <p className="text-[11px] text-neutral-400">
-            알림 발송은 추후 지원 예정입니다. 설정만 저장됩니다.
-          </p>
+          <p className="text-[11px] text-neutral-400">{t("notifComingSoon")}</p>
         </div>
 
-        <SaveButton label="알림 설정 저장" />
+        <SaveButton label={t("notifSave")} />
       </form>
     </div>
   );

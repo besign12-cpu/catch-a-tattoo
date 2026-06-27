@@ -22,6 +22,7 @@ import { BringButton } from "@/components/artist/BringButton";
 import { FollowButton } from "@/components/artist/FollowButton";
 import { InstagramLink } from "@/components/artist/InstagramLink";
 import { collectProfileView } from "@/lib/analytics/collect";
+import { getTranslations } from "next-intl/server";
 import type { GuestSchedule } from "@/types";
 
 interface Props {
@@ -109,15 +110,17 @@ function getAvailStatus(
 function OwnerTabNav({
   handle,
   activeTab,
+  labels,
 }: {
   handle: string;
   activeTab: "profile" | "schedule" | "insights";
+  labels: { profile: string; schedule: string; insights: string };
 }) {
   const tabs = [
-    { key: "profile", label: "프로필" },
-    { key: "schedule", label: "일정" },
-    { key: "insights", label: "인사이트" },
-  ] as const;
+    { key: "profile" as const,   label: labels.profile },
+    { key: "schedule" as const,  label: labels.schedule },
+    { key: "insights" as const,  label: labels.insights },
+  ];
 
   return (
     <div className="flex border-b border-neutral-100 bg-white">
@@ -148,9 +151,11 @@ function OwnerTabNav({
 function OwnerScheduleTab({
   handle,
   schedules,
+  t,
 }: {
   handle: string;
   schedules: GuestSchedule[];
+  t: (key: string) => string;
 }) {
   return (
     <div className="pb-10">
@@ -168,7 +173,7 @@ function OwnerScheduleTab({
       {/* 일정 목록 */}
       <section className="mt-2 bg-white px-4 py-4">
         <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-neutral-400">
-          등록된 일정
+          {t("guestWork")}
           {schedules.length > 0 && (
             <span className="ml-1.5 text-neutral-300">{schedules.length}</span>
           )}
@@ -189,7 +194,7 @@ function OwnerScheduleTab({
                     className="text-[11px] font-medium text-neutral-400 hover:text-neutral-600 transition-colors"
                     aria-label={`${schedule.city} 일정 수정`}
                   >
-                    수정 →
+                    {t("edit")} →
                   </Link>
                 </div>
               </div>
@@ -199,7 +204,7 @@ function OwnerScheduleTab({
           <div className="flex flex-col items-center gap-2 rounded-2xl bg-neutral-50 py-8 text-center">
             <MapPin size={20} className="text-neutral-300" aria-hidden="true" />
             <p className="text-sm text-neutral-400">
-              등록된 게스트워크 일정이 없습니다
+              {t("noSchedule")}
             </p>
           </div>
         )}
@@ -210,7 +215,7 @@ function OwnerScheduleTab({
 
 // ── 인사이트 탭 (본인용, Sprint 6 예정) ─────────────────────
 
-function OwnerInsightsTab({ handle }: { handle: string }) {
+function OwnerInsightsTab({ handle, t }: { handle: string; t: (key: string) => string }) {
   return (
     <div className="flex flex-col items-center gap-4 px-4 py-16 text-center">
       <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-neutral-100">
@@ -233,7 +238,7 @@ function OwnerInsightsTab({ handle }: { handle: string }) {
       </div>
       <div className="flex flex-col gap-1.5">
         <p className="text-[15px] font-semibold text-neutral-900">
-          인사이트 준비 중
+          {t("insightComingSoon")}
         </p>
         <p className="text-sm text-neutral-400 leading-relaxed">
           도시별 Bring 수, Profile View 등<br />
@@ -244,7 +249,7 @@ function OwnerInsightsTab({ handle }: { handle: string }) {
         href={`/artists/${handle}`}
         className="text-[13px] text-neutral-400 underline underline-offset-2"
       >
-        프로필로 돌아가기
+        {t("backToProfile")}
       </Link>
     </div>
   );
@@ -265,6 +270,7 @@ async function ProfileContent({
   isLoggedIn: boolean;
   userId: string | null;
 }) {
+  const t = await getTranslations("artist");
   const artist =
     (await getArtistProfile(handle).catch(() => null)) ??
     getArtistByHandle(handle) ??
@@ -313,17 +319,25 @@ async function ProfileContent({
     <div className="pb-10">
       {/* ── 탭 네비게이션 (본인만) ─────────────────────────── */}
       {isOwner && (
-        <OwnerTabNav handle={handle} activeTab={activeTab} />
+        <OwnerTabNav
+          handle={handle}
+          activeTab={activeTab}
+          labels={{
+            profile:  t("profile"),
+            schedule: t("schedule"),
+            insights: t("insights"),
+          }}
+        />
       )}
 
       {/* ── 본인 일정 탭 ───────────────────────────────────── */}
       {isOwner && activeTab === "schedule" && (
-        <OwnerScheduleTab handle={handle} schedules={sortedSchedules} />
+        <OwnerScheduleTab handle={handle} schedules={sortedSchedules} t={t} />
       )}
 
       {/* ── 본인 인사이트 탭 ────────────────────────────────── */}
       {isOwner && activeTab === "insights" && (
-        <OwnerInsightsTab handle={handle} />
+        <OwnerInsightsTab handle={handle} t={t} />
       )}
 
       {/* ── 프로필 탭 (기본) ────────────────────────────────── */}
@@ -347,7 +361,7 @@ async function ProfileContent({
                 {/* 팔로워 · My City Bring 항상 표시 */}
                 {!isOwner && (
                   <p className="mt-0.5 mb-2 text-[12px] font-medium text-neutral-600">
-                    팔로워 {followerCount}
+                    {t("followers")} {followerCount}
                     <span className="mx-1.5 text-neutral-300">·</span>
                     My City Bring {myCityBringCount}
                   </p>
@@ -452,7 +466,7 @@ async function ProfileContent({
                           className="text-[11px] font-medium text-neutral-400 hover:text-neutral-600 transition-colors"
                           aria-label={`${schedule.city} 일정 수정`}
                         >
-                          수정 →
+                          {t("edit")} →
                         </Link>
                       </div>
                     )}
@@ -463,14 +477,14 @@ async function ProfileContent({
               <div className="flex flex-col items-center gap-2 rounded-2xl bg-neutral-50 py-8 text-center">
                 <MapPin size={20} className="text-neutral-300" aria-hidden="true" />
                 <p className="text-sm text-neutral-400">
-                  등록된 게스트워크 일정이 없습니다
+                  {t("noSchedule")}
                 </p>
                 {isOwner && (
                   <Link
                     href={`/artists/${handle}/schedule/new`}
                     className="mt-1 text-[12px] font-medium text-neutral-600 underline underline-offset-2"
                   >
-                    첫 Guest Work 등록하기
+                    {t("addFirstSchedule")}
                   </Link>
                 )}
               </div>
@@ -535,7 +549,7 @@ async function ProfileContent({
           {!artist.isVerified && !isOwner && (
             <section className="mx-4 mb-2 mt-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
               <p className="mb-0.5 text-xs font-semibold text-amber-800">
-                이 프로필은 나인가요?
+                {t("unverifiedProfile")}
               </p>
               <p className="mb-2.5 text-[11px] text-amber-600 leading-relaxed">
                 Instagram DM 인증으로 본인 프로필임을 확인하세요.

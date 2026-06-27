@@ -16,6 +16,7 @@
 import { useState, useCallback } from "react";
 import Link from "next/link";
 import { Bell, Calendar, Heart, ChevronRight } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { TopBar } from "@/components/layout/TopBar";
 import { Avatar } from "@/components/ui/Avatar";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
@@ -82,27 +83,29 @@ function calcDDay(startDate: string, endDate: string): string {
 // ── 빈 상태 ──────────────────────────────────────────────────
 
 function EmptyState({ tab }: { tab: TabType }) {
-  const msg =
-    tab === "schedule"
-      ? { title: "팔로우한 아티스트 일정이 없습니다", sub: "아티스트를 팔로우하면\n일정을 여기서 확인할 수 있습니다" }
-      : { title: "팔로우한 아티스트가 없습니다",      sub: "아티스트를 팔로우하면\n여기에 표시됩니다" };
+  const t = useTranslations("following");
+  const isSchedule = tab === "schedule";
 
   return (
     <div className="flex flex-col items-center gap-4 px-8 py-16 text-center">
       <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-neutral-100">
-        {tab === "schedule"
+        {isSchedule
           ? <Calendar size={22} className="text-neutral-400" aria-hidden="true" />
           : <Heart    size={22} className="text-neutral-400" aria-hidden="true" />}
       </div>
       <div className="flex flex-col gap-1">
-        <p className="text-[15px] font-semibold text-neutral-800">{msg.title}</p>
-        <p className="text-sm text-neutral-400 leading-relaxed whitespace-pre-line">{msg.sub}</p>
+        <p className="text-[15px] font-semibold text-neutral-800">
+          {isSchedule ? t("noSchedule") : t("noFollowing")}
+        </p>
+        <p className="text-sm text-neutral-400 leading-relaxed whitespace-pre-line">
+          {isSchedule ? t("noScheduleDesc") : t("noFollowingDesc")}
+        </p>
       </div>
       <Link
         href="/"
         className="mt-1 rounded-xl bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white active:opacity-80"
       >
-        아티스트 찾기
+        {t("noFollowingDesc")}
       </Link>
     </div>
   );
@@ -194,6 +197,7 @@ function FollowTab({
   pendingId: string | null;
   onToggle: (artistId: string, artistHandle: string) => void;
 }) {
+  const t = useTranslations("artist");
   if (artists.length === 0) return <EmptyState tab="follow" />;
 
   return (
@@ -242,7 +246,7 @@ function FollowTab({
                 ? `${artist.displayName} 언팔로우`
                 : `${artist.displayName} 팔로우`}
             >
-              {isPending ? "···" : artist.isFollowing ? "팔로잉" : "팔로우"}
+              {isPending ? "···" : artist.isFollowing ? t("following") : t("follow")}
             </button>
           </div>
         );
@@ -259,6 +263,7 @@ export function FollowingClient({
   isLoggedIn,
 }: FollowingClientProps) {
   const [activeTab, setActiveTab] = useState<TabType>("schedule");
+  const t = useTranslations("following");
 
   // ── artists local state: 최상위에서 관리 ──────────────────
   // 탭 전환으로 FollowTab이 언마운트/리마운트 되어도 state 유지
@@ -297,7 +302,7 @@ export function FollowingClient({
   return (
     <div className="flex flex-col">
       <TopBar
-        title="Following"
+        title={t("title")}
         right={
           <button
             className="flex h-9 w-9 items-center justify-center rounded-full text-neutral-500 hover:bg-neutral-100"
@@ -321,7 +326,7 @@ export function FollowingClient({
                 : "text-neutral-400"
             )}
           >
-            {tab === "schedule" ? "일정" : "팔로우"}
+            {tab === "schedule" ? t("scheduleTab") : t("followTab")}
           </button>
         ))}
       </div>

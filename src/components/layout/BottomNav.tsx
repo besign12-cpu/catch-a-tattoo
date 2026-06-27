@@ -33,31 +33,35 @@ export default function BottomNav() {
         {NAV_HREFS.map((href, i) => {
           const Icon  = NAV_ICONS[i];
           const label = t(NAV_KEYS[i]);
+
+          // /ko/* 경로에서도 올바른 locale prefix 붙이기
+          const isKo = pathname.startsWith("/ko");
+          const prefix = isKo ? "/ko" : "";
+
           // 나 탭 분기
-          // - 비로그인 → /auth/login
-          // - 로그인(role 무관) → /me
-          //   Artist는 /me에서 Studio CTA로 이동
           const targetHref = (() => {
-            if (href !== "/me") return href;
-            if (!user && status !== "loading") return "/auth/login";
-            return "/me";
+            if (href !== "/me") return `${prefix}${href}`;
+            if (!user && status !== "loading") return `${prefix}/auth/login`;
+            return `${prefix}/me`;
           })();
 
-          // 활성 상태 판단
-          // 나 탭: /me 또는 /artists/:handle/edit 등 관리 경로에서도 활성
+          // 활성 상태 판단 (/ko prefix 제거 후 비교)
+          const normalPath = pathname.startsWith("/ko")
+            ? pathname.slice(3) || "/"
+            : pathname;
+
           const isActive = (() => {
-            if (href === "/") return pathname === "/";
+            if (href === "/") return normalPath === "/";
             if (href === "/me") {
               return (
-                pathname.startsWith("/me") ||
-                // 아티스트 관리 경로 (edit, schedule, portfolio)
-                (pathname.startsWith("/artists/") &&
-                  (pathname.includes("/edit") ||
-                    pathname.includes("/schedule/") ||
-                    pathname.includes("/portfolio")))
+                normalPath.startsWith("/me") ||
+                (normalPath.startsWith("/artists/") &&
+                  (normalPath.includes("/edit") ||
+                    normalPath.includes("/schedule/") ||
+                    normalPath.includes("/portfolio")))
               );
             }
-            return pathname.startsWith(href);
+            return normalPath.startsWith(href);
           })();
 
           return (

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Settings, LayoutDashboard } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getUserProfile } from "@/lib/queries/user";
 import { PageContainer } from "@/components/layout/PageContainer";
@@ -23,17 +24,6 @@ function countryName(code: string | null): string {
   return map[code] ?? code;
 }
 
-function roleLabel(role: "customer" | "artist" | "admin" | null | undefined): string {
-  const map: Record<string, string> = {
-    customer: "일반 회원", artist: "아티스트", admin: "관리자",
-  };
-  return map[role ?? "customer"] ?? "일반 회원";
-}
-
-function formatJoinDate(createdAt: string): string {
-  const d = new Date(createdAt);
-  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 가입`;
-}
 
 export default async function MePage() {
   const supabase = await getSupabaseServerClient();
@@ -43,6 +33,9 @@ export default async function MePage() {
 
   if (!user) redirect("/auth/login");
 
+  const t  = await getTranslations("me");
+  const tc = await getTranslations("common");
+
   let profile = null;
   try {
     profile = await getUserProfile(user.id);
@@ -50,18 +43,32 @@ export default async function MePage() {
     // DB 일시 에러 — user 인증 완료됐으므로 계속 렌더
   }
 
-  const displayName = profile?.username ?? user.email?.split("@")[0] ?? "사용자";
+  const displayName = profile?.username ?? user.email?.split("@")[0] ?? "User";
   const email = profile?.email ?? user.email ?? "";
+
+  const roleMap: Record<string, string> = {
+    customer: t("role.customer"),
+    artist:   t("role.artist"),
+    admin:    t("role.admin"),
+  };
+  const roleName = roleMap[profile?.role ?? "customer"] ?? t("role.customer");
+
+  const joinDate = profile
+    ? (() => {
+        const d = new Date(profile.createdAt);
+        return t("joinDate", { year: d.getFullYear(), month: d.getMonth() + 1 });
+      })()
+    : "";
 
   return (
     <PageContainer>
       <TopBar
-        title="내 정보"
+        title={t("myInfo")}
         right={
           <Link
             href="/me/settings"
             className="flex h-9 w-9 items-center justify-center rounded-full text-neutral-500 hover:bg-neutral-100 transition-colors"
-            aria-label="설정"
+            aria-label={tc("settings")}
           >
             <Settings size={18} />
           </Link>
@@ -86,31 +93,21 @@ export default async function MePage() {
                   ? "bg-red-50 text-red-600"
                   : "bg-neutral-100 text-neutral-500"
               )}>
-                {roleLabel(profile.role)}
+                {roleName}
               </span>
             )}
             {profile && (
-              <span className="text-[10px] text-neutral-300">
-                {formatJoinDate(profile.createdAt)}
-              </span>
+              <span className="text-[10px] text-neutral-300">{joinDate}</span>
             )}
           </div>
         </section>
 
         <div className="px-4 flex flex-col gap-3">
-
-          {/* ── 아티스트 프로필 CTA (단일) ─────────────────────
-              role이 artist/admin이고 handle이 있을 때만 표시
-              "@{handle} 프로필" 형태로 표시 */}
+          {/* 아티스트 프로필 CTA */}
           {(profile?.role === "artist" || profile?.role === "admin") && profile?.artistHandle && (
             <Link
               href={`/artists/${profile.artistHandle}`}
-              className="
-                flex items-center justify-between
-                rounded-2xl bg-neutral-900
-                px-5 py-4
-                hover:opacity-90 active:opacity-80 transition-opacity
-              "
+              className="flex items-center justify-between rounded-2xl bg-neutral-900 px-5 py-4 hover:opacity-90 active:opacity-80 transition-opacity"
             >
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10">
@@ -118,10 +115,10 @@ export default async function MePage() {
                 </div>
                 <div className="flex flex-col gap-0.5">
                   <p className="text-[13px] font-semibold text-white leading-tight">
-                    @{profile.artistHandle} 프로필
+                    {t("myArtistProfile", { handle: profile.artistHandle })}
                   </p>
                   <p className="text-[11px] text-neutral-400 leading-tight">
-                    Guest Work 관리 · 프로필 수정
+                    {t("artistProfileDesc")}
                   </p>
                 </div>
               </div>
@@ -132,11 +129,11 @@ export default async function MePage() {
           {/* 기본 정보 */}
           <div className="rounded-2xl bg-white border border-neutral-100 overflow-hidden">
             <p className="px-5 pt-4 pb-2 text-[11px] font-medium text-neutral-400 tracking-wide uppercase">
-              기본 정보
+              {t("email")}
             </p>
-            <InfoRow label="이메일" value={email} />
+            <InfoRow label={t("email")} value={email} />
             {profile?.username && (
-              <InfoRow label="사용자명" value={`@${profile.username}`} />
+              <InfoRow label={t("username")} value={`@${profile.username}`} />
             )}
             {profile?.baseCity && (
               <InfoRow
@@ -153,9 +150,9 @@ export default async function MePage() {
           >
             <div className="flex items-center gap-2.5">
               <Settings size={16} className="text-neutral-400" aria-hidden="true" />
-              <span className="text-sm font-medium text-neutral-700">설정</span>
+              <span className="text-sm font-medium text-neutral-700">{tc("settings")}</span>
             </div>
-            <span className="text-xs text-neutral-300">Base City · 관심장르 →</span>
+            <span className="text-xs text-neutral-300">Base City · →</span>
           </Link>
 
           {/* 로그아웃 */}
@@ -164,7 +161,7 @@ export default async function MePage() {
               type="submit"
               className="w-full rounded-2xl border border-neutral-200 bg-white py-4 text-sm text-neutral-500 hover:text-neutral-900 hover:border-neutral-300 transition-colors"
             >
-              로그아웃
+              {tc("logout")}
             </button>
           </form>
         </div>
