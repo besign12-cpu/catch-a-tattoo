@@ -22,10 +22,11 @@ interface CalendarClientProps {
   cities: CalendarCity[];
   artistHandle: string | null;
   followingSchedules: CalendarScheduleItem[];
-  /** Customer Calendar 초기 도시 일정 (base_city 기준) */
   initialCitySchedules: CalendarScheduleItem[];
-  /** Customer Calendar 초기 선택 도시명 */
-  initialCustomerCity: string | null;
+  /** 서버에서 결정된 Customer 초기 도시 객체 (cities[0] fallback 없음) */
+  initialCustomerCity: CalendarCity | null;
+  /** 서버에서 결정된 Artist 초기 도시 객체 (cities[0] fallback 없음) */
+  initialArtistCity: CalendarCity | null;
   initialCityData: CityCalendarData | null;
   initialYear: number;
   initialMonth: number;
@@ -108,7 +109,7 @@ function CustomerCalendar({
   cities: CalendarCity[];
   followingSchedules: CalendarScheduleItem[];
   initialCitySchedules: CalendarScheduleItem[];
-  initialCustomerCity: string | null;
+  initialCustomerCity: CalendarCity | null;
   initialYear: number;
   initialMonth: number;
 }) {
@@ -117,9 +118,9 @@ function CustomerCalendar({
   const [month, setMonth] = useState(initialMonth);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [monthSchedules, setMonthSchedules] = useState<CalendarScheduleItem[]>(followingSchedules);
-  // 도시 탐색용 state
+  // 도시 탐색용 state — 서버에서 결정된 객체 사용 (cities[0] fallback 없음)
   const [selectedCity, setSelectedCity] = useState<CalendarCity | null>(
-    cities.find(c => c.name === initialCustomerCity) ?? cities[0] ?? null
+    initialCustomerCity
   );
   const [citySchedules, setCitySchedules] = useState<CalendarScheduleItem[]>(initialCitySchedules);
   const [loading, setLoading] = useState(false);
@@ -399,15 +400,19 @@ function ArtistCalendar({
   cities,
   artistHandle,
   initialCityData,
+  initialArtistCity,
 }: {
   cities: CalendarCity[];
   artistHandle: string | null;
   initialCityData: CityCalendarData | null;
+  initialArtistCity: CalendarCity | null;
 }) {
   const today = new Date();
   const [year, setYear]     = useState(today.getFullYear());
   const [month, setMonth]   = useState(today.getMonth());
-  const [selectedCity, setSelectedCity] = useState<CalendarCity | null>(cities[0] ?? null);
+  const [selectedCity, setSelectedCity] = useState<CalendarCity | null>(
+    initialArtistCity  // 서버에서 결정된 객체, cities[0] fallback 없음
+  );
   const [selectedDay, setSelectedDay]   = useState<number | null>(null);
   const [cityData, setCityData]         = useState<CityCalendarData | null>(initialCityData);
   const [loadingCity, setLoadingCity]   = useState(false);
@@ -621,6 +626,7 @@ export function CalendarClient({
   followingSchedules,
   initialCitySchedules,
   initialCustomerCity,
+  initialArtistCity,
   initialCityData,
   initialYear,
   initialMonth,
@@ -635,6 +641,7 @@ export function CalendarClient({
           cities={cities}
           artistHandle={artistHandle}
           initialCityData={initialCityData}
+          initialArtistCity={initialArtistCity}
         />
       ) : (
         <CustomerCalendar

@@ -11,10 +11,11 @@ export default async function CalendarPage() {
   const supabase = await getSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  // role 조회
+  // role / base_city / artistHandle / artistBaseCity 조회
   let role: "customer" | "artist" | "admin" | null = null;
   let artistHandle: string | null = null;
-  let baseCity: string | null = null;
+  let baseCity: string | null = null;        // users.base_city
+  let artistBaseCity: string | null = null;  // artist_profiles.base_city
 
   if (user) {
     const { data: userRow } = await supabase
@@ -26,19 +27,25 @@ export default async function CalendarPage() {
     role     = (userRow?.role ?? "customer") as "customer" | "artist" | "admin";
     baseCity = userRow?.base_city ?? null;
 
-    // Artist: 본인 handle 조회 (Guest Work 등록 CTA 링크용)
+    // Artist: handle + base_city 함께 조회
     if (role === "artist" || role === "admin") {
       const { data: artistRow } = await supabase
         .from("artist_profiles")
-        .select("instagram_handle")
+        .select("instagram_handle, base_city")
         .eq("user_id", user.id)
         .maybeSingle();
-      artistHandle = (artistRow as { instagram_handle: string | null } | null)
-        ?.instagram_handle ?? null;
+
+      const ar = artistRow as {
+        instagram_handle: string | null;
+        base_city: string | null;
+      } | null;
+
+      artistHandle   = ar?.instagram_handle ?? null;
+      artistBaseCity = ar?.base_city ?? null;
     }
   }
 
-  // cities 조회
+  // cities 마스터 조회
   const { data: citiesData } = await supabase
     .from("cities")
     .select("id, name, country, country_name, region")
@@ -61,29 +68,53 @@ export default async function CalendarPage() {
     })
   );
 
-  // Customer: 이번 달 팔로우 일정 + 초기 도시(base_city) 일정 조회
-  const now = new Date();
+  // ── 초기 도시 결정 ────────────────────────────────────────────
+  // cities 마스터에서 name 정확 매칭 → fallback 순서 준수
+  // Amsterdam 같은 cities[0] 기본 선택 방지
+
+  const DEFAULT_CITY_NAME = "Seoul";
+
+  function findCity(name: string | null) {
+    if (!name) return null;
+    return cities.find(c => c.name === name) ?? null;
+  }
+
+  // Customer: users.base_city → Seoul(default) → null (cities[0] fallback 금지)
+  const customerInitialCity =
+    findCity(baseCity) ??
+    findCity(DEFAULT_CITY_NAME) ??
+    null;  // base_city도 없고 Seoul도 없는 경우만 null
+
+  // Artist: artist_profiles.base_city → users.base_city → Seoul → null
+  const artistInitialCity =
+    findCity(artistBaseCity) ??
+    findCity(baseCity) ??
+    findCity(DEFAULT_CITY_NAME) ??
+    null;
+
+  // ── 데이터 조회 ───────────────────────────────────────────────
+
+  const now          = new Date();
   const currentYear  = now.getFullYear();
   const currentMonth = now.getMonth();
 
+  // Customer: 팔로우 일정 + 초기 도시 일정
   let followingSchedules: Awaited<ReturnType<typeof getFollowingCalendar>> = [];
   let initialCitySchedules: Awaited<ReturnType<typeof getCitySchedules>> = [];
-  const initialCustomerCity = baseCity ?? cities[0]?.name ?? null;
 
   if (user && role !== "artist" && role !== "admin") {
     followingSchedules = await getFollowingCalendar(user.id, currentYear, currentMonth);
-    if (initialCustomerCity) {
-      initialCitySchedules = await getCitySchedules(initialCustomerCity, currentYear, currentMonth);
+    if (customerInitialCity) {
+      initialCitySchedules = await getCitySchedules(
+        customerInitialCity.name, currentYear, currentMonth
+      );
     }
   }
 
-  // Artist: 초기 도시(base_city 또는 cities[0]) 데이터 조회
+  // Artist: 초기 도시 KPI 데이터
   let initialCityData: Awaited<ReturnType<typeof getCityCalendarData>> | null = null;
-  if (role === "artist" || role === "admin") {
-    const initialCity = baseCity ?? cities[0]?.name ?? null;
-    if (initialCity) {
-      initialCityData = await getCityCalendarData(initialCity, user?.id);
-    }
+  if ((role === "artist" || role === "admin") && artistInitialCity) {
+    initialCityData = await getCityCalendarData(artistInitialCity.name, user?.id);
   }
 
   return (
@@ -95,7 +126,8 @@ export default async function CalendarPage() {
         artistHandle={artistHandle}
         followingSchedules={followingSchedules}
         initialCitySchedules={initialCitySchedules}
-        initialCustomerCity={initialCustomerCity}
+        initialCustomerCity={customerInitialCity}
+        initialArtistCity={artistInitialCity}
         initialCityData={initialCityData}
         initialYear={currentYear}
         initialMonth={currentMonth}
