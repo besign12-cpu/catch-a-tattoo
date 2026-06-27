@@ -4,19 +4,45 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Compass, Heart, Calendar, User } from "lucide-react";
 import { useSession } from "@/lib/hooks/useSession";
-import { useT } from "@/lib/hooks/useT";
+import { buildT } from "@/i18n/translations";
+import type { Locale } from "@/i18n/config";
 
 const NAV_HREFS = ["/", "/following", "/calendar", "/me"] as const;
 const NAV_ICONS = [Compass, Heart, Calendar, User] as const;
 const NAV_KEYS  = ["discover", "following", "calendar", "me"] as const;
 
+/** pathname 기준 locale 판단 — 쿠키/SSR 의존 없음 */
+function localeFromPath(pathname: string): Locale {
+  return pathname === "/ko" || pathname.startsWith("/ko/") ? "ko" : "en";
+}
+
+/** /ko prefix 제거 → 실제 경로 */
+function stripKo(pathname: string): string {
+  if (pathname === "/ko") return "/";
+  if (pathname.startsWith("/ko/")) return pathname.slice(3) || "/";
+  return pathname;
+}
+
+/** locale prefix + href 합성 (trailing slash 방지) */
+function withLocale(locale: Locale, href: string): string {
+  if (locale === "en") return href;
+  // href="/" → "/ko", href="/following" → "/ko/following"
+  return href === "/" ? "/ko" : `/ko${href}`;
+}
+
 export default function BottomNav() {
   const pathname = usePathname();
   const { user, status } = useSession();
-  const t = useT("nav");
+
+  // pathname 기준으로 locale 판단 (쿠키 불필요 — 항상 정확)
+  const locale = localeFromPath(pathname);
+  const t = buildT(locale, "nav");
 
   // 인증 페이지에서는 BottomNav 숨김
   if (pathname.startsWith("/auth/")) return null;
+
+  // /ko prefix 제거한 실제 경로 (active 판단용)
+  const normalPath = stripKo(pathname);
 
   return (
     <nav
@@ -34,22 +60,14 @@ export default function BottomNav() {
           const Icon  = NAV_ICONS[i];
           const label = t(NAV_KEYS[i]);
 
-          // /ko/* 경로에서도 올바른 locale prefix 붙이기
-          const isKo = pathname.startsWith("/ko");
-          const prefix = isKo ? "/ko" : "";
-
-          // 나 탭 분기
+          // locale prefix 포함 링크 (trailing slash 없음)
           const targetHref = (() => {
-            if (href !== "/me") return `${prefix}${href}`;
-            if (!user && status !== "loading") return `${prefix}/auth/login`;
-            return `${prefix}/me`;
+            if (href !== "/me") return withLocale(locale, href);
+            if (!user && status !== "loading") return withLocale(locale, "/auth/login");
+            return withLocale(locale, "/me");
           })();
 
-          // 활성 상태 판단 (/ko prefix 제거 후 비교)
-          const normalPath = pathname.startsWith("/ko")
-            ? pathname.slice(3) || "/"
-            : pathname;
-
+          // active 판단: /ko prefix 제거 후 비교
           const isActive = (() => {
             if (href === "/") return normalPath === "/";
             if (href === "/me") {
@@ -69,10 +87,7 @@ export default function BottomNav() {
               <Link
                 href={targetHref}
                 aria-label={label}
-                className="
-                  flex flex-col items-center gap-0.5 px-3 py-2
-                  transition-colors
-                "
+                className="flex flex-col items-center gap-0.5 px-3 py-2 transition-colors"
               >
                 <span className="relative">
                   <Icon
@@ -81,11 +96,7 @@ export default function BottomNav() {
                     className={isActive ? "text-white" : "text-white/35"}
                   />
                 </span>
-                <span
-                  className={`text-[10px] leading-none ${
-                    isActive ? "text-white" : "text-white/35"
-                  }`}
-                >
+                <span className={`text-[10px] leading-none ${isActive ? "text-white" : "text-white/35"}`}>
                   {label}
                 </span>
               </Link>

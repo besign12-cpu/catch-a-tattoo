@@ -2,31 +2,40 @@
 
 import { usePathname } from "next/navigation";
 import { locales, localeNames, type Locale } from "@/i18n/config";
-import { getClientLocale } from "@/i18n/translations";
 
 interface Props {
   variant?: "topbar" | "settings";
 }
 
+/** pathname 기준으로 현재 locale 판단 (쿠키 미사용) */
+function localeFromPath(pathname: string): Locale {
+  return pathname === "/ko" || pathname.startsWith("/ko/") ? "ko" : "en";
+}
+
+/** /ko prefix 제거 */
+function stripKo(pathname: string): string {
+  if (pathname === "/ko") return "/";
+  if (pathname.startsWith("/ko/")) return pathname.slice(3) || "/";
+  return pathname;
+}
+
 export function LanguageSwitcher({ variant = "topbar" }: Props) {
   const pathname = usePathname();
-  const locale: Locale = getClientLocale();
+  const locale   = localeFromPath(pathname);
 
   function handleSwitch(next: Locale) {
-    if (next === locale) return;
+    if (next === locale) return; // 이미 해당 locale — 이동 없음
 
     let target: string;
     if (next === "ko") {
-      // 현재 /path → /ko/path
-      target = pathname === "/" ? "/ko" : `/ko${pathname}`;
+      // en → ko: /path → /ko/path, / → /ko
+      const base = stripKo(pathname); // 혹시라도 /ko prefix 있으면 제거
+      target = base === "/" ? "/ko" : `/ko${base}`;
     } else {
-      // 현재 /ko/path → /path
-      if (pathname === "/ko") target = "/";
-      else if (pathname.startsWith("/ko/")) target = pathname.slice(3) || "/";
-      else target = pathname;
+      // ko → en: /ko/path → /path, /ko → /
+      target = stripKo(pathname);
     }
 
-    // window.location: 서버에서 미들웨어가 쿠키 설정 + 실제 /ko 라우트 렌더
     window.location.href = target;
   }
 
