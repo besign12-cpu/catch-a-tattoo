@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { PageContainer } from "@/components/layout/PageContainer";
-import { TopBar } from "@/components/layout/TopBar";
 import { CalendarClient } from "./CalendarClient";
 import { getFollowingCalendar, getCityCalendarData, getCitySchedules } from "@/lib/queries/calendar";
 
@@ -98,11 +97,12 @@ export default async function CalendarPage() {
   const currentYear  = now.getFullYear();
   const currentMonth = now.getMonth();
 
-  // Customer: 팔로우 일정 + 초기 도시 일정
+  // Customer + Artist 모두 팔로우 일정 조회
+  // (Artist = Customer 기능 전체 포함)
   let followingSchedules: Awaited<ReturnType<typeof getFollowingCalendar>> = [];
   let initialCitySchedules: Awaited<ReturnType<typeof getCitySchedules>> = [];
 
-  if (user && role !== "artist" && role !== "admin") {
+  if (user) {
     followingSchedules = await getFollowingCalendar(user.id, currentYear, currentMonth);
     if (customerInitialCity) {
       initialCitySchedules = await getCitySchedules(
@@ -119,7 +119,6 @@ export default async function CalendarPage() {
 
   return (
     <PageContainer>
-      <TopBar title="캘린더" />
       <CalendarClient
         role={role}
         cities={cities}

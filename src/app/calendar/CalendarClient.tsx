@@ -23,9 +23,7 @@ interface CalendarClientProps {
   artistHandle: string | null;
   followingSchedules: CalendarScheduleItem[];
   initialCitySchedules: CalendarScheduleItem[];
-  /** 서버에서 결정된 Customer 초기 도시 객체 (cities[0] fallback 없음) */
   initialCustomerCity: CalendarCity | null;
-  /** 서버에서 결정된 Artist 초기 도시 객체 (cities[0] fallback 없음) */
   initialArtistCity: CalendarCity | null;
   initialCityData: CityCalendarData | null;
   initialYear: number;
@@ -401,27 +399,38 @@ function ArtistCalendar({
   artistHandle,
   initialCityData,
   initialArtistCity,
+  followingSchedules,
+  initialYear,
+  initialMonth,
 }: {
   cities: CalendarCity[];
   artistHandle: string | null;
   initialCityData: CityCalendarData | null;
   initialArtistCity: CalendarCity | null;
+  followingSchedules: CalendarScheduleItem[];
+  initialYear: number;
+  initialMonth: number;
 }) {
   const today = new Date();
-  const [year, setYear]     = useState(today.getFullYear());
-  const [month, setMonth]   = useState(today.getMonth());
-  const [selectedCity, setSelectedCity] = useState<CalendarCity | null>(
-    initialArtistCity  // 서버에서 결정된 객체, cities[0] fallback 없음
-  );
+  const [year, setYear]     = useState(initialYear);
+  const [month, setMonth]   = useState(initialMonth);
+  const [selectedCity, setSelectedCity] = useState<CalendarCity | null>(initialArtistCity);
   const [selectedDay, setSelectedDay]   = useState<number | null>(null);
   const [cityData, setCityData]         = useState<CityCalendarData | null>(initialCityData);
   const [loadingCity, setLoadingCity]   = useState(false);
+
+  // viewMode: "city"(도시 탐색) | "following"(팔로우 일정)
+  const [viewMode, setViewMode] = useState<"city" | "following">("city");
+
+  // 팔로우 일정 state (Customer와 동일 로직)
+  const [monthSchedules, setMonthSchedules] = useState<CalendarScheduleItem[]>(followingSchedules);
+  const [loadingFollowing, setLoadingFollowing] = useState(false);
 
   const scheduleNewPath = artistHandle
     ? `/artists/${artistHandle}/schedule/new`
     : "/artists/new";
 
-  // 도시 변경 시 데이터 재조회
+  // 도시 변경 시 KPI 재조회
   const fetchCityData = useCallback(async (cityName: string) => {
     setLoadingCity(true);
     try {
@@ -431,13 +440,16 @@ function ArtistCalendar({
     finally { setLoadingCity(false); }
   }, []);
 
-  const daysInMonth = getDaysInMonth(year, month);
-  const firstDay    = getFirstDayOfMonth(year, month);
-  const cells: (number | null)[] = [
-    ...Array(firstDay).fill(null),
-    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
-  ];
-  while (cells.length % 7 !== 0) cells.push(null);
+  // 월 변경 시 팔로우 일정 재조회 (following 탭에서만)
+  useEffect(() => {
+    if (viewMode !== "following") return;
+    setLoadingFollowing(true);
+    fetch(`/api/calendar/following?year=${year}&month=${month}`)
+      .then(res => res.ok ? res.json() : [])
+      .then(data => setMonthSchedules(Array.isArray(data) ? data : []))
+      .catch(() => setMonthSchedules([]))
+      .finally(() => setLoadingFollowing(false));
+  }, [year, month, viewMode]);
 
   function prevMonth() {
     setSelectedDay(null);
@@ -450,55 +462,95 @@ function ArtistCalendar({
     else setMonth(m => m + 1);
   }
 
-  // 수요 레벨: guestCount 기반
+  const daysInMonth = getDaysInMonth(year, month);
+  const firstDay    = getFirstDayOfMonth(year, month);
+  const cells: (number | null)[] = [
+    ...Array(firstDay).fill(null),
+    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+  ];
+  while (cells.length % 7 !== 0) cells.push(null);
+
   const demandLevel = guestCountToLevel(cityData?.guestCount ?? 0);
+
+  // 팔로우 탭: 날짜별 일정 맵
+  const followingScheduleMap = buildScheduleMap(monthSchedules, year, month);
+  const selectedFollowingSchedules = selectedDay
+    ? (followingScheduleMap.get(selectedDay) ?? [])
+    : [];
+  const allFollowingSchedules = [...monthSchedules].sort(
+    (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+  );
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Guest Work 등록 CTA */}
-      <div className="mx-4 mt-2">
-        <Link href={scheduleNewPath}
-          className="flex items-center justify-center gap-2 w-full rounded-2xl bg-neutral-900 py-4 text-sm font-semibold text-white hover:opacity-90 active:opacity-80 transition-opacity">
-          <Plus size={16} aria-hidden="true" />
-          Guest Work 등록
-        </Link>
+
+      {/* ── 상단 탭: 도시 탐색 | 팔로우 일정 ──────────── */}
+      <div className="mx-4 mt-2 flex rounded-xl border border-neutral-100 bg-neutral-50 p-1">
+        {(["city", "following"] as const).map(mode => (
+          <button
+            key={mode}
+            onClick={() => { setViewMode(mode); setSelectedDay(null); }}
+            className={[
+              "flex-1 rounded-lg py-2 text-[12px] font-medium transition-colors",
+              viewMode === mode
+                ? "bg-white text-neutral-900 shadow-sm"
+                : "text-neutral-400",
+            ].join(" ")}
+          >
+            {mode === "city" ? "도시 탐색" : "팔로우 일정"}
+          </button>
+        ))}
       </div>
 
-      {/* 도시 KPI */}
-      {cityData && (
-        <div className="mx-4 grid grid-cols-3 gap-2">
-          {[
-            { label: "Guest", value: cityData.guestCount },
-            { label: "Based", value: cityData.basedCount },
-            { label: "Bring",  value: cityData.bringCount },
-          ].map(({ label, value }) => (
-            <div key={label} className="flex flex-col items-center rounded-2xl border border-neutral-100 bg-white py-3">
-              <span className="text-lg font-bold text-neutral-900">{loadingCity ? "···" : value}</span>
-              <span className="text-[10px] text-neutral-400">{label}</span>
+      {/* ── 도시 탐색 탭 ──────────────────────────────── */}
+      {viewMode === "city" && (
+        <>
+          {/* Guest Work 등록 CTA */}
+          <div className="mx-4">
+            <Link href={scheduleNewPath}
+              className="flex items-center justify-center gap-2 w-full rounded-2xl bg-neutral-900 py-4 text-sm font-semibold text-white hover:opacity-90 active:opacity-80 transition-opacity">
+              <Plus size={16} aria-hidden="true" />
+              Guest Work 등록
+            </Link>
+          </div>
+
+          {/* 도시 KPI */}
+          {cityData && (
+            <div className="mx-4 grid grid-cols-3 gap-2">
+              {[
+                { label: "Guest", value: cityData.guestCount },
+                { label: "Based", value: cityData.basedCount },
+                { label: "Bring", value: cityData.bringCount },
+              ].map(({ label, value }) => (
+                <div key={label} className="flex flex-col items-center rounded-2xl border border-neutral-100 bg-white py-3">
+                  <span className="text-lg font-bold text-neutral-900">{loadingCity ? "···" : value}</span>
+                  <span className="text-[10px] text-neutral-400">{label}</span>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          )}
+
+          {/* 도시 선택 */}
+          <div className="px-4">
+            <CityDropdown
+              cities={cities as CityDropdownOption[]}
+              initialCityName={selectedCity?.name ?? ""}
+              initialCountry={selectedCity?.country ?? ""}
+              label=""
+              onSelect={(option) => {
+                if (!option) return;
+                const full = cities.find(c => c.id === option.id) ?? null;
+                setSelectedCity(full);
+                setSelectedDay(null);
+                if (full) fetchCityData(full.name);
+              }}
+              value={selectedCity as CityDropdownOption | null}
+            />
+          </div>
+        </>
       )}
 
-      {/* 도시 선택 */}
-      <div className="px-4">
-        <CityDropdown
-          cities={cities as CityDropdownOption[]}
-          initialCityName={selectedCity?.name ?? ""}
-          initialCountry={selectedCity?.country ?? ""}
-          label=""
-          onSelect={(option) => {
-            if (!option) return;
-            const full = cities.find(c => c.id === option.id) ?? null;
-            setSelectedCity(full);
-            setSelectedDay(null);
-            if (full) fetchCityData(full.name);
-          }}
-          value={selectedCity as CityDropdownOption | null}
-        />
-      </div>
-
-      {/* 월 이동 헤더 */}
+      {/* ── 공통: 월 이동 헤더 ────────────────────────── */}
       <div className="flex items-center justify-between px-4">
         <button onClick={prevMonth}
           className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-400 hover:bg-neutral-100"
@@ -507,6 +559,9 @@ function ArtistCalendar({
         </button>
         <span className="text-[15px] font-semibold text-neutral-900">
           {formatYearMonth(year, month)}
+          {(loadingCity || loadingFollowing) && (
+            <span className="ml-2 text-xs text-neutral-300">···</span>
+          )}
         </span>
         <button onClick={nextMonth}
           className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-400 hover:bg-neutral-100"
@@ -515,14 +570,14 @@ function ArtistCalendar({
         </button>
       </div>
 
-      {/* 요일 헤더 */}
+      {/* ── 요일 헤더 ─────────────────────────────────── */}
       <div className="grid grid-cols-7 px-4">
         {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d => (
           <div key={d} className="text-center text-[10px] font-medium text-neutral-400 pb-2">{d}</div>
         ))}
       </div>
 
-      {/* 날짜 그리드 */}
+      {/* ── 날짜 그리드 ───────────────────────────────── */}
       <div className="grid grid-cols-7 px-4 gap-y-1">
         {cells.map((day, idx) => {
           if (!day) return <div key={`empty-${idx}`} />;
@@ -530,6 +585,7 @@ function ArtistCalendar({
           const isToday    = isSameDay(date, today);
           const isSelected = selectedDay === day;
           const isPast     = date < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+          const hasFollowingSchedule = viewMode === "following" && followingScheduleMap.has(day);
 
           return (
             <button key={day}
@@ -544,9 +600,11 @@ function ArtistCalendar({
                 : isPast   ? "text-neutral-300"
                 : "text-neutral-700 hover:bg-neutral-100",
               ].join(" ")}>{day}</span>
-              {/* 수요 인디케이터: 도시 전체 수요 레벨 표시 */}
-              {demandLevel && !isPast ? (
+              {/* 도시 탐색: 수요 인디케이터 / 팔로우: 일정 점 */}
+              {viewMode === "city" && demandLevel && !isPast ? (
                 <span className={`h-1.5 w-1.5 rounded-full ${DEMAND_COLORS[demandLevel]}`} aria-hidden="true" />
+              ) : viewMode === "following" && hasFollowingSchedule ? (
+                <span className="h-1 w-1 rounded-full bg-cat-purple" aria-hidden="true" />
               ) : (
                 <span className="h-1.5 w-1.5" aria-hidden="true" />
               )}
@@ -555,8 +613,8 @@ function ArtistCalendar({
         })}
       </div>
 
-      {/* 날짜 선택 패널 */}
-      {selectedDay && (
+      {/* ── 도시 탐색 탭: 날짜 인사이트 패널 ─────────── */}
+      {viewMode === "city" && selectedDay && (
         <div className="mx-4 rounded-2xl border border-neutral-100 bg-white px-5 py-4">
           <p className="text-[13px] font-semibold text-neutral-900">
             {month + 1}월 {selectedDay}일 인사이트
@@ -584,8 +642,31 @@ function ArtistCalendar({
         </div>
       )}
 
-      {/* 인기 스타일 */}
-      {cityData && cityData.topStyles.length > 0 && (
+      {/* ── 팔로우 탭: 날짜 클릭 일정 목록 ──────────── */}
+      {viewMode === "following" && selectedDay && selectedFollowingSchedules.length > 0 && (
+        <div className="mx-4 flex flex-col gap-2 rounded-2xl border border-neutral-100 bg-white px-4 py-4">
+          <p className="text-[11px] font-semibold tracking-widest text-neutral-400 uppercase">
+            {month + 1}월 {selectedDay}일
+          </p>
+          {selectedFollowingSchedules.map(s => (
+            <Link key={s.id} href={`/artists/${s.artistHandle}`}
+              className="flex items-center gap-3 rounded-xl border border-neutral-100 px-3 py-2.5 hover:border-neutral-200 transition-colors">
+              <MapPin size={14} className="shrink-0 text-cat-purple" aria-hidden="true" />
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-medium text-neutral-900 leading-tight truncate">{s.artistName}</p>
+                <p className="text-[11px] text-neutral-400 leading-tight">
+                  {s.city} · {new Date(s.startDate).toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" })} –{" "}
+                  {new Date(s.endDate).toLocaleDateString("ko-KR", { month: "numeric", day: "numeric" })}
+                </p>
+              </div>
+              <ChevronRight size={14} className="shrink-0 text-neutral-300" aria-hidden="true" />
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {/* ── 도시 탐색 탭: 인기 스타일 ────────────────── */}
+      {viewMode === "city" && cityData && cityData.topStyles.length > 0 && (
         <div className="mx-4 rounded-2xl border border-neutral-100 bg-white px-5 py-4">
           <p className="mb-3 text-[11px] font-semibold tracking-widest text-neutral-400 uppercase">
             인기 스타일 in {selectedCity?.name}
@@ -602,23 +683,66 @@ function ArtistCalendar({
         </div>
       )}
 
-      {/* 수요 레벨 범례 */}
-      <div className="mx-4 rounded-2xl border border-neutral-100 bg-white px-4 py-3">
-        <div className="flex items-center gap-5">
-          {(["high","mid","low"] as const).map(level => (
-            <div key={level} className="flex items-center gap-1.5">
-              <span className={`block h-2 w-2 rounded-full ${DEMAND_COLORS[level]}`} aria-hidden="true" />
-              <span className="text-[11px] text-neutral-600">{DEMAND_LABELS[level]}</span>
+      {/* ── 팔로우 탭: 이번 달 전체 팔로우 일정 ──────── */}
+      {viewMode === "following" && (
+        <div className="mx-4 rounded-2xl border border-neutral-100 bg-white">
+          <div className="border-b border-neutral-50 px-5 py-3">
+            <p className="text-[11px] font-semibold tracking-widest text-neutral-400 uppercase">
+              팔로우 아티스트 일정
+            </p>
+          </div>
+          {allFollowingSchedules.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-neutral-100">
+                <MapPin size={20} className="text-neutral-400" aria-hidden="true" />
+              </div>
+              <p className="text-sm font-medium text-neutral-700">팔로우한 아티스트 일정이 없습니다</p>
+              <p className="text-xs text-neutral-400 leading-relaxed">
+                아티스트를 팔로우하면 여기서 일정을 확인할 수 있습니다
+              </p>
+              <Link href="/"
+                className="mt-1 rounded-xl bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white active:opacity-80">
+                아티스트 찾기
+              </Link>
             </div>
-          ))}
+          ) : (
+            <div className="flex flex-col divide-y divide-neutral-50">
+              {allFollowingSchedules.map(s => (
+                <Link key={s.id} href={`/artists/${s.artistHandle}`}
+                  className="flex items-center gap-3 px-5 py-3 hover:bg-neutral-50 transition-colors">
+                  <MapPin size={14} className="shrink-0 text-cat-purple" aria-hidden="true" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] font-medium text-neutral-900 truncate">{s.artistName}</p>
+                    <p className="text-[11px] text-neutral-400">
+                      {s.city} · {new Date(s.startDate).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}
+                      {" "}–{" "}
+                      {new Date(s.endDate).toLocaleDateString("ko-KR", { month: "short", day: "numeric" })}
+                    </p>
+                  </div>
+                  <ChevronRight size={14} className="shrink-0 text-neutral-300" aria-hidden="true" />
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
-      </div>
+      )}
+
+      {/* ── 도시 탐색 탭: 수요 레벨 범례 ────────────── */}
+      {viewMode === "city" && (
+        <div className="mx-4 rounded-2xl border border-neutral-100 bg-white px-4 py-3">
+          <div className="flex items-center gap-5">
+            {(["high","mid","low"] as const).map(level => (
+              <div key={level} className="flex items-center gap-1.5">
+                <span className={`block h-2 w-2 rounded-full ${DEMAND_COLORS[level]}`} aria-hidden="true" />
+                <span className="text-[11px] text-neutral-600">{DEMAND_LABELS[level]}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
-// ── 메인 Export ───────────────────────────────────────────────
-
 export function CalendarClient({
   role,
   cities,
@@ -642,6 +766,9 @@ export function CalendarClient({
           artistHandle={artistHandle}
           initialCityData={initialCityData}
           initialArtistCity={initialArtistCity}
+          followingSchedules={followingSchedules}
+          initialYear={initialYear}
+          initialMonth={initialMonth}
         />
       ) : (
         <CustomerCalendar
