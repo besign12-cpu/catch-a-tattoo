@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { FeedCard } from "@/components/artist/FeedCard";
@@ -8,6 +8,7 @@ import { SearchInput } from "@/components/search/SearchInput";
 import { HomeFilterBar, type PeriodFilter } from "@/components/home/HomeFilterBar";
 import { HomeFilterSheet } from "@/components/home/HomeFilterSheet";
 import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
+import { useAnalytics } from "@/lib/hooks/useAnalytics";
 import type { FeedCard as FeedCardType } from "@/types";
 
 /** 이번 주 범위 계산 (월~일) */
@@ -97,6 +98,43 @@ export function HomeFeedClient({
   const [appliedTags, setAppliedTags] = useState<string[]>([]);
   const [draftTags, setDraftTags] = useState<string[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
+
+  const { trackArtistSearch, trackStyleSearch, trackCombinedSearch } = useAnalytics();
+
+  // filteredGuest/Based는 useMemo 이후에 참조해야 하므로 수집은 useEffect로 처리
+  // 검색어 debounce 수집 (500ms, 2자 이상)
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    const trimmed = query.trim();
+    if (trimmed.length < 2) return;
+    searchTimerRef.current = setTimeout(() => {
+      if (appliedTags.length > 0) {
+        trackCombinedSearch(trimmed, appliedTags, 0);
+      } else {
+        trackArtistSearch(trimmed, 0);
+      }
+    }, 500);
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
+
+  // 태그 필터 적용 시 수집 (적용된 태그가 변경될 때)
+  const prevAppliedTagsRef = useRef<string>("");
+  useEffect(() => {
+    const key = appliedTags.slice().sort().join(",");
+    if (key === prevAppliedTagsRef.current || appliedTags.length === 0) {
+      prevAppliedTagsRef.current = key;
+      return;
+    }
+    prevAppliedTagsRef.current = key;
+    if (query.trim().length > 0) {
+      trackCombinedSearch(query.trim(), appliedTags, 0);
+    } else {
+      trackStyleSearch(appliedTags, 0);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appliedTags]);
 
   function handleFilterOpen() {
     setDraftTags(appliedTags);

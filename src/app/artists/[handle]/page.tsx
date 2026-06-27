@@ -20,6 +20,8 @@ import { getBringStatus } from "@/actions/bring";
 import { getFollowStatus } from "@/actions/follow";
 import { BringButton } from "@/components/artist/BringButton";
 import { FollowButton } from "@/components/artist/FollowButton";
+import { InstagramLink } from "@/components/artist/InstagramLink";
+import { collectProfileView } from "@/lib/analytics/collect";
 import type { GuestSchedule } from "@/types";
 
 interface Props {
@@ -255,11 +257,13 @@ async function ProfileContent({
   ownerArtistId,
   activeTab,
   isLoggedIn,
+  userId,
 }: {
   handle: string;
   ownerArtistId: string | null;
   activeTab: "profile" | "schedule" | "insights";
   isLoggedIn: boolean;
+  userId: string | null;
 }) {
   const artist =
     (await getArtistProfile(handle).catch(() => null)) ??
@@ -270,6 +274,15 @@ async function ProfileContent({
 
   const isOwner = ownerArtistId === artist.id;
   const instagramUrl = `https://www.instagram.com/${artist.instagramHandle.replace("@", "")}`;
+
+  // Profile View 수집 (본인 제외, fire-and-forget)
+  if (!isOwner) {
+    void collectProfileView({
+      artistId: artist.id,
+      userId:   userId,
+      cityName: artist.baseCity ?? undefined,
+    });
+  }
 
   // Bring 상태 조회 (My City 기준)
   const bringInfo = await getBringStatus(artist.id);
@@ -386,16 +399,15 @@ async function ProfileContent({
               )}
 
               {/* Instagram 버튼 */}
-              <a
-                href={instagramUrl}
-                target="_blank"
-                rel="noopener noreferrer"
+              <InstagramLink
+                artistId={artist.id}
+                instagramUrl={instagramUrl}
+                displayName={artist.displayName}
                 className="flex items-center justify-center gap-1.5 rounded-xl border border-neutral-200 px-4 py-2.5 text-sm font-medium text-neutral-700 active:bg-neutral-50"
-                aria-label={`${artist.displayName} Instagram`}
               >
                 <InstagramIcon size={15} />
                 <span>Instagram</span>
-              </a>
+              </InstagramLink>
             </div>
 
             {/* 본인: Guest Work 등록 CTA */}
@@ -483,16 +495,15 @@ async function ProfileContent({
                     <span>관리</span>
                   </Link>
                 )}
-                <a
-                  href={instagramUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <InstagramLink
+                  artistId={artist.id}
+                  instagramUrl={instagramUrl}
+                  displayName={artist.displayName}
                   className="flex items-center gap-1 text-[11px] text-neutral-400 hover:text-neutral-600 transition-colors"
-                  aria-label="Instagram에서 더 보기"
                 >
                   <InstagramIcon size={11} />
                   <span>더 보기</span>
-                </a>
+                </InstagramLink>
               </div>
             </div>
 
@@ -557,11 +568,13 @@ export default async function ArtistProfilePage({ params, searchParams }: Props)
   // 로그인 유저의 artist_id 조회
   let ownerArtistId: string | null = null;
   let isLoggedIn = false;
+  let userId: string | null = null;
   try {
     const supabase = await getSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       isLoggedIn = true;
+      userId = user.id;
       const { data: artistRow } = await supabase
         .from("artist_profiles")
         .select("id")
@@ -599,6 +612,7 @@ export default async function ArtistProfilePage({ params, searchParams }: Props)
           ownerArtistId={ownerArtistId}
           activeTab={activeTab}
           isLoggedIn={isLoggedIn}
+          userId={userId}
         />
       </Suspense>
     </PageContainer>

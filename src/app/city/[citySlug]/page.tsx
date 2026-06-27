@@ -14,6 +14,7 @@ import { DUMMY_ARTISTS } from "@/data/dummy";
 import { fromCitySlug } from "@/lib/mock-preferences";
 import { formatDateRange, calcDDay } from "@/lib/utils";
 import { getCityBringCount } from "@/actions/bring";
+import { collectCityClick } from "@/lib/analytics/collect";
 import type { GuestSchedule, Tag } from "@/types";
 
 export const metadata: Metadata = { title: "도시" };
@@ -313,6 +314,9 @@ export default async function CityPage({
       artistHandle = (artistRow as { instagram_handle: string | null } | null)?.instagram_handle ?? null;
     }
   }
+
+  // City View 수집 (fire-and-forget)
+  void collectCityClick({ cityName: city, userId: user?.id ?? null });
 
   // 아티스트 데이터 조회
   let guests: SearchResult[] = [];

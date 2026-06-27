@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight, Plus, MapPin } from "lucide-react";
 import { CityDropdown } from "@/components/artist/CityDropdown";
 import type { CityDropdownOption } from "@/components/artist/CityDropdown";
+import { useAnalytics } from "@/lib/hooks/useAnalytics";
 import type { CalendarScheduleItem, CityCalendarData } from "@/lib/queries/calendar";
 
 // ── 타입 ─────────────────────────────────────────────────────
@@ -127,6 +128,8 @@ function CustomerCalendar({
   // 탭: "following"(팔로우 일정) | "city"(도시 탐색)
   const [viewMode, setViewMode] = useState<"following" | "city">("city");
 
+  const { trackCityClick } = useAnalytics();
+
   // 현재 표시할 일정 (viewMode에 따라)
   const activeSchedules = viewMode === "following" ? monthSchedules : citySchedules;
 
@@ -216,6 +219,7 @@ function CustomerCalendar({
               const full = cities.find(c => c.id === option.id) ?? null;
               setSelectedCity(full);
               setSelectedDay(null);
+              if (full) trackCityClick(full.name);
             }}
             value={selectedCity as CityDropdownOption | null}
           />
@@ -430,6 +434,8 @@ function ArtistCalendar({
     ? `/artists/${artistHandle}/schedule/new`
     : "/artists/new";
 
+  const { trackCityClick } = useAnalytics();
+
   // 도시 변경 시 KPI 재조회
   const fetchCityData = useCallback(async (cityName: string) => {
     setLoadingCity(true);
@@ -542,7 +548,10 @@ function ArtistCalendar({
                 const full = cities.find(c => c.id === option.id) ?? null;
                 setSelectedCity(full);
                 setSelectedDay(null);
-                if (full) fetchCityData(full.name);
+                if (full) {
+                  fetchCityData(full.name);
+                  trackCityClick(full.name);
+                }
               }}
               value={selectedCity as CityDropdownOption | null}
             />
