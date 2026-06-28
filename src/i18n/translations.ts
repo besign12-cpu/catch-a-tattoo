@@ -30,9 +30,10 @@ const translations = {
     discover: {
       searchPlaceholder: "Search artists, styles...",
       all: "All", thisWeek: "This Week", filter: "Filter",
-      guestArtists: "Upcoming Guest Artists in {city}",
-      basedArtists: "Based Artists in {city}",
+      guestArtists: "Upcoming Guest Artists",
+      basedArtists: "Based Artists",
       noGuests: "No guest artists matching your search.",
+      seeAll: "See all",
       noBased:  "No based artists matching your search.",
     },
     following: {
@@ -110,9 +111,10 @@ const translations = {
     discover: {
       searchPlaceholder: "아티스트, 스타일 검색...",
       all: "전체", thisWeek: "이번 주", filter: "필터",
-      guestArtists: "{city} 게스트 아티스트",
-      basedArtists: "{city} Based 아티스트",
+      guestArtists: "게스트 아티스트",
+      basedArtists: "Based 아티스트",
       noGuests: "검색 조건에 맞는 게스트 아티스트가 없습니다.",
+      seeAll: "더보기",
       noBased:  "검색 조건에 맞는 아티스트가 없습니다.",
     },
     following: {

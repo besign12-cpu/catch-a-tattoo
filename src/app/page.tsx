@@ -41,7 +41,6 @@ async function FeedSection() {
       baseCountry = userData.base_country ?? DEFAULT_BASE_COUNTRY;
     }
 
-    // 팔로우 중인 아티스트 ID 목록 조회
     const admin = getSupabaseAdminClient();
     const { data: followRows } = await admin
       .from("follows")
@@ -55,21 +54,20 @@ async function FeedSection() {
 
   const citySlug = toCitySlug(baseCity, baseCountry);
 
-  /** SearchResult → FeedCard 변환 (isFollowing 실데이터 반영) */
   function toFeedCards(results: SearchResult[]): FeedCard[] {
     return results
       .filter((r) => r.nextSchedule !== null)
       .map((r) => ({
         artist: {
-          id: r.artistId,
-          displayName: r.displayName,
+          id:              r.artistId,
+          displayName:     r.displayName,
           instagramHandle: r.instagramHandle ?? "",
-          isVerified: r.isVerified,
-          isClaimed: r.isClaimed,
-          baseCity: r.baseCity ?? "",
-          tags: r.tags,
+          isVerified:      r.isVerified,
+          isClaimed:       r.isClaimed,
+          baseCity:        r.baseCity ?? "",
+          tags:            r.tags,
         },
-        schedule: r.nextSchedule!,
+        schedule:    r.nextSchedule!,
         isFollowing: followingArtistIds.has(r.artistId),
       }));
   }
@@ -91,13 +89,39 @@ async function FeedSection() {
     basedItems = DUMMY_FEED.slice(0, 3);
   }
 
+  // cities 마스터 조회 (검색용)
+  const admin = getSupabaseAdminClient();
+  const { data: citiesData } = await admin
+    .from("cities")
+    .select("id, name, country, country_name, region")
+    .eq("is_approved", true)
+    .order("name", { ascending: true });
+
+  const cities = (citiesData ?? []).map(
+    (c: {
+      id: string;
+      name: string;
+      country: string;
+      country_name: string;
+      region: string;
+    }) => ({
+      id:          c.id,
+      name:        c.name,
+      country:     c.country,
+      countryName: c.country_name,
+      region:      c.region,
+    })
+  );
+
   return (
     <HomeFeedClient
       guestItems={guestItems}
       basedItems={basedItems}
       baseCity={baseCity}
+      baseCountry={baseCountry}
       citySlug={citySlug}
       isLoggedIn={!!user}
+      cities={cities}
     />
   );
 }
