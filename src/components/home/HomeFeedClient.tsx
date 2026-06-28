@@ -326,17 +326,10 @@ export function HomeFeedClient({
         ) : (
           <div className="pb-6">
             {/* Upcoming Guest Artists */}
-            <div className="flex items-center justify-between px-4 pb-2 pt-4">
+            <div className="px-4 pb-2 pt-4">
               <h3 className="text-[13px] font-semibold text-neutral-800">
                 {t("guestArtists")}
               </h3>
-              <Link
-                href={`/city/${currentCitySlug}?tab=guest`}
-                className="flex items-center gap-0.5 text-[12px] text-neutral-400 active:text-neutral-600"
-              >
-                {t("seeAll")}
-                <ChevronRight size={13} strokeWidth={2} />
-              </Link>
             </div>
             {filteredGuest.length === 0 ? (
               <p className="px-4 py-4 text-[12px] text-neutral-400">{t("noGuests")}</p>
@@ -349,17 +342,10 @@ export function HomeFeedClient({
             )}
 
             {/* Based Artists */}
-            <div className="flex items-center justify-between px-4 pb-2 pt-5">
+            <div className="px-4 pb-2 pt-5">
               <h3 className="text-[13px] font-semibold text-neutral-800">
                 {t("basedArtists")}
               </h3>
-              <Link
-                href={`/city/${currentCitySlug}?tab=based`}
-                className="flex items-center gap-0.5 text-[12px] text-neutral-400 active:text-neutral-600"
-              >
-                {t("seeAll")}
-                <ChevronRight size={13} strokeWidth={2} />
-              </Link>
             </div>
             {filteredBased.length === 0 ? (
               <p className="px-4 py-4 text-[12px] text-neutral-400">{t("noBased")}</p>
