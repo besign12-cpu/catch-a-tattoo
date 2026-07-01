@@ -63,7 +63,12 @@ export default function BottomNav() {
           // locale prefix 포함 링크 (trailing slash 없음)
           const targetHref = (() => {
             if (href !== "/me") return withLocale(locale, href);
-            if (!user && status !== "loading") return withLocale(locale, "/auth/login");
+            if (!user && status !== "loading") {
+              // auth 페이지는 /ko 라우트 없음 → prefix 없이 이동
+              // next 파라미터로 로그인 후 돌아갈 /ko/me 지정
+              const nextPath = withLocale(locale, "/me");
+              return `/auth/login?next=${encodeURIComponent(nextPath)}`;
+            }
             return withLocale(locale, "/me");
           })();
 
