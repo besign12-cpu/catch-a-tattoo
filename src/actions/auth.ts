@@ -75,6 +75,8 @@ export async function signIn(
 ): Promise<SignInState> {
   const email = formData.get("email");
   const password = formData.get("password");
+  // next: 로그인 후 돌아갈 경로 (예: /ko/me, /me)
+  const next = (formData.get("next") as string | null)?.trim() || "/";
 
   if (typeof email !== "string" || typeof password !== "string") {
     return { status: "error", message: "입력값이 올바르지 않습니다." };
@@ -114,7 +116,8 @@ export async function signIn(
     return { status: "error", message: error.message };
   }
 
-  redirect("/");
+  // next 파라미터가 있으면 해당 경로로, 없으면 홈으로
+  redirect(next);
 }
 
 // ─── 로그아웃 ────────────────────────────────────────────────────────────────

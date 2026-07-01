@@ -1,7 +1,14 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { PageContainer } from "@/components/layout/PageContainer";
 
 export default function NotFound() {
+  const pathname = usePathname();
+  // /ko/* 경로에서 404가 났으면 홈도 /ko로
+  const homeHref = pathname.startsWith("/ko") ? "/ko" : "/";
+
   return (
     <PageContainer>
       <div className="flex h-[calc(100vh-104px)] flex-col items-center justify-center gap-3 px-6 text-center">
@@ -11,7 +18,7 @@ export default function NotFound() {
           주소가 올바른지 확인해주세요.
         </p>
         <Link
-          href="/"
+          href={homeHref}
           className="mt-2 rounded-xl border border-neutral-200 px-5 py-2.5 text-sm font-medium text-neutral-700 active:scale-95"
         >
           홈으로 돌아가기

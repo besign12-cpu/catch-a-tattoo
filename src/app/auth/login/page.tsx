@@ -1,6 +1,7 @@
 "use client";
 
 import { useFormState, useFormStatus } from "react-dom";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { signIn, type SignInState } from "@/actions/auth";
 
@@ -27,6 +28,9 @@ function SubmitButton() {
 
 export default function LoginPage() {
   const [state, formAction] = useFormState(signIn, initialState);
+  // 로그인 후 돌아갈 경로 (?next=/ko/me 등)
+  const searchParams = useSearchParams();
+  const next = searchParams.get("next") ?? "/";
 
   return (
     <div className="min-h-screen bg-cat-black flex flex-col items-center justify-center px-6">
@@ -45,6 +49,9 @@ export default function LoginPage() {
         <h2 className="text-lg font-semibold text-white mb-6">로그인</h2>
 
         <form action={formAction} className="flex flex-col gap-4">
+          {/* next 파라미터 — signIn action이 읽어서 redirect에 사용 */}
+          <input type="hidden" name="next" value={next} />
+
           {/* 이메일 */}
           <div className="flex flex-col gap-1.5">
             <label htmlFor="email" className="text-xs text-white/50">
