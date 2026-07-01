@@ -1,4 +1,5 @@
 "use client";
+import { useT } from "@/lib/hooks/useT";
 
 import { useState } from "react";
 import { Search, Check, ChevronDown, MapPin } from "lucide-react";
@@ -68,6 +69,7 @@ export function CityDropdown({
   );
   const selected = onSelect !== undefined ? (value ?? null) : internalSelected;
   const [open, setOpen] = useState(false);
+  const tc = useT("common");
   const [query, setQuery] = useState("");
 
   // 검색 필터
@@ -167,9 +169,9 @@ export function CityDropdown({
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="도시 또는 국가 검색"
+              placeholder={tc("searchCityOrCountry")}
               className="flex-1 bg-transparent text-sm text-neutral-900 placeholder:text-neutral-400 focus:outline-none"
-              aria-label="도시 검색"
+              aria-label={tc("searchCityOrCountry")}
               autoFocus
             />
           </div>

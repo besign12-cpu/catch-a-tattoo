@@ -99,7 +99,9 @@ export function HomeFeedClient({
   const [draftTags,    setDraftTags]    = useState<string[]>([]);
   const [sheetOpen,    setSheetOpen]    = useState(false);
 
-  const t = useT("discover");
+  const t   = useT("discover");
+  const tc  = useT("common");
+  const tst = useT("settings");
   const { trackArtistSearch, trackStyleSearch, trackCombinedSearch, trackCityClick } = useAnalytics();
 
   // ── 검색 debounce ───────────────────────────────────────────
@@ -270,7 +272,7 @@ export function HomeFeedClient({
                   </div>
                   {city.name === currentCity && (
                     <span className="shrink-0 rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] text-neutral-500">
-                      현재
+                      {tst("baseCityCurrent")}
                     </span>
                   )}
                 </button>
@@ -311,7 +313,7 @@ export function HomeFeedClient({
             href={`/city/${currentCitySlug}`}
             className="flex items-center gap-0.5 mt-1 text-[12px] text-neutral-400 hover:text-neutral-600 transition-colors active:opacity-70"
           >
-            더보기
+            {tc("moreView")}
             <ChevronRight size={13} strokeWidth={2} />
           </Link>
         </div>
@@ -321,7 +323,7 @@ export function HomeFeedClient({
       {!isSearching && (
         cityLoading ? (
           <div className="flex flex-col items-center justify-center py-16">
-            <p className="text-[13px] text-neutral-300">로딩 중...</p>
+            <p className="text-[13px] text-neutral-300">{tc("loading")}</p>
           </div>
         ) : (
           <div className="pb-6">

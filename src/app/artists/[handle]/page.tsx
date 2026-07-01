@@ -99,7 +99,7 @@ function getAvailStatus(
   const status = isScheduleActive(schedule.startDate, schedule.endDate);
   if (status === "ended") return null;
   const fullyBooked =
-    schedule.note?.toLowerCase().includes("마감") ||
+    schedule.note?.toLowerCase().includes("마감") || schedule.note?.toLowerCase().includes("fully booked") ||
     schedule.note?.toLowerCase().includes("full") ||
     schedule.note?.toLowerCase().includes("booked") ||
     false;
@@ -507,7 +507,7 @@ async function ProfileContent({
                     aria-label="포트폴리오 관리"
                   >
                     <ImageIcon size={11} aria-hidden="true" />
-                    <span>관리</span>
+                    <span>{t("manage")}</span>
                   </Link>
                 )}
                 <InstagramLink
@@ -517,7 +517,7 @@ async function ProfileContent({
                   className="flex items-center gap-1 text-[11px] text-neutral-400 hover:text-neutral-600 transition-colors"
                 >
                   <InstagramIcon size={11} />
-                  <span>더 보기</span>
+                  <span>{t("moreView")}</span>
                 </InstagramLink>
               </div>
             </div>
@@ -553,7 +553,7 @@ async function ProfileContent({
                 {t("unverifiedProfile")}
               </p>
               <p className="mb-2.5 text-[11px] text-amber-600 leading-relaxed">
-                Instagram DM 인증으로 본인 프로필임을 확인하세요.
+                {t("unverifiedDesc")}
               </p>
               <Link
                 href={`/artists/${artist.instagramHandle}/claim`}

@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Plus, MapPin } from "lucide-react";
 import { CityDropdown } from "@/components/artist/CityDropdown";
 import type { CityDropdownOption } from "@/components/artist/CityDropdown";
 import { useAnalytics } from "@/lib/hooks/useAnalytics";
+import { useT } from "@/lib/hooks/useT";
 import type { CalendarScheduleItem, CityCalendarData } from "@/lib/queries/calendar";
 
 // ── 타입 ─────────────────────────────────────────────────────
@@ -83,9 +84,13 @@ type DemandLevel = "high" | "mid" | "low" | null;
 const DEMAND_COLORS: Record<NonNullable<DemandLevel>, string> = {
   high: "bg-green-500", mid: "bg-yellow-400", low: "bg-red-400",
 };
-const DEMAND_LABELS: Record<NonNullable<DemandLevel>, string> = {
-  high: "여유 (1–4)", mid: "보통 (5–8)", low: "혼잡 (9+)",
-};
+function getDemandLabels(t: (k: string) => string): Record<NonNullable<DemandLevel>, string> {
+  return {
+    high: t("demandHigh"),
+    mid:  t("demandMid"),
+    low:  t("demandLow"),
+  };
+}
 function guestCountToLevel(count: number): DemandLevel {
   if (count === 0) return null;
   if (count <= 4)  return "high";
@@ -127,6 +132,9 @@ function CustomerCalendar({
 
   // 탭: "following"(팔로우 일정) | "city"(도시 탐색)
   const [viewMode, setViewMode] = useState<"following" | "city">("city");
+
+  const tc   = useT("calendar");
+  const tc_c = useT("common");
 
   const { trackCityClick } = useAnalytics();
 
@@ -200,7 +208,7 @@ function CustomerCalendar({
                   : "text-neutral-400",
               ].join(" ")}
             >
-              {mode === "city" ? "도시 탐색" : "팔로우 일정"}
+              {mode === "city" ? tc("cityExplore") : tc("followingSchedule")}
             </button>
           ))}
         </div>
@@ -316,7 +324,7 @@ function CustomerCalendar({
           <p className="text-[11px] font-semibold tracking-widest text-neutral-400 uppercase">
             {viewMode === "city" && selectedCity
               ? `${selectedCity.name} Guest Work`
-              : "팔로우 아티스트 일정"}
+              : tc("followingArtistSchedule")}
           </p>
         </div>
 
@@ -326,9 +334,9 @@ function CustomerCalendar({
               <MapPin size={20} className="text-neutral-400" aria-hidden="true" />
             </div>
             <div className="flex flex-col gap-1">
-              <p className="text-sm font-medium text-neutral-700">로그인하면 일정을 볼 수 있습니다</p>
+              <p className="text-sm font-medium text-neutral-700">{tc("loginToView")}</p>
               <p className="text-xs text-neutral-400 leading-relaxed">
-                팔로우한 아티스트의 게스트워크<br />일정을 달력에서 확인해보세요
+                {tc("loginDesc")}
               </p>
             </div>
             <Link href="/auth/login?next=/calendar"
@@ -343,18 +351,18 @@ function CustomerCalendar({
             </div>
             <p className="text-sm font-medium text-neutral-700">
               {viewMode === "city"
-                ? `${selectedCity?.name ?? "선택 도시"}에 이번 달 Guest Work가 없습니다`
-                : "팔로우한 아티스트 일정이 없습니다"}
+                ? tc("noCitySchedule", { city: selectedCity?.name ?? "" })
+                : tc("noFollowSchedule")}
             </p>
             <p className="text-xs text-neutral-400 leading-relaxed">
               {viewMode === "city"
-                ? "다른 도시를 선택하거나 다음 달을 확인해보세요"
-                : "아티스트를 팔로우하면 여기서 일정을 확인할 수 있습니다"}
+                ? tc("noCityScheduleDesc")
+                : tc("noFollowScheduleDesc")}
             </p>
             {viewMode === "following" && (
               <Link href="/"
                 className="mt-1 rounded-xl bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white active:opacity-80">
-                아티스트 찾기
+                {tc_c("findArtist")}
               </Link>
             )}
           </div>
@@ -434,6 +442,10 @@ function ArtistCalendar({
     ? `/artists/${artistHandle}/schedule/new`
     : "/artists/new";
 
+  const ta   = useT("calendar");
+  const ta_c = useT("common");
+  const DEMAND_LABELS = getDemandLabels(ta);
+
   const { trackCityClick } = useAnalytics();
 
   // 도시 변경 시 KPI 재조회
@@ -503,7 +515,7 @@ function ArtistCalendar({
                 : "text-neutral-400",
             ].join(" ")}
           >
-            {mode === "city" ? "도시 탐색" : "팔로우 일정"}
+            {mode === "city" ? ta("cityExplore") : ta("followingSchedule")}
           </button>
         ))}
       </div>
@@ -516,7 +528,7 @@ function ArtistCalendar({
             <Link href={scheduleNewPath}
               className="flex items-center justify-center gap-2 w-full rounded-2xl bg-neutral-900 py-4 text-sm font-semibold text-white hover:opacity-90 active:opacity-80 transition-opacity">
               <Plus size={16} aria-hidden="true" />
-              Guest Work 등록
+              {ta_c("findArtist")}
             </Link>
           </div>
 
@@ -626,25 +638,25 @@ function ArtistCalendar({
       {viewMode === "city" && selectedDay && (
         <div className="mx-4 rounded-2xl border border-neutral-100 bg-white px-5 py-4">
           <p className="text-[13px] font-semibold text-neutral-900">
-            {month + 1}월 {selectedDay}일 인사이트
+            {ta("dateInsight", { month: month + 1, day: selectedDay })}
           </p>
           {demandLevel ? (
             <div className="mt-3 flex flex-col gap-2">
               <p className="text-[13px] font-medium text-neutral-900">
-                Guest {DEMAND_LABELS[demandLevel]}명
+                Guest {DEMAND_LABELS[demandLevel]}
               </p>
               <p className="text-xs text-neutral-400">이 날짜의 수요를 기반으로 일정을 등록해보세요.</p>
             </div>
           ) : (
             <div className="mt-3">
               <p className="text-xs text-neutral-400 leading-relaxed">
-                이 도시의 수요 데이터가 아직 없습니다.<br />
-                Guest Work를 등록하면 수요를 확인할 수 있습니다.
+                {ta("noInsight")}<br />
+                {ta("noInsightDesc")}
               </p>
               <Link href={scheduleNewPath}
                 className="mt-3 flex items-center justify-center gap-1.5 w-full rounded-xl border border-neutral-200 bg-neutral-50 py-3 text-sm font-medium text-neutral-700 hover:border-neutral-300 hover:bg-white transition-colors">
                 <Plus size={14} aria-hidden="true" />
-                이 날짜로 일정 등록
+                {ta("addScheduleForDate")}
               </Link>
             </div>
           )}
@@ -697,7 +709,7 @@ function ArtistCalendar({
         <div className="mx-4 rounded-2xl border border-neutral-100 bg-white">
           <div className="border-b border-neutral-50 px-5 py-3">
             <p className="text-[11px] font-semibold tracking-widest text-neutral-400 uppercase">
-              팔로우 아티스트 일정
+              {ta("followingArtistSchedule")}
             </p>
           </div>
           {allFollowingSchedules.length === 0 ? (
@@ -705,13 +717,13 @@ function ArtistCalendar({
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-neutral-100">
                 <MapPin size={20} className="text-neutral-400" aria-hidden="true" />
               </div>
-              <p className="text-sm font-medium text-neutral-700">팔로우한 아티스트 일정이 없습니다</p>
+              <p className="text-sm font-medium text-neutral-700">{ta("noFollowSchedule")}</p>
               <p className="text-xs text-neutral-400 leading-relaxed">
-                아티스트를 팔로우하면 여기서 일정을 확인할 수 있습니다
+                {ta("noFollowScheduleDesc")}
               </p>
               <Link href="/"
                 className="mt-1 rounded-xl bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white active:opacity-80">
-                아티스트 찾기
+                {ta_c("findArtist")}
               </Link>
             </div>
           ) : (

@@ -16,6 +16,7 @@ import { useFormState, useFormStatus } from "react-dom";
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toggleBring, type BringState } from "@/actions/bring";
+import { useT } from "@/lib/hooks/useT";
 
 // ── Submit 버튼 (pending 처리) ───────────────────────────────
 
@@ -98,6 +99,7 @@ export function BringButton({
   const router = useRouter();
   const [state, formAction] = useFormState(toggleBring, initialState);
   const prevStatus = useRef(state.status);
+  const tc = useT("common");
 
   useEffect(() => {
     if (state.status === "success" && prevStatus.current !== "success") {
@@ -125,8 +127,8 @@ export function BringButton({
       <button
         disabled
         className="flex items-center justify-center rounded-xl border border-neutral-100 bg-neutral-50 px-3 py-2.5 text-sm font-medium text-neutral-300 cursor-not-allowed select-none"
-        aria-label="팔로우 후 Bring 가능"
-        title="먼저 팔로우해주세요"
+        aria-label={tc("followToBring")}
+        title={tc("followFirst")}
       >
         Bring
       </button>
@@ -140,7 +142,7 @@ export function BringButton({
         onClick={() => router.push("/me/settings")}
         className="flex items-center justify-center rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm font-medium text-amber-600 active:opacity-80 transition-colors"
         aria-label="Base City 설정 후 Bring 가능"
-        title="Base City를 먼저 설정해주세요"
+        title={tc("setBaseCityToBring")}
       >
         Bring
       </button>

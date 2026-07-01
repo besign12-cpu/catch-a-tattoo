@@ -15,9 +15,10 @@ import { fromCitySlug } from "@/lib/mock-preferences";
 import { formatDateRange, calcDDay } from "@/lib/utils";
 import { getCityBringCount } from "@/actions/bring";
 import { collectCityClick } from "@/lib/analytics/collect";
+import { getT } from "@/i18n/translations.server";
 import type { GuestSchedule, Tag } from "@/types";
 
-export const metadata: Metadata = { title: "도시" };
+export const metadata: Metadata = { title: "City" };
 
 type TabType = "guest" | "based";
 
@@ -166,10 +167,10 @@ function ArtistCard({ result }: { result: SearchResult }) {
 
 function PopularStylesSection({
   styles,
-  city,
+  popularStylesLabel,
 }: {
   styles: StyleCount[];
-  city: string;
+  popularStylesLabel: string;
 }) {
   if (styles.length === 0) return null;
 
@@ -178,7 +179,7 @@ function PopularStylesSection({
       <div className="mb-3 flex items-center gap-1.5">
         <TrendingUp size={13} className="text-neutral-400" aria-hidden="true" />
         <p className="text-[11px] font-semibold tracking-widest text-neutral-400 uppercase">
-          {city} 인기 스타일
+          {popularStylesLabel}
         </p>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -210,11 +211,17 @@ function ArtistInsightBanner({
   guestCount,
   bringCount,
   artistHandle,
+  activeDemandLabel,
+  currentAndUpcomingLabel,
+  addScheduleLabel,
 }: {
   city: string;
   guestCount: number;
   bringCount: number;
   artistHandle: string | null;
+  activeDemandLabel: string;
+  currentAndUpcomingLabel: string;
+  addScheduleLabel: string;
 }) {
   const scheduleNewPath = artistHandle
     ? `/artists/${artistHandle}/schedule/new`
@@ -237,7 +244,7 @@ function ArtistInsightBanner({
             Bring This Artist
           </span>
           <span className="text-[10px] text-neutral-500">
-            현재 활성 수요
+            {activeDemandLabel}
           </span>
         </div>
         <div className="w-px self-stretch bg-neutral-700" />
@@ -246,7 +253,7 @@ function ArtistInsightBanner({
             {guestCount}
           </span>
           <span className="text-[11px] text-neutral-400">Guest Artists</span>
-          <span className="text-[10px] text-neutral-500">현재 / 예정</span>
+          <span className="text-[10px] text-neutral-500">{currentAndUpcomingLabel}</span>
         </div>
       </div>
 
@@ -261,7 +268,7 @@ function ArtistInsightBanner({
         "
       >
         <Plus size={14} aria-hidden="true" />
-        {city} 일정 등록하기
+        {addScheduleLabel}
       </Link>
 
       {/* 캘린더 링크 */}
@@ -318,6 +325,9 @@ export default async function CityPage({
   // City View 수집 (fire-and-forget)
   void collectCityClick({ cityName: city, userId: user?.id ?? null });
 
+  const tc = await getT("city");
+  const ta = await getT("common");
+
   // 아티스트 데이터 조회
   let guests: SearchResult[] = [];
   let based: SearchResult[] = [];
@@ -362,7 +372,7 @@ export default async function CityPage({
           <Link
             href="/"
             className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-400 hover:bg-neutral-100 transition-colors"
-            aria-label="뒤로가기"
+            aria-label={ta("back")}
           >
             <ChevronLeft size={20} aria-hidden="true" />
           </Link>
@@ -379,11 +389,11 @@ export default async function CityPage({
         {/* KPI 카드 행 */}
         <div className="flex gap-2 px-4 pb-3">
           <KpiCard label="Guest" value={guests.length} sub="현재·예정" />
-          <KpiCard label="Based" value={based.length} sub="베이스 아티스트" />
+          <KpiCard label="Based" value={based.length} sub={tc("basedArtists")} />
           <KpiCard
             label="Bring"
             value={bringCount}
-            sub="활성 수요"
+            sub={tc("activeDemand")}
           />
         </div>
 
@@ -424,6 +434,9 @@ export default async function CityPage({
             guestCount={guests.length}
             bringCount={bringCount}
             artistHandle={artistHandle}
+            activeDemandLabel={tc("activeDemand")}
+            currentAndUpcomingLabel={tc("currentAndUpcoming")}
+            addScheduleLabel={`${city} ${tc("addSchedule")}`}
           />
         )}
 
@@ -447,7 +460,7 @@ export default async function CityPage({
         )}
 
         {/* 인기 스타일 섹션 */}
-        <PopularStylesSection styles={popularStyles} city={city} />
+        <PopularStylesSection styles={popularStyles} popularStylesLabel={tc("popularStyles")} />
       </div>
     </PageContainer>
   );
