@@ -75,7 +75,7 @@ function calcDDay(startDate: string, endDate: string): string {
   const start = new Date(startDate);
   const end   = new Date(endDate);
   end.setHours(23, 59, 59, 999);
-  if (today >= start && today <= end) return "__IN_TOWN__";
+  if (today >= start && today <= end) return "__ACTIVE__";
   if (today > end) return "종료";
   const diff = Math.ceil((start.getTime() - today.getTime()) / 86400000);
   return `D-${diff}`;
@@ -83,8 +83,9 @@ function calcDDay(startDate: string, endDate: string): string {
 
 // ── 빈 상태 ──────────────────────────────────────────────────
 
-function EmptyState({ tab }: { tab: TabType }) {
-  const t = useT("following");
+function EmptyState({ tab, isLoggedIn }: { tab: TabType; isLoggedIn: boolean }) {
+  const t  = useT("following");
+  const tc = useT("common");
   const isSchedule = tab === "schedule";
 
   return (
@@ -103,10 +104,10 @@ function EmptyState({ tab }: { tab: TabType }) {
         </p>
       </div>
       <Link
-        href="/"
+        href={isLoggedIn ? "/" : "/auth/login"}
         className="mt-1 rounded-xl bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white active:opacity-80"
       >
-        {t("noFollowingDesc")}
+        {isLoggedIn ? t("findArtistCta") : tc("loginRequired")}
       </Link>
     </div>
   );
@@ -116,7 +117,7 @@ function EmptyState({ tab }: { tab: TabType }) {
 
 function ScheduleTab({ schedules }: { schedules: FollowingScheduleItem[] }) {
   const tSched = useT("artist");
-  if (schedules.length === 0) return <EmptyState tab="schedule" />;
+  if (schedules.length === 0) return <EmptyState tab="schedule" isLoggedIn={true} />;
 
   const sorted = [...schedules].sort((a, b) => {
     if (a.isActive && !b.isActive) return -1;
@@ -128,7 +129,13 @@ function ScheduleTab({ schedules }: { schedules: FollowingScheduleItem[] }) {
     <div className="flex flex-col gap-3 px-4 py-4">
       {sorted.map(item => {
         const ddayRaw   = calcDDay(item.startDate, item.endDate);
-        const dday      = ddayRaw === "__IN_TOWN__" ? tSched("inTown") : ddayRaw;
+        const dday      = ddayRaw === "__ACTIVE__"
+          ? tSched("inTown")
+          : ddayRaw === "__LAST_DAY__"
+            ? tSched("lastDay")
+            : ddayRaw.includes("__IN_TOWN__")
+              ? ddayRaw.replace("__IN_TOWN__", tSched("inTownSuffix"))
+              : ddayRaw;
         const dateRange = formatDateRange(item.startDate, item.endDate);
 
         return (
@@ -201,7 +208,7 @@ function FollowTab({
   onToggle: (artistId: string, artistHandle: string) => void;
 }) {
   const t = useT("artist");
-  if (artists.length === 0) return <EmptyState tab="follow" />;
+  if (artists.length === 0) return <EmptyState tab="follow" isLoggedIn={true} />;
 
   return (
     <div className="flex flex-col divide-y divide-neutral-50 px-4 py-2">
@@ -336,7 +343,7 @@ export function FollowingClient({
 
       {/* 탭 콘텐츠 */}
       {!isLoggedIn ? (
-        <EmptyState tab={activeTab} />
+        <EmptyState tab={activeTab} isLoggedIn={false} />
       ) : activeTab === "schedule" ? (
         <ScheduleTab schedules={schedules} />
       ) : (

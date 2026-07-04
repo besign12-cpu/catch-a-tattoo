@@ -27,7 +27,7 @@ export function calcDDay(startDate: string, endDate: string): string {
     const daysLeft = Math.ceil(
       (end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
     );
-    return daysLeft === 0 ? "오늘 마지막" : `D-${daysLeft} · 진행 중`;
+    return daysLeft === 0 ? "__LAST_DAY__" : `D-${daysLeft}·__IN_TOWN__`;
   }
 
   if (today < start) {

@@ -392,13 +392,13 @@ function CustomerCalendar({
       <div className="flex items-center gap-3 px-5 pb-4">
         <div className="flex items-center gap-1.5">
           <span className="h-2 w-2 rounded-full bg-cat-purple" aria-hidden="true" />
-          <span className="text-[11px] text-neutral-400">일정 있음</span>
+          <span className="text-[11px] text-neutral-400">{tc_c("hasSchedule")}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-neutral-900 text-[9px] text-white font-medium">
             {today.getDate()}
           </span>
-          <span className="text-[11px] text-neutral-400">오늘</span>
+          <span className="text-[11px] text-neutral-400">{tc_c("todayLabel")}</span>
         </div>
       </div>
     </div>

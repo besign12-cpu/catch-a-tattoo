@@ -8,6 +8,7 @@ import { TagList } from "@/components/ui/TagChip";
 import { formatDateRange, calcDDay, isScheduleActive } from "@/lib/utils";
 import { FollowButton } from "@/components/artist/FollowButton";
 import type { FeedCard as FeedCardType } from "@/types";
+import { useT } from "@/lib/hooks/useT";
 
 // ISO 국가 코드 → 국가명 (자주 쓰이는 것만)
 const COUNTRY_NAMES: Record<string, string> = {
@@ -33,7 +34,14 @@ export function FeedCard({ data, className, isLoggedIn = false }: FeedCardProps)
   const { artist, schedule, isFollowing } = data;
   const status    = isScheduleActive(schedule.startDate, schedule.endDate);
   const isActive  = status === "active";
-  const dday      = calcDDay(schedule.startDate, schedule.endDate);
+  const ddayRaw   = calcDDay(schedule.startDate, schedule.endDate);
+  const ta        = useT("artist");
+  // 플래그 → 번역 처리
+  const dday = ddayRaw === "__LAST_DAY__"
+    ? ta("lastDay")
+    : ddayRaw.includes("__IN_TOWN__")
+      ? ddayRaw.replace("__IN_TOWN__", ta("inTownSuffix"))
+      : ddayRaw;
   const dateRange = formatDateRange(schedule.startDate, schedule.endDate);
 
   return (

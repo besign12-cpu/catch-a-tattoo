@@ -22,7 +22,12 @@ export function ScheduleBlock({
 }: ScheduleBlockProps) {
   const t = useT("artist");
   const status = isScheduleActive(schedule.startDate, schedule.endDate);
-  const dday = calcDDay(schedule.startDate, schedule.endDate);
+  const ddayRaw = calcDDay(schedule.startDate, schedule.endDate);
+  const dday = ddayRaw === "__LAST_DAY__"
+    ? t("lastDay")
+    : ddayRaw.includes("__IN_TOWN__")
+      ? ddayRaw.replace("__IN_TOWN__", t("inTownSuffix"))
+      : ddayRaw;
   const dateRange = formatDateRange(schedule.startDate, schedule.endDate);
 
   const isActive = status === "active";
