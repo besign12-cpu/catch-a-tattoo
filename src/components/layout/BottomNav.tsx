@@ -7,11 +7,9 @@ import { useSession } from "@/lib/hooks/useSession";
 import { buildT } from "@/i18n/translations";
 import type { Locale } from "@/i18n/config";
 
-const NAV_HREFS = ["/", "/following", "/calendar", "/me"] as const;
-const NAV_ICONS = [Compass, Heart, Calendar, User] as const;
-const NAV_KEYS  = ["discover", "following", "calendar", "me"] as const;
+// ── 헬퍼 ─────────────────────────────────────────────────────
 
-/** pathname 기준 locale 판단 — 쿠키/SSR 의존 없음 */
+/** pathname → locale 판단 (쿠키/SSR 의존 없이 항상 정확) */
 function localeFromPath(pathname: string): Locale {
   return pathname === "/ko" || pathname.startsWith("/ko/") ? "ko" : "en";
 }
@@ -23,22 +21,28 @@ function stripKo(pathname: string): string {
   return pathname;
 }
 
-/** locale prefix + href 합성 (trailing slash 방지) */
-function withLocale(locale: Locale, href: string): string {
-  if (locale === "en") return href;
-  // href="/" → "/ko", href="/following" → "/ko/following"
-  return href === "/" ? "/ko" : `/ko${href}`;
+/** locale prefix + base href 조합 (trailing slash 방지) */
+function withLocale(locale: Locale, base: string): string {
+  if (locale === "en") return base;
+  return base === "/" ? "/ko" : `/ko${base}`;
 }
+
+// ── 탭 정의 ──────────────────────────────────────────────────
+const NAV_HREFS  = ["/", "/following", "/calendar", "/me"] as const;
+const NAV_ICONS  = [Compass, Heart, Calendar, User]        as const;
+const NAV_KEYS   = ["discover", "following", "calendar", "me"] as const;
+
+// ── 컴포넌트 ─────────────────────────────────────────────────
 
 export default function BottomNav() {
   const pathname = usePathname();
   const { user, status } = useSession();
 
-  // pathname 기준으로 locale 판단 (쿠키 불필요 — 항상 정확)
-  const locale = localeFromPath(pathname);
-  const t = buildT(locale, "nav");
+  // pathname 기준 locale — 항상 정확, SSR safe
+  const locale  = localeFromPath(pathname);
+  const t       = buildT(locale, "nav");
 
-  // 인증 페이지에서는 BottomNav 숨김
+  // 인증 페이지에서는 숨김
   if (pathname.startsWith("/auth/")) return null;
 
   // /ko prefix 제거한 실제 경로 (active 판단용)
@@ -56,16 +60,15 @@ export default function BottomNav() {
       aria-label="하단 네비게이션"
     >
       <ul className="flex items-center justify-around px-2 h-16">
-        {NAV_HREFS.map((href, i) => {
+        {NAV_HREFS.map((base, i) => {
           const Icon  = NAV_ICONS[i];
           const label = t(NAV_KEYS[i]);
 
-          // locale prefix 포함 링크 (trailing slash 없음)
+          // locale prefix 포함 href — /ko 상태면 /ko/following 등
           const targetHref = (() => {
-            if (href !== "/me") return withLocale(locale, href);
+            if (base !== "/me") return withLocale(locale, base);
+            // 비로그인: /auth/login?next=/ko/me (locale 유지)
             if (!user && status !== "loading") {
-              // auth 페이지는 /ko 라우트 없음 → prefix 없이 이동
-              // next 파라미터로 로그인 후 돌아갈 /ko/me 지정
               const nextPath = withLocale(locale, "/me");
               return `/auth/login?next=${encodeURIComponent(nextPath)}`;
             }
@@ -74,8 +77,8 @@ export default function BottomNav() {
 
           // active 판단: /ko prefix 제거 후 비교
           const isActive = (() => {
-            if (href === "/") return normalPath === "/";
-            if (href === "/me") {
+            if (base === "/")   return normalPath === "/";
+            if (base === "/me") {
               return (
                 normalPath.startsWith("/me") ||
                 (normalPath.startsWith("/artists/") &&
@@ -84,11 +87,11 @@ export default function BottomNav() {
                     normalPath.includes("/portfolio")))
               );
             }
-            return normalPath.startsWith(href);
+            return normalPath.startsWith(base);
           })();
 
           return (
-            <li key={href}>
+            <li key={base}>
               <Link
                 href={targetHref}
                 aria-label={label}
