@@ -7,6 +7,7 @@ import { CityDropdown } from "@/components/artist/CityDropdown";
 import type { CityDropdownOption } from "@/components/artist/CityDropdown";
 import { createGuestSchedule } from "@/actions/schedule";
 import type { CreateScheduleState } from "@/actions/schedule";
+import { useT } from "@/lib/hooks/useT";
 
 // ── 타입 ────────────────────────────────────────────────────
 
@@ -106,7 +107,8 @@ function Step1City({
   onSelect: (city: CityOption) => void;
   onNext: () => void;
 }) {
-  // CityDropdownOption → CityOption 변환 (lat/lng는 cities 배열에서 찾아 복원)
+  const t = useT("schedule");
+
   function handleDropdownSelect(option: CityDropdownOption | null) {
     if (!option) return;
     const full = cities.find((c) => c.id === option.id);
@@ -119,19 +121,18 @@ function Step1City({
         <p className="text-[11px] font-semibold tracking-widest text-neutral-400 uppercase mb-1">
           Step 1
         </p>
-        <h2 className="text-[17px] font-bold text-neutral-900">어느 도시로 가나요?</h2>
-        <p className="mt-1 text-sm text-neutral-400">도시명 또는 국가명으로 검색하세요</p>
+        <h2 className="text-[17px] font-bold text-neutral-900">{t("step1Title")}</h2>
+        <p className="mt-1 text-sm text-neutral-400">{t("step1Desc")}</p>
       </div>
 
       <CityDropdown
         cities={cities}
         initialCityName={selectedCity?.name ?? ""}
         initialCountry={selectedCity?.country ?? ""}
-        label="도시 선택"
+        label={t("step1Label")}
         required
         onSelect={handleDropdownSelect}
         value={selectedCity}
-        hint="cities 테이블 기준 도시만 선택 가능합니다"
       />
 
       <button
@@ -139,7 +140,9 @@ function Step1City({
         disabled={!selectedCity}
         className="w-full rounded-2xl bg-neutral-900 py-4 text-sm font-semibold text-white disabled:opacity-30 disabled:cursor-not-allowed active:opacity-80 transition-opacity"
       >
-        {selectedCity ? `${selectedCity.name} 선택 완료` : "도시를 선택해주세요"}
+        {selectedCity
+          ? t("step1Next", { city: selectedCity.name })
+          : t("step1Placeholder")}
       </button>
     </div>
   );
@@ -157,7 +160,7 @@ function Step2Insight({
   onNext: () => void;
   onBack: () => void;
 }) {
-  // Sprint 5: city_follows (is_active=true) + guest_schedules 쿼리로 교체
+  const t = useT("schedule");
   const guestCount = 0;
   const bringCount = 0;
 
@@ -167,7 +170,7 @@ function Step2Insight({
         <p className="text-[11px] font-semibold tracking-widest text-neutral-400 uppercase mb-1">
           Step 2
         </p>
-        <h2 className="text-[17px] font-bold text-neutral-900">{city.name} 현황</h2>
+        <h2 className="text-[17px] font-bold text-neutral-900">{t("step2Title", { city: city.name })}</h2>
         <p className="text-sm text-neutral-400 mt-0.5">{city.countryName}</p>
       </div>
 
@@ -175,30 +178,25 @@ function Step2Insight({
       <div className="flex gap-3 px-4">
         <div className="flex flex-1 flex-col items-center gap-0.5 rounded-2xl border border-neutral-100 bg-white py-4">
           <span className="text-[26px] font-bold text-neutral-900">{guestCount}</span>
-          <span className="text-[11px] text-neutral-400">현재 Guest</span>
+          <span className="text-[11px] text-neutral-400">{t("step2CurrentGuest")}</span>
         </div>
         <div className="flex flex-1 flex-col items-center gap-0.5 rounded-2xl border border-neutral-100 bg-white py-4">
           <span className="text-[26px] font-bold text-neutral-900">{bringCount}</span>
-          <span className="text-[11px] text-neutral-400">Bring 수요</span>
+          <span className="text-[11px] text-neutral-400">{t("step2BringDemand")}</span>
         </div>
       </div>
 
       {/* 안내 배너 */}
       <div className="mx-4 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3">
-        <p className="text-[12px] font-medium text-blue-800">
-          수요 데이터 연결 예정
-        </p>
-        <p className="mt-0.5 text-[11px] text-blue-600 leading-relaxed">
-          Sprint 5에서 실제 Bring 수요와 Guest 현황이 연결됩니다.
-          지금은 일정 등록을 계속 진행해주세요.
-        </p>
+        <p className="text-[12px] font-medium text-blue-800">{t("step2Banner")}</p>
+        <p className="mt-0.5 text-[11px] text-blue-600 leading-relaxed">{t("step2BannerDesc")}</p>
       </div>
 
       <div className="flex gap-3 px-4 pb-6">
         <button
           onClick={onBack}
           className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-neutral-200 bg-white text-neutral-700 active:bg-neutral-50"
-          aria-label="이전 단계"
+          aria-label={t("prevStep")}
         >
           <ChevronLeft size={18} aria-hidden="true" />
         </button>
@@ -206,7 +204,7 @@ function Step2Insight({
           onClick={onNext}
           className="flex-1 rounded-2xl bg-neutral-900 py-3 text-sm font-semibold text-white active:opacity-80 transition-opacity"
         >
-          날짜 선택하기
+          {t("step2Next")}
         </button>
       </div>
     </div>
@@ -273,6 +271,7 @@ function Step3Date({
     return toDateStr(year, month, day) === endDate;
   }
 
+  const t3 = useT("schedule");
   const canNext = !!startDate && !!endDate;
 
   return (
@@ -313,7 +312,7 @@ function Step3Date({
         <button
           onClick={() => { if (month === 0) { setYear(y => y - 1); setMonth(11); } else setMonth(m => m - 1); }}
           className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-400 hover:bg-neutral-100"
-          aria-label="이전 달"
+          aria-label={t3("prevMonth")}
         >
           <ChevronLeft size={18} aria-hidden="true" />
         </button>
@@ -323,7 +322,7 @@ function Step3Date({
         <button
           onClick={() => { if (month === 11) { setYear(y => y + 1); setMonth(0); } else setMonth(m => m + 1); }}
           className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-400 hover:bg-neutral-100"
-          aria-label="다음 달"
+          aria-label={t3("nextMonth")}
         >
           <ChevronRight size={18} aria-hidden="true" />
         </button>
@@ -381,7 +380,7 @@ function Step3Date({
         <button
           onClick={onBack}
           className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-neutral-200 bg-white text-neutral-700 active:bg-neutral-50"
-          aria-label="이전 단계"
+          aria-label={t3("prevStep")}
         >
           <ChevronLeft size={18} aria-hidden="true" />
         </button>
@@ -390,7 +389,7 @@ function Step3Date({
           disabled={!canNext}
           className="flex-1 rounded-2xl bg-neutral-900 py-3 text-sm font-semibold text-white disabled:opacity-30 disabled:cursor-not-allowed active:opacity-80"
         >
-          {canNext ? "날짜 선택 완료" : "시작일과 종료일을 선택해주세요"}
+          {canNext ? t3("step3Next") : t3("step3NextDisabled")}
         </button>
       </div>
     </div>
@@ -413,6 +412,7 @@ function Step4DateInsight({
   onBack: () => void;
 }) {
   // Sprint 5: 선택 기간 guest_schedules 조회로 교체
+  const t4 = useT("schedule");
   const overlapCount = 0;
 
   return (
@@ -430,7 +430,7 @@ function Step4DateInsight({
       {/* 겹치는 Guest 수 */}
       <div className="mx-4 rounded-2xl border border-neutral-100 bg-white px-5 py-4">
         <p className="mb-3 text-[11px] font-semibold tracking-widest text-neutral-400 uppercase">
-          {city.name} 동기간 Guest
+          {t4("step4Title", { city: city.name })}
         </p>
         <div className="flex items-end gap-2">
           <span className="text-[32px] font-bold leading-none text-neutral-900">
@@ -457,7 +457,7 @@ function Step4DateInsight({
         <button
           onClick={onBack}
           className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-neutral-200 bg-white text-neutral-700 active:bg-neutral-50"
-          aria-label="이전 단계"
+          aria-label={t4("prevStep")}
         >
           <ChevronLeft size={18} aria-hidden="true" />
         </button>
@@ -476,13 +476,14 @@ function Step4DateInsight({
 
 function SubmitButton() {
   const { pending } = useFormStatus();
+  const ts = useT("schedule");
   return (
     <button
       type="submit"
       disabled={pending}
       className="flex-1 rounded-2xl bg-neutral-900 py-3 text-sm font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed active:opacity-80 transition-opacity"
     >
-      {pending ? "등록 중..." : "Guest Work 등록 완료"}
+      {pending ? ts("step5Submitting") : ts("step5Submit")}
     </button>
   );
 }
@@ -502,12 +503,12 @@ function Step5Detail({
   onBack: () => void;
   artistHandle: string | null;
 }) {
+  const t5 = useT("schedule");
   const initialState: CreateScheduleState = { status: "idle" };
   const [state, formAction] = useFormState(
     createGuestSchedule,
     initialState
   );
-  // isPending은 SubmitButton 내부에서 useFormStatus로 처리
 
   return (
     <div className="flex flex-col gap-4">
@@ -515,7 +516,7 @@ function Step5Detail({
         <p className="text-[11px] font-semibold tracking-widest text-neutral-400 uppercase mb-1">
           Step 5
         </p>
-        <h2 className="text-[17px] font-bold text-neutral-900">상세 정보</h2>
+        <h2 className="text-[17px] font-bold text-neutral-900">{t5("step5Title")}</h2>
       </div>
 
       {/* 선택 요약 */}
@@ -543,7 +544,7 @@ function Step5Detail({
         {/* 연락 방법 */}
         <div className="flex flex-col gap-1.5">
           <label className="text-[12px] font-semibold text-neutral-700">
-            연락 방법
+            {t5("step5ContactMethod")}
           </label>
           <select
             name="contactType"
@@ -559,7 +560,7 @@ function Step5Detail({
         {/* 연락처 */}
         <div className="flex flex-col gap-1.5">
           <label className="text-[12px] font-semibold text-neutral-700">
-            연락처
+            {t5("step5Contact")}
           </label>
           <input
             type="text"
@@ -573,11 +574,11 @@ function Step5Detail({
         {/* 메모 */}
         <div className="flex flex-col gap-1.5">
           <label className="text-[12px] font-semibold text-neutral-700">
-            메모 <span className="font-normal text-neutral-400">(선택)</span>
+            {t5("step5Note")} <span className="font-normal text-neutral-400">{t5("step5NoteOptional")}</span>
           </label>
           <textarea
             name="note"
-            placeholder="예약 가능 자리 수, 스튜디오 위치 등"
+            placeholder={t5("step5NotePlaceholder")}
             rows={3}
             className="w-full resize-none rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-neutral-400 focus:outline-none"
           />
@@ -596,7 +597,7 @@ function Step5Detail({
             type="button"
             onClick={onBack}
             className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-neutral-200 bg-white text-neutral-700 active:bg-neutral-50"
-            aria-label="이전 단계"
+            aria-label={t5("prevStep")}
           >
             <ChevronLeft size={18} aria-hidden="true" />
           </button>

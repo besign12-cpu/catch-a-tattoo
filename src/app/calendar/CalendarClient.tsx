@@ -444,6 +444,7 @@ function ArtistCalendar({
 
   const ta   = useT("calendar");
   const ta_c = useT("common");
+  const ta_d = useT("discover");
   const DEMAND_LABELS = getDemandLabels(ta);
 
   const { trackCityClick } = useAnalytics();
@@ -528,7 +529,7 @@ function ArtistCalendar({
             <Link href={scheduleNewPath}
               className="flex items-center justify-center gap-2 w-full rounded-2xl bg-neutral-900 py-4 text-sm font-semibold text-white hover:opacity-90 active:opacity-80 transition-opacity">
               <Plus size={16} aria-hidden="true" />
-              {ta_c("findArtist")}
+              {ta_d("addGuestWork")}
             </Link>
           </div>
 

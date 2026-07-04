@@ -5,6 +5,7 @@ import { ChevronLeft } from "lucide-react";
 
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getT } from "@/i18n/translations.server";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { SettingsClient } from "./SettingsClient";
 import type { SettingsCityOption } from "./SettingsClient";
@@ -17,6 +18,8 @@ export default async function SettingsPage() {
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) redirect("/auth/login?next=/me/settings");
+
+  const tst = await getT("settings");
 
   const admin = getSupabaseAdminClient();
 
@@ -99,7 +102,7 @@ export default async function SettingsPage() {
         >
           <ChevronLeft size={20} />
         </Link>
-        <span className="text-[13px] font-medium text-neutral-900">설정</span>
+        <span className="text-[13px] font-medium text-neutral-900">{tst("pageTitle")}</span>
         <div className="w-9" aria-hidden="true" />
       </header>
 

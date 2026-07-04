@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { SlidersHorizontal } from "lucide-react";
+import { useT } from "@/lib/hooks/useT";
 
 export type PeriodFilter = "all" | "week";
 
@@ -18,6 +19,8 @@ export function HomeFilterBar({
   activeTagCount,
   onFilterOpen,
 }: HomeFilterBarProps) {
+  const t = useT("discover");
+
   return (
     <div className="flex items-center gap-2 pb-3">
       {/* 왼쪽: 기간 필터 칩 */}
@@ -32,7 +35,7 @@ export function HomeFilterBar({
           )}
           aria-pressed={period === "all"}
         >
-          전체
+          {t("all")}
         </button>
         <button
           onClick={() => onPeriodChange("week")}
@@ -44,7 +47,7 @@ export function HomeFilterBar({
           )}
           aria-pressed={period === "week"}
         >
-          이번 주
+          {t("thisWeek")}
         </button>
       </div>
 
@@ -60,7 +63,7 @@ export function HomeFilterBar({
           )}
         >
           <SlidersHorizontal size={11} strokeWidth={2} />
-          Filter
+          {t("filter")}
           {activeTagCount > 0 && (
             <span className="ml-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-white text-[9px] font-bold text-neutral-900">
               {activeTagCount}
