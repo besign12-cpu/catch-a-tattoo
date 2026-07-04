@@ -20,7 +20,9 @@ function stripKo(pathname: string): string {
  */
 function makeKoResponse(request: NextRequest): NextResponse {
   const requestHeaders = new Headers(request.headers);
-  // Cookie 헤더에 NEXT_LOCALE=ko 추가 (기존 쿠키 유지)
+  // 1. x-locale 헤더: 서버 컴포넌트가 쿠키 없이도 locale 판단
+  requestHeaders.set("x-locale", "ko");
+  // 2. Cookie 헤더에도 NEXT_LOCALE=ko 추가
   const existingCookies = request.headers.get("cookie") ?? "";
   const hasNextLocale   = existingCookies.includes("NEXT_LOCALE=");
   const newCookies = hasNextLocale

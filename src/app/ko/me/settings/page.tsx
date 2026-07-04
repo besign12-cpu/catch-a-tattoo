@@ -1,2 +1,1 @@
-import SettingsPage from "@/app/me/settings/page";
-export default SettingsPage;
+export { default } from "@/app/me/settings/page";
