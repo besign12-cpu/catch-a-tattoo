@@ -75,7 +75,7 @@ function calcDDay(startDate: string, endDate: string): string {
   const start = new Date(startDate);
   const end   = new Date(endDate);
   end.setHours(23, 59, 59, 999);
-  if (today >= start && today <= end) return "진행 중";
+  if (today >= start && today <= end) return "__IN_TOWN__";
   if (today > end) return "종료";
   const diff = Math.ceil((start.getTime() - today.getTime()) / 86400000);
   return `D-${diff}`;
@@ -115,6 +115,7 @@ function EmptyState({ tab }: { tab: TabType }) {
 // ── 일정 탭 (서버 props 그대로 — local state 불필요) ──────────
 
 function ScheduleTab({ schedules }: { schedules: FollowingScheduleItem[] }) {
+  const tSched = useT("artist");
   if (schedules.length === 0) return <EmptyState tab="schedule" />;
 
   const sorted = [...schedules].sort((a, b) => {
@@ -126,7 +127,8 @@ function ScheduleTab({ schedules }: { schedules: FollowingScheduleItem[] }) {
   return (
     <div className="flex flex-col gap-3 px-4 py-4">
       {sorted.map(item => {
-        const dday      = calcDDay(item.startDate, item.endDate);
+        const ddayRaw   = calcDDay(item.startDate, item.endDate);
+        const dday      = ddayRaw === "__IN_TOWN__" ? tSched("inTown") : ddayRaw;
         const dateRange = formatDateRange(item.startDate, item.endDate);
 
         return (
@@ -147,7 +149,7 @@ function ScheduleTab({ schedules }: { schedules: FollowingScheduleItem[] }) {
               </div>
               {item.isActive && (
                 <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
-                  진행 중
+                  {tSched("inTown")}
                 </span>
               )}
             </div>

@@ -4,6 +4,7 @@ import { useFormState, useFormStatus } from "react-dom";
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toggleFollow, type FollowState } from "@/actions/follow";
+import { useT } from "@/lib/hooks/useT";
 import { cn } from "@/lib/utils";
 
 // ── 공통 클래스 ───────────────────────────────────────────────
@@ -33,6 +34,7 @@ function FollowSubmitButton({
   variant: "profile" | "feed";
 }) {
   const { pending } = useFormStatus();
+  const t = useT("artist");
 
   if (variant === "feed") {
     return (
@@ -43,7 +45,7 @@ function FollowSubmitButton({
         aria-label={label}
         aria-pressed={isFollowing}
       >
-        {pending ? "···" : isFollowing ? "팔로잉" : "팔로우"}
+        {pending ? "···" : isFollowing ? t("following") : t("follow")}
       </button>
     );
   }
@@ -56,7 +58,7 @@ function FollowSubmitButton({
       aria-label={label}
       aria-pressed={isFollowing}
     >
-      {pending ? "···" : isFollowing ? "팔로잉" : "팔로우"}
+      {pending ? "···" : isFollowing ? t("following") : t("follow")}
     </button>
   );
 }
@@ -83,6 +85,7 @@ export function FollowButton({
   variant = "profile",
 }: FollowButtonProps) {
   const router = useRouter();
+  const tf = useT("artist");
   const [state, formAction] = useFormState(toggleFollow, initialState);
   const prevStatus = useRef(state.status);
 
@@ -102,9 +105,9 @@ export function FollowButton({
           type="button"
           onClick={() => router.push(`/auth/login?next=/artists/${artistHandle}`)}
           className={cn(feedBase, feedInactive)}
-          aria-label={`${artistDisplayName} 팔로우 (로그인 필요)`}
+          aria-label={`${artistDisplayName} ${tf("follow")}`}
         >
-          팔로우
+          {tf("follow")}
         </button>
       );
     }
@@ -114,9 +117,9 @@ export function FollowButton({
         type="button"
         onClick={() => router.push(`/auth/login?next=/artists/${artistHandle}`)}
         className={cn(profileBase, profileInactive)}
-        aria-label={`${artistDisplayName} 팔로우 (로그인 필요)`}
+        aria-label={`${artistDisplayName} ${tf("follow")}`}
       >
-        팔로우
+        {tf("follow")}
       </button>
     );
   }
@@ -132,8 +135,8 @@ export function FollowButton({
           <FollowSubmitButton
             isFollowing={initialIsFollowing}
             label={initialIsFollowing
-              ? `${artistDisplayName} 언팔로우`
-              : `${artistDisplayName} 팔로우`}
+              ? `${artistDisplayName} ${tf("following")}`
+              : `${artistDisplayName} ${tf("follow")}`}
             variant="feed"
           />
         </form>
@@ -155,8 +158,8 @@ export function FollowButton({
         <FollowSubmitButton
           isFollowing={initialIsFollowing}
           label={initialIsFollowing
-            ? `${artistDisplayName} 언팔로우`
-            : `${artistDisplayName} 팔로우`}
+            ? `${artistDisplayName} ${tf("following")}`
+            : `${artistDisplayName} ${tf("follow")}`}
           variant="profile"
         />
       </form>

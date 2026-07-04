@@ -280,19 +280,19 @@ function Step3Date({
         <p className="text-[11px] font-semibold tracking-widest text-neutral-400 uppercase mb-1">
           Step 3
         </p>
-        <h2 className="text-[17px] font-bold text-neutral-900">날짜를 선택해주세요</h2>
+        <h2 className="text-[17px] font-bold text-neutral-900">{t3("step3Title2")}</h2>
       </div>
 
       {/* 선택 상태 */}
       <div className="flex gap-3 px-4">
         <div className={["flex flex-1 flex-col rounded-xl border px-3 py-2.5 transition-colors", picking === "start" ? "border-neutral-900 bg-neutral-50" : "border-neutral-100 bg-white"].join(" ")}>
-          <span className="text-[10px] font-semibold text-neutral-400">시작일</span>
+          <span className="text-[10px] font-semibold text-neutral-400">{t3("step3StartDate")}</span>
           <span className="text-[14px] font-semibold text-neutral-900">
             {startDate ? formatDisplayDate(startDate) : "—"}
           </span>
         </div>
         <div className={["flex flex-1 flex-col rounded-xl border px-3 py-2.5 transition-colors", picking === "end" ? "border-neutral-900 bg-neutral-50" : "border-neutral-100 bg-white"].join(" ")}>
-          <span className="text-[10px] font-semibold text-neutral-400">종료일</span>
+          <span className="text-[10px] font-semibold text-neutral-400">{t3("step3EndDate")}</span>
           <span className="text-[14px] font-semibold text-neutral-900">
             {endDate ? formatDisplayDate(endDate) : "—"}
           </span>
@@ -303,7 +303,7 @@ function Step3Date({
       {bookedRanges.length > 0 && (
         <div className="flex items-center gap-1.5 px-4">
           <span className="h-3 w-3 rounded-sm bg-red-50 border border-red-200 inline-block" aria-hidden="true" />
-          <span className="text-[11px] text-neutral-400">이미 등록된 일정</span>
+          <span className="text-[11px] text-neutral-400">{t3("step3ExistingSchedule")}</span>
         </div>
       )}
 

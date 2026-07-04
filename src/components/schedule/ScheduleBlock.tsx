@@ -1,4 +1,7 @@
+"use client";
+
 import { MapPin, Calendar, ChevronRight } from "lucide-react";
+import { useT } from "@/lib/hooks/useT";
 import { cn } from "@/lib/utils";
 import { formatDateRange, calcDDay, isScheduleActive } from "@/lib/utils";
 import type { GuestSchedule } from "@/types";
@@ -17,6 +20,7 @@ export function ScheduleBlock({
   className,
   availStatus,
 }: ScheduleBlockProps) {
+  const t = useT("artist");
   const status = isScheduleActive(schedule.startDate, schedule.endDate);
   const dday = calcDDay(schedule.startDate, schedule.endDate);
   const dateRange = formatDateRange(schedule.startDate, schedule.endDate);
@@ -93,7 +97,7 @@ export function ScheduleBlock({
               : "bg-white text-neutral-500"
           )}
         >
-          {isActive ? "진행 중" : "예정"}
+          {isActive ? t("inTown") : t("upcoming")}
         </span>
       </div>
 

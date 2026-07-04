@@ -4,6 +4,8 @@ import type { Metadata } from "next";
 import { ChevronLeft } from "lucide-react";
 
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { getT } from "@/i18n/translations.server";
+import { cookies } from "next/headers";
 import { getMyArtistProfile } from "@/lib/queries/studio";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { ScheduleNewClient } from "./ScheduleNewClient";
@@ -17,6 +19,10 @@ interface Props {
 
 export default async function ScheduleNewPage({ params }: Props) {
   const { handle } = await params;
+  const tsched = await getT("schedule");
+  const cookieStore = await cookies();
+  const locale = cookieStore.get("NEXT_LOCALE")?.value === "ko" ? "ko" : "en";
+  const localePrefix = locale === "ko" ? "/ko" : "";
 
   const supabase = await getSupabaseServerClient();
   const {
@@ -82,14 +88,14 @@ export default async function ScheduleNewPage({ params }: Props) {
     <PageContainer className="bg-neutral-50">
       <header className="sticky top-0 z-40 flex h-[52px] items-center justify-between border-b border-neutral-100 bg-white px-4">
         <Link
-          href={`/artists/${handle}`}
+          href={`${localePrefix}/artists/${handle}`}
           className="flex h-9 w-9 items-center justify-center rounded-full text-neutral-700 active:bg-neutral-100"
-          aria-label="프로필로 돌아가기"
+          aria-label={tsched("backToProfile")}
         >
           <ChevronLeft size={20} />
         </Link>
         <span className="text-[13px] font-medium text-neutral-900">
-          Guest Work 등록
+          {tsched("pageTitle")}
         </span>
         <div className="w-9" aria-hidden="true" />
       </header>

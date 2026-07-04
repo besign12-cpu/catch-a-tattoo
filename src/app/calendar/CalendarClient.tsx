@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Plus, MapPin } from "lucide-react";
 import { CityDropdown } from "@/components/artist/CityDropdown";
@@ -438,9 +439,12 @@ function ArtistCalendar({
   const [monthSchedules, setMonthSchedules] = useState<CalendarScheduleItem[]>(followingSchedules);
   const [loadingFollowing, setLoadingFollowing] = useState(false);
 
+  const calPathname = usePathname();
+  const calLocale = calPathname === "/ko" || calPathname.startsWith("/ko/") ? "ko" : "en";
+  const localePrefix = calLocale === "ko" ? "/ko" : "";
   const scheduleNewPath = artistHandle
-    ? `/artists/${artistHandle}/schedule/new`
-    : "/artists/new";
+    ? `${localePrefix}/artists/${artistHandle}/schedule/new`
+    : `${localePrefix}/artists/new`;
 
   const ta   = useT("calendar");
   const ta_c = useT("common");
