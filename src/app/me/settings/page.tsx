@@ -6,18 +6,20 @@ import { ChevronLeft } from "lucide-react";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getT } from "@/i18n/translations.server";
+import { getLocaleServer } from "@/lib/locale.server";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { SettingsClient } from "./SettingsClient";
 import type { SettingsCityOption } from "./SettingsClient";
 import type { Tag } from "@/types";
 
-export const metadata: Metadata = { title: "설정" };
+export const metadata: Metadata = { title: "Settings" };
 
 export default async function SettingsPage() {
   const supabase = await getSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user) redirect("/auth/login?next=/me/settings");
+  const { lp } = await getLocaleServer();
+  if (!user) redirect(`/auth/login?next=${encodeURIComponent(lp + "/me/settings")}`);
 
   const tst = await getT("settings");
 
@@ -96,7 +98,7 @@ export default async function SettingsPage() {
     <PageContainer className="bg-neutral-50">
       <header className="sticky top-0 z-40 flex h-[52px] items-center justify-between border-b border-neutral-100 bg-white px-4">
         <Link
-          href="/me"
+          href={`${lp}/me`}
           className="flex h-9 w-9 items-center justify-center rounded-full text-neutral-700 active:bg-neutral-100"
           aria-label="내 정보로 돌아가기"
         >

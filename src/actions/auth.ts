@@ -1,4 +1,5 @@
 "use server";
+import { getLocaleServer } from "@/lib/locale.server";
 
 import { redirect } from "next/navigation";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
@@ -125,5 +126,6 @@ export async function signIn(
 export async function signOut(): Promise<void> {
   const supabase = await getSupabaseServerClient();
   await supabase.auth.signOut();
-  redirect("/");
+  const { lp } = await getLocaleServer();
+  redirect(lp || "/");
 }

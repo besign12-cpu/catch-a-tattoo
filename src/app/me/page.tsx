@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
+import { getLocaleServer } from "@/lib/locale.server";
 import Link from "next/link";
 import { Settings, LayoutDashboard } from "lucide-react";
 
@@ -44,9 +44,7 @@ export default async function MePage() {
 
   const t  = await getT("me");
   const tc = await getT("common");
-  const cookieStore = await cookies();
-  const locale = cookieStore.get("NEXT_LOCALE")?.value === "ko" ? "ko" : "en";
-  const lp = locale === "ko" ? "/ko" : "";  // localePrefix
+  const { lp } = await getLocaleServer();
 
   let profile = null;
   try {
@@ -149,7 +147,7 @@ export default async function MePage() {
             )}
             {profile?.baseCity && (
               <InfoRow
-                label="Based City"
+                label={t("basedCity")}
                 value={`${profile.baseCity}${profile.baseCountry ? `, ${countryName(profile.baseCountry)}` : ""}`}
               />
             )}

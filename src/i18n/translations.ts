@@ -89,6 +89,8 @@ const translations = {
       myArtistProfile: "@{handle} Profile",
       artistProfileDesc: "Guest Work · Edit Profile",
       role: { customer: "Member", artist: "Artist", admin: "Admin" },
+      joinDate: "Joined {month}/{year}",
+      basedCity: "Based City",
     },
     settings: {
       title: "Settings",
@@ -256,6 +258,8 @@ const translations = {
       myArtistProfile: "@{handle} 프로필",
       artistProfileDesc: "Guest Work 관리 · 프로필 수정",
       role: { customer: "일반 회원", artist: "아티스트", admin: "관리자" },
+      joinDate: "{year}년 {month}월 가입",
+      basedCity: "Based City",
     },
     settings: {
       title: "설정",
