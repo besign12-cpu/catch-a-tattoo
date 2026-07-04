@@ -1,14 +1,12 @@
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import type { Metadata } from "next";
-import { ChevronLeft } from "lucide-react";
 
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getT } from "@/i18n/translations.server";
-import { getLocaleServer } from "@/lib/locale.server";
 import { PageContainer } from "@/components/layout/PageContainer";
 import { SettingsClient } from "./SettingsClient";
+import { SettingsBackButton } from "./SettingsBackButton";
 import type { SettingsCityOption } from "./SettingsClient";
 import type { Tag } from "@/types";
 
@@ -18,11 +16,9 @@ export default async function SettingsPage() {
   const supabase = await getSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  const { lp } = await getLocaleServer();
-  if (!user) redirect(`/auth/login?next=${encodeURIComponent(lp + "/me/settings")}`);
+  if (!user) redirect("/auth/login?next=/me/settings");
 
-  const tst = await getT("settings");
-
+  const tst   = await getT("settings");
   const admin = getSupabaseAdminClient();
 
   // users 테이블: Base City + 알림 설정
@@ -35,9 +31,9 @@ export default async function SettingsPage() {
   // 30일 제한 계산
   let daysUntilChange: number | null = null;
   if (userData?.base_city_changed_at) {
-    const changedAt      = new Date(userData.base_city_changed_at);
-    const nextAvailable  = new Date(changedAt.getTime() + 30 * 24 * 60 * 60 * 1000);
-    const today          = new Date();
+    const changedAt     = new Date(userData.base_city_changed_at);
+    const nextAvailable = new Date(changedAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const today         = new Date();
     if (nextAvailable > today) {
       daysUntilChange = Math.ceil(
         (nextAvailable.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
@@ -84,26 +80,21 @@ export default async function SettingsPage() {
     })
   );
 
-  // 저장된 관심 장르 불러오기
-  const { data: interestRows } = await admin
+  // 저장된 관심 장르
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: interestRows } = await (admin as any)
     .from("user_interests")
     .select("tag_id")
     .eq("user_id", user.id);
 
-  const savedTagIds: string[] = (interestRows ?? []).map(
-    (r: { tag_id: string }) => r.tag_id
+  const savedTagIds: string[] = ((interestRows ?? []) as { tag_id: string }[]).map(
+    (r) => r.tag_id
   );
 
   return (
     <PageContainer className="bg-neutral-50">
       <header className="sticky top-0 z-40 flex h-[52px] items-center justify-between border-b border-neutral-100 bg-white px-4">
-        <Link
-          href={`${lp}/me`}
-          className="flex h-9 w-9 items-center justify-center rounded-full text-neutral-700 active:bg-neutral-100"
-          aria-label="내 정보로 돌아가기"
-        >
-          <ChevronLeft size={20} />
-        </Link>
+        <SettingsBackButton />
         <span className="text-[13px] font-medium text-neutral-900">{tst("pageTitle")}</span>
         <div className="w-9" aria-hidden="true" />
       </header>

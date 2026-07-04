@@ -1,9 +1,6 @@
 import { redirect } from "next/navigation";
-import { getLocaleServer } from "@/lib/locale.server";
 import Link from "next/link";
 import { Settings, LayoutDashboard } from "lucide-react";
-
-import { getT } from "@/i18n/translations.server";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getUserProfile } from "@/lib/queries/user";
 import { PageContainer } from "@/components/layout/PageContainer";
@@ -26,6 +23,17 @@ function countryName(code: string | null): string {
   return map[code] ?? code;
 }
 
+function roleLabel(role: "customer" | "artist" | "admin" | null | undefined): string {
+  const map: Record<string, string> = {
+    customer: "일반 회원", artist: "아티스트", admin: "관리자",
+  };
+  return map[role ?? "customer"] ?? "일반 회원";
+}
+
+function formatJoinDate(createdAt: string): string {
+  const d = new Date(createdAt);
+  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 가입`;
+}
 
 export default async function MePage() {
   const supabase = await getSupabaseServerClient();
@@ -33,52 +41,28 @@ export default async function MePage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // 비로그인 - 현재 경로를 next로 전달해 로그인 후 복귀
-  if (!user) {
-    // headers에서 현재 요청 pathname 읽기 (x-invoke-path 또는 next-url)
-    const { headers } = await import("next/headers");
-    const headerStore = await headers();
-    const nextUrl = headerStore.get("x-invoke-path") ?? headerStore.get("x-url") ?? "/me";
-    redirect(`/auth/login?next=${encodeURIComponent(nextUrl)}`);
-  }
+  if (!user) redirect("/auth/login");
 
-  const t  = await getT("me");
-  const tc = await getT("common");
-  const { lp } = await getLocaleServer();
-
+  // getUserProfile 실패해도 user 정보로 기본 렌더링 보장
   let profile = null;
   try {
     profile = await getUserProfile(user.id);
   } catch {
-    // DB 일시 에러 — user 인증 완료됐으므로 계속 렌더
+    // DB 일시 에러 등 — user 인증은 이미 완료됐으므로 계속 렌더
   }
 
-  const displayName = profile?.username ?? user.email?.split("@")[0] ?? "User";
+  const displayName = profile?.username ?? user.email?.split("@")[0] ?? "사용자";
   const email = profile?.email ?? user.email ?? "";
-
-  const roleMap: Record<string, string> = {
-    customer: t("role.customer"),
-    artist:   t("role.artist"),
-    admin:    t("role.admin"),
-  };
-  const roleName = roleMap[profile?.role ?? "customer"] ?? t("role.customer");
-
-  const joinDate = profile
-    ? (() => {
-        const d = new Date(profile.createdAt);
-        return t("joinDate", { year: d.getFullYear(), month: d.getMonth() + 1 });
-      })()
-    : "";
 
   return (
     <PageContainer>
       <TopBar
-        title={t("myInfo")}
+        title="내 정보"
         right={
           <Link
-            href={`${lp}/me/settings`}
+            href="/me/settings"
             className="flex h-9 w-9 items-center justify-center rounded-full text-neutral-500 hover:bg-neutral-100 transition-colors"
-            aria-label={tc("settings")}
+            aria-label="설정"
           >
             <Settings size={18} />
           </Link>
@@ -103,21 +87,28 @@ export default async function MePage() {
                   ? "bg-red-50 text-red-600"
                   : "bg-neutral-100 text-neutral-500"
               )}>
-                {roleName}
+                {roleLabel(profile.role)}
               </span>
             )}
             {profile && (
-              <span className="text-[10px] text-neutral-300">{joinDate}</span>
+              <span className="text-[10px] text-neutral-300">
+                {formatJoinDate(profile.createdAt)}
+              </span>
             )}
           </div>
         </section>
 
         <div className="px-4 flex flex-col gap-3">
-          {/* 아티스트 프로필 CTA */}
-          {(profile?.role === "artist" || profile?.role === "admin") && profile?.artistHandle && (
+          {/* Artist Studio CTA — role이 artist/admin인 경우만 표시 */}
+          {(profile?.role === "artist" || profile?.role === "admin") && (
             <Link
-              href={`${lp}/artists/${profile.artistHandle}`}
-              className="flex items-center justify-between rounded-2xl bg-neutral-900 px-5 py-4 hover:opacity-90 active:opacity-80 transition-opacity"
+              href="/studio"
+              className="
+                flex items-center justify-between
+                rounded-2xl bg-neutral-900
+                px-5 py-4
+                hover:opacity-90 active:opacity-80 transition-opacity
+              "
             >
               <div className="flex items-center gap-3">
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10">
@@ -125,10 +116,10 @@ export default async function MePage() {
                 </div>
                 <div className="flex flex-col gap-0.5">
                   <p className="text-[13px] font-semibold text-white leading-tight">
-                    {t("myArtistProfile", { handle: profile.artistHandle })}
+                    아티스트 스튜디오
                   </p>
                   <p className="text-[11px] text-neutral-400 leading-tight">
-                    {t("artistProfileDesc")}
+                    일정 관리 · 프로필 수정
                   </p>
                 </div>
               </div>
@@ -139,15 +130,15 @@ export default async function MePage() {
           {/* 기본 정보 */}
           <div className="rounded-2xl bg-white border border-neutral-100 overflow-hidden">
             <p className="px-5 pt-4 pb-2 text-[11px] font-medium text-neutral-400 tracking-wide uppercase">
-              {t("email")}
+              기본 정보
             </p>
-            <InfoRow label={t("email")} value={email} />
+            <InfoRow label="이메일" value={email} />
             {profile?.username && (
-              <InfoRow label={t("username")} value={`@${profile.username}`} />
+              <InfoRow label="사용자명" value={`@${profile.username}`} />
             )}
             {profile?.baseCity && (
               <InfoRow
-                label={t("basedCity")}
+                label="Base City"
                 value={`${profile.baseCity}${profile.baseCountry ? `, ${countryName(profile.baseCountry)}` : ""}`}
               />
             )}
@@ -155,15 +146,36 @@ export default async function MePage() {
 
           {/* 설정 바로가기 */}
           <Link
-            href={`${lp}/me/settings`}
+            href="/me/settings"
             className="flex items-center justify-between rounded-2xl bg-white border border-neutral-100 px-5 py-4 hover:border-neutral-200 transition-colors"
           >
             <div className="flex items-center gap-2.5">
               <Settings size={16} className="text-neutral-400" aria-hidden="true" />
-              <span className="text-sm font-medium text-neutral-700">{tc("settings")}</span>
+              <span className="text-sm font-medium text-neutral-700">설정</span>
             </div>
-            <span className="text-xs text-neutral-300">Base City · →</span>
+            <span className="text-xs text-neutral-300">Base City · 관심장르 →</span>
           </Link>
+
+          {/* 아티스트 프로필 연결 */}
+          {profile?.artistHandle ? (
+            <Link
+              href={`/artists/${profile.artistHandle}`}
+              className="flex items-center justify-between rounded-2xl bg-white border border-neutral-100 px-5 py-4 hover:border-neutral-200 transition-colors"
+            >
+              <div className="flex flex-col gap-0.5">
+                <p className="text-xs text-neutral-400">연결된 아티스트 프로필</p>
+                <p className="text-sm font-medium text-neutral-900">@{profile.artistHandle}</p>
+              </div>
+              <span className="text-xs text-neutral-300">보기 →</span>
+            </Link>
+          ) : (
+            <div className="rounded-2xl bg-neutral-50 border border-neutral-100 border-dashed px-5 py-4">
+              <p className="text-xs text-neutral-400">연결된 아티스트 프로필이 없습니다.</p>
+              <p className="mt-0.5 text-[11px] text-neutral-300">
+                아티스트 프로필 연결은 추후 지원 예정입니다.
+              </p>
+            </div>
+          )}
 
           {/* 로그아웃 */}
           <form action={signOut} className="mt-1">
@@ -171,7 +183,7 @@ export default async function MePage() {
               type="submit"
               className="w-full rounded-2xl border border-neutral-200 bg-white py-4 text-sm text-neutral-500 hover:text-neutral-900 hover:border-neutral-300 transition-colors"
             >
-              {tc("logout")}
+              로그아웃
             </button>
           </form>
         </div>
