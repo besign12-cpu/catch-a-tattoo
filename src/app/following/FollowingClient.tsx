@@ -14,6 +14,7 @@
  */
 
 import { useState, useCallback } from "react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Bell, Calendar, Heart, ChevronRight } from "lucide-react";
 
@@ -86,7 +87,10 @@ function calcDDay(startDate: string, endDate: string): string {
 function EmptyState({ tab, isLoggedIn }: { tab: TabType; isLoggedIn: boolean }) {
   const t  = useT("following");
   const tc = useT("common");
+  const pathname = usePathname();
   const isSchedule = tab === "schedule";
+  // 로그인 후 Following 페이지로 복귀할 수 있도록 next 파라미터 지정
+  const loginHref = `/auth/login?next=${encodeURIComponent(pathname)}`;
 
   return (
     <div className="flex flex-col items-center gap-4 px-8 py-16 text-center">
@@ -104,7 +108,7 @@ function EmptyState({ tab, isLoggedIn }: { tab: TabType; isLoggedIn: boolean }) 
         </p>
       </div>
       <Link
-        href={isLoggedIn ? "/" : "/auth/login"}
+        href={isLoggedIn ? "/" : loginHref}
         className="mt-1 rounded-xl bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white active:opacity-80"
       >
         {isLoggedIn ? t("findArtistCta") : tc("loginRequired")}

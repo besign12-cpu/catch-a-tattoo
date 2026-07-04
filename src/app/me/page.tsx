@@ -32,7 +32,14 @@ export default async function MePage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) redirect("/auth/login");
+  // 비로그인 - 현재 경로를 next로 전달해 로그인 후 복귀
+  if (!user) {
+    // headers에서 현재 요청 pathname 읽기 (x-invoke-path 또는 next-url)
+    const { headers } = await import("next/headers");
+    const headerStore = await headers();
+    const nextUrl = headerStore.get("x-invoke-path") ?? headerStore.get("x-url") ?? "/me";
+    redirect(`/auth/login?next=${encodeURIComponent(nextUrl)}`);
+  }
 
   const t  = await getT("me");
   const tc = await getT("common");

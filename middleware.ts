@@ -5,85 +5,96 @@ const PROTECTED_PATHS = ["/me", "/artists/new"];
 const ARTIST_MANAGE_SUFFIXES = ["/edit", "/schedule/new", "/portfolio"];
 const AUTH_PATHS = ["/auth/login", "/auth/signup"];
 
-/** pathname이 /ko/* 경로인지 */
 function isKoPath(pathname: string): boolean {
   return pathname === "/ko" || pathname.startsWith("/ko/");
 }
-
-/** /ko/* 경로에서 locale prefix 제거 → 실제 경로 */
 function stripKo(pathname: string): string {
   if (pathname === "/ko") return "/";
   if (pathname.startsWith("/ko/")) return pathname.slice(3) || "/";
   return pathname;
 }
 
+/**
+ * /ko/* 경로에서 서버 컴포넌트가 NEXT_LOCALE=ko를 읽을 수 있도록
+ * request.headers에도 쿠키를 포함시켜 NextResponse.next()에 전달
+ */
+function makeKoResponse(request: NextRequest): NextResponse {
+  const requestHeaders = new Headers(request.headers);
+  // Cookie 헤더에 NEXT_LOCALE=ko 추가 (기존 쿠키 유지)
+  const existingCookies = request.headers.get("cookie") ?? "";
+  const hasNextLocale   = existingCookies.includes("NEXT_LOCALE=");
+  const newCookies = hasNextLocale
+    ? existingCookies.replace(/NEXT_LOCALE=[^;]*(;|$)/, "NEXT_LOCALE=ko$1")
+    : existingCookies
+      ? `${existingCookies}; NEXT_LOCALE=ko`
+      : "NEXT_LOCALE=ko";
+  requestHeaders.set("cookie", newCookies);
+
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  // 브라우저에도 Set-Cookie로 쿠키 영속화
+  response.cookies.set("NEXT_LOCALE", "ko", {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: "lax",
+  });
+  return response;
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // ── /ko/* 경로: 실제 라우트가 존재하므로 그냥 통과
-  // 단, NEXT_LOCALE=ko 쿠키를 응답에 심어서 서버 컴포넌트가 한국어를 렌더하게 함
+  // ── /ko/* 경로 ────────────────────────────────────────────
   if (isKoPath(pathname)) {
-    // Supabase 인증도 처리해야 하므로 아래서 함께 처리
-    let response = NextResponse.next({ request });
-    response.cookies.set("NEXT_LOCALE", "ko", {
-      path: "/",
-      maxAge: 60 * 60 * 24 * 365,
-      sameSite: "lax",
-    });
-
-    // 보호 경로 처리: /ko/me, /ko/artists/new 등
     const realPath = stripKo(pathname);
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() { return request.cookies.getAll(); },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value }) =>
-              request.cookies.set(name, value)
-            );
-            response = NextResponse.next({ request });
-            response.cookies.set("NEXT_LOCALE", "ko", {
-              path: "/",
-              maxAge: 60 * 60 * 24 * 365,
-              sameSite: "lax",
-            });
-            cookiesToSet.forEach(({ name, value, options }) =>
-              response.cookies.set(name, value, options)
-            );
-          },
-        },
-      }
-    );
 
-    const { data: { user } } = await supabase.auth.getUser();
-
+    // 보호 경로 처리 (인증 확인)
     const isArtistManagePath =
       realPath.startsWith("/artists/") &&
       (ARTIST_MANAGE_SUFFIXES.some((s) => realPath.includes(s)) ||
         /^\/artists\/[^/]+\/schedule\/[^/]+$/.test(realPath));
-
     const isProtected =
       isArtistManagePath ||
       PROTECTED_PATHS.some((p) => realPath === p || realPath.startsWith(p + "/"));
 
-    if (isProtected && !user) {
-      const redirectUrl = request.nextUrl.clone();
-      redirectUrl.pathname = "/auth/login";
-      redirectUrl.searchParams.set("next", pathname);
-      return NextResponse.redirect(redirectUrl);
+    if (isProtected) {
+      // 인증 확인
+      const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            getAll() { return request.cookies.getAll(); },
+            setAll() {},
+          },
+        }
+      );
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        const redirectUrl = request.nextUrl.clone();
+        redirectUrl.pathname = "/auth/login";
+        redirectUrl.searchParams.set("next", pathname);
+        // redirect 응답에도 쿠키 설정 (로그인 후 복귀 시 locale 유지)
+        const res = NextResponse.redirect(redirectUrl);
+        res.cookies.set("NEXT_LOCALE", "ko", {
+          path: "/",
+          maxAge: 60 * 60 * 24 * 365,
+          sameSite: "lax",
+        });
+        return res;
+      }
     }
 
-    return response;
+    // request.headers + response.cookies 모두에 NEXT_LOCALE=ko 설정
+    return makeKoResponse(request);
   }
 
-  // ── /en/* → / 로 redirect + NEXT_LOCALE=en 쿠키
+  // ── /en/* → redirect ──────────────────────────────────────
   if (pathname === "/en" || pathname.startsWith("/en/")) {
     const target = pathname === "/en" ? "/" : pathname.slice(3) || "/";
-    const url = request.nextUrl.clone();
+    const url    = request.nextUrl.clone();
     url.pathname = target;
-    const res = NextResponse.redirect(url);
+    const res    = NextResponse.redirect(url);
     res.cookies.set("NEXT_LOCALE", "en", {
       path: "/",
       maxAge: 60 * 60 * 24 * 365,
@@ -92,7 +103,7 @@ export async function middleware(request: NextRequest) {
     return res;
   }
 
-  // ── 일반 경로: NEXT_LOCALE=en 쿠키가 없으면 기본값 유지
+  // ── 일반 경로 ─────────────────────────────────────────────
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -120,7 +131,6 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/artists/") &&
     (ARTIST_MANAGE_SUFFIXES.some((s) => pathname.includes(s)) ||
       /^\/artists\/[^/]+\/schedule\/[^/]+$/.test(pathname));
-
   const isProtected =
     isArtistManagePath ||
     PROTECTED_PATHS.some((p) => pathname === p || pathname.startsWith(p + "/"));
@@ -136,7 +146,7 @@ export async function middleware(request: NextRequest) {
   if (isAuthPath && user) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
-    url.search = "";
+    url.search   = "";
     return NextResponse.redirect(url);
   }
 
