@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { ArrowLeft, Share2, MapPin, Plus, Settings, Image as ImageIcon } from "lucide-react";
+import { Share2, MapPin, Plus, Settings, Image as ImageIcon } from "lucide-react";
 import { Suspense } from "react";
 
 import { PageContainer } from "@/components/layout/PageContainer";
@@ -22,6 +22,8 @@ import { BringButton } from "@/components/artist/BringButton";
 import { FollowButton } from "@/components/artist/FollowButton";
 import { InstagramLink } from "@/components/artist/InstagramLink";
 import { getT } from "@/i18n/translations.server";
+import { cookies } from "next/headers";
+import { BackButton } from "./BackButton";
 import { collectProfileView } from "@/lib/analytics/collect";
 
 import type { GuestSchedule } from "@/types";
@@ -153,17 +155,19 @@ function OwnerScheduleTab({
   handle,
   schedules,
   t,
+  lp,
 }: {
   handle: string;
   schedules: GuestSchedule[];
   t: (key: string) => string;
+  lp: string;
 }) {
   return (
     <div className="pb-10">
       {/* 등록 CTA */}
       <div className="px-4 pt-4 pb-2">
         <Link
-          href={`/artists/${handle}/schedule/new`}
+          href={`${lp}/artists/${handle}/schedule/new`}
           className="flex items-center justify-center gap-2 w-full rounded-2xl bg-neutral-900 py-3.5 text-sm font-semibold text-white hover:opacity-90 active:opacity-80 transition-opacity"
         >
           <Plus size={15} aria-hidden="true" />
@@ -191,7 +195,7 @@ function OwnerScheduleTab({
                 />
                 <div className="flex justify-end px-1">
                   <Link
-                    href={`/artists/${handle}/schedule/${schedule.id}`}
+                    href={`${lp}/artists/${handle}/schedule/${schedule.id}`}
                     className="text-[11px] font-medium text-neutral-400 hover:text-neutral-600 transition-colors"
                     aria-label={`${schedule.city} 일정 수정`}
                   >
@@ -271,7 +275,10 @@ async function ProfileContent({
   isLoggedIn: boolean;
   userId: string | null;
 }) {
-  const t = await getT("artist");
+  const t  = await getT("artist");
+  const _ck = await cookies();
+  const _lc = _ck.get("NEXT_LOCALE")?.value === "ko" ? "ko" : "en";
+  const lp  = _lc === "ko" ? "/ko" : "";  // localePrefix
   const artist =
     (await getArtistProfile(handle).catch(() => null)) ??
     getArtistByHandle(handle) ??
@@ -333,7 +340,7 @@ async function ProfileContent({
 
       {/* ── 본인 일정 탭 ───────────────────────────────────── */}
       {isOwner && activeTab === "schedule" && (
-        <OwnerScheduleTab handle={handle} schedules={sortedSchedules} t={t} />
+        <OwnerScheduleTab handle={handle} schedules={sortedSchedules} t={t} lp={lp} />
       )}
 
       {/* ── 본인 인사이트 탭 ────────────────────────────────── */}
@@ -383,7 +390,7 @@ async function ProfileContent({
               {/* 본인이면 수정 버튼, 타인이면 팔로우 버튼 */}
               {isOwner ? (
                 <Link
-                  href={`/artists/${handle}/edit`}
+                  href={`${lp}/artists/${handle}/edit`}
                   className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-neutral-200 bg-white py-2.5 text-sm font-medium text-neutral-700 active:bg-neutral-50"
                 >
                   <Settings size={14} aria-hidden="true" />
@@ -428,7 +435,7 @@ async function ProfileContent({
             {/* 본인: Guest Work 등록 CTA */}
             {isOwner && (
               <Link
-                href={`/artists/${handle}/schedule/new`}
+                href={`${lp}/artists/${handle}/schedule/new`}
                 className="mt-2 flex items-center justify-center gap-2 w-full rounded-xl bg-neutral-900 py-2.5 text-sm font-semibold text-white hover:opacity-90 active:opacity-80 transition-opacity"
               >
                 <Plus size={14} aria-hidden="true" />
@@ -463,7 +470,7 @@ async function ProfileContent({
                     {isOwner && (
                       <div className="flex justify-end px-1">
                         <Link
-                          href={`/artists/${handle}/schedule/${schedule.id}`}
+                          href={`${lp}/artists/${handle}/schedule/${schedule.id}`}
                           className="text-[11px] font-medium text-neutral-400 hover:text-neutral-600 transition-colors"
                           aria-label={`${schedule.city} 일정 수정`}
                         >
@@ -482,7 +489,7 @@ async function ProfileContent({
                 </p>
                 {isOwner && (
                   <Link
-                    href={`/artists/${handle}/schedule/new`}
+                    href={`${lp}/artists/${handle}/schedule/new`}
                     className="mt-1 text-[12px] font-medium text-neutral-600 underline underline-offset-2"
                   >
                     {t("addFirstSchedule")}
@@ -502,7 +509,7 @@ async function ProfileContent({
                 {/* 본인: 포트폴리오 관리 링크 */}
                 {isOwner && (
                   <Link
-                    href={`/artists/${handle}/portfolio`}
+                    href={`${lp}/artists/${handle}/portfolio`}
                     className="flex items-center gap-1 text-[11px] text-neutral-400 hover:text-neutral-600 transition-colors"
                     aria-label="포트폴리오 관리"
                   >
@@ -556,7 +563,7 @@ async function ProfileContent({
                 {t("unverifiedDesc")}
               </p>
               <Link
-                href={`/artists/${artist.instagramHandle}/claim`}
+                href={`${lp}/artists/${artist.instagramHandle}/claim`}
                 className="inline-flex items-center rounded-xl bg-amber-700 px-4 py-2 text-xs font-semibold text-white active:opacity-80"
               >
                 Verify Profile →
@@ -605,14 +612,8 @@ export default async function ArtistProfilePage({ params, searchParams }: Props)
     <PageContainer className="bg-neutral-50">
       {/* TopBar */}
       <header className="sticky top-0 z-40 flex h-[52px] items-center justify-between border-b border-neutral-100 bg-white px-4">
-        <Link
-          href="/"
-          className="flex h-9 w-9 items-center justify-center rounded-full text-neutral-700 active:bg-neutral-100"
-          aria-label="뒤로가기"
-        >
-          <ArrowLeft size={20} />
-        </Link>
-        <span className="text-[13px] font-medium text-neutral-900">프로필</span>
+        <BackButton />
+        <span className="text-[13px] font-medium text-neutral-900">Profile</span>
         <button
           className="flex h-9 w-9 items-center justify-center rounded-full text-neutral-700 active:bg-neutral-100"
           aria-label="공유"

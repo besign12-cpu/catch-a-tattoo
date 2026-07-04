@@ -120,7 +120,9 @@ function EmptyState({ tab, isLoggedIn }: { tab: TabType; isLoggedIn: boolean }) 
 // ── 일정 탭 (서버 props 그대로 — local state 불필요) ──────────
 
 function ScheduleTab({ schedules }: { schedules: FollowingScheduleItem[] }) {
-  const tSched = useT("artist");
+  const tSched  = useT("artist");
+  const schedPathname = usePathname();
+  const lp = (schedPathname === "/ko" || schedPathname.startsWith("/ko/")) ? "/ko" : "";
   if (schedules.length === 0) return <EmptyState tab="schedule" isLoggedIn={true} />;
 
   const sorted = [...schedules].sort((a, b) => {
@@ -145,7 +147,7 @@ function ScheduleTab({ schedules }: { schedules: FollowingScheduleItem[] }) {
         return (
           <Link
             key={item.id}
-            href={`/artists/${item.artistHandle}`}
+            href={`${lp}/artists/${item.artistHandle}`}
             className="block overflow-hidden rounded-2xl border border-neutral-100 bg-white active:opacity-80"
           >
             <div className="flex items-center gap-2.5 px-3 pt-3 pb-2">
@@ -212,57 +214,67 @@ function FollowTab({
   onToggle: (artistId: string, artistHandle: string) => void;
 }) {
   const t = useT("artist");
+  const pathname = usePathname();
+  const lp = (pathname === "/ko" || pathname.startsWith("/ko/")) ? "/ko" : "";
   if (artists.length === 0) return <EmptyState tab="follow" isLoggedIn={true} />;
 
   return (
-    <div className="flex flex-col divide-y divide-neutral-50 px-4 py-2">
+    <div className="flex flex-col gap-2.5 px-3 py-3">
       {artists.map(artist => {
         const isPending = pendingId === artist.id;
 
         return (
-          <div key={artist.id} className="flex items-center gap-3 py-3">
-            <Link
-              href={`/artists/${artist.instagramHandle}`}
-              className="flex flex-1 items-center gap-3 min-w-0"
-            >
-              <Avatar name={artist.displayName} size="sm" />
-              <div className="min-w-0 flex-1">
+          <article key={artist.id} className="overflow-hidden rounded-2xl border border-neutral-100 bg-white">
+            {/* 아티스트 행 */}
+            <div className="flex items-center gap-2.5 px-3 pt-3 pb-2">
+              <Link
+                href={`${lp}/artists/${artist.instagramHandle}`}
+                className="shrink-0"
+                aria-label={artist.displayName}
+              >
+                <Avatar name={artist.displayName} size="sm" />
+              </Link>
+              <Link
+                href={`${lp}/artists/${artist.instagramHandle}`}
+                className="min-w-0 flex-1"
+              >
                 <div className="flex items-center gap-1">
-                  <span className="text-[14px] font-medium text-neutral-900 truncate leading-tight">
+                  <span className="truncate text-[14px] font-semibold text-neutral-900 leading-tight">
                     {artist.displayName}
                   </span>
                   {artist.isVerified && <VerifiedBadge size={12} />}
                 </div>
                 {artist.baseCity && (
-                  <span className="text-[12px] text-neutral-400 leading-tight">
-                    {artist.baseCity}
-                    {artist.baseCountry ? `, ${artist.baseCountry}` : ""}
-                  </span>
+                  <p className="text-[11px] text-neutral-400 leading-tight mt-0.5">
+                    {artist.baseCity}{artist.baseCountry ? `, ${artist.baseCountry}` : ""}
+                  </p>
                 )}
-                {artist.tags.length > 0 && (
-                  <TagList tags={artist.tags} size="sm" max={3} className="mt-1" />
-                )}
-              </div>
-            </Link>
+              </Link>
 
-            <button
-              onClick={() => onToggle(artist.id, artist.instagramHandle)}
-              disabled={isPending}
-              className={cn(
-                "shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-medium leading-none transition-colors active:scale-95",
-                "disabled:opacity-50 disabled:cursor-not-allowed",
-                artist.isFollowing
-                  ? "border-neutral-200 bg-neutral-100 text-neutral-500"
-                  : "border-neutral-300 bg-white text-neutral-800"
-              )}
-              aria-pressed={artist.isFollowing}
-              aria-label={artist.isFollowing
-                ? `${artist.displayName} 언팔로우`
-                : `${artist.displayName} 팔로우`}
-            >
-              {isPending ? "···" : artist.isFollowing ? t("following") : t("follow")}
-            </button>
-          </div>
+              <button
+                onClick={() => onToggle(artist.id, artist.instagramHandle)}
+                disabled={isPending}
+                className={cn(
+                  "shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-medium leading-none transition-colors active:scale-95",
+                  "disabled:opacity-50 disabled:cursor-not-allowed",
+                  artist.isFollowing
+                    ? "border-neutral-200 bg-neutral-100 text-neutral-500"
+                    : "border-neutral-900 bg-neutral-900 text-white"
+                )}
+                aria-pressed={artist.isFollowing}
+                aria-label={artist.isFollowing
+                  ? `${artist.displayName} ${t("following")}`
+                  : `${artist.displayName} ${t("follow")}`}
+              >
+                {isPending ? "···" : artist.isFollowing ? t("following") : t("follow")}
+              </button>
+            </div>
+            {artist.tags.length > 0 && (
+              <div className="px-3 pb-3">
+                <TagList tags={artist.tags} size="sm" max={4} />
+              </div>
+            )}
+          </article>
         );
       })}
     </div>

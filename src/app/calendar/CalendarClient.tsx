@@ -136,6 +136,8 @@ function CustomerCalendar({
 
   const tc   = useT("calendar");
   const tc_c = useT("common");
+  const cpathname = usePathname();
+  const lp = (cpathname === "/ko" || cpathname.startsWith("/ko/")) ? "/ko" : "";
 
   const { trackCityClick } = useAnalytics();
 
@@ -361,7 +363,7 @@ function CustomerCalendar({
                 : tc("noFollowScheduleDesc")}
             </p>
             {viewMode === "following" && (
-              <Link href="/"
+              <Link href={`${lp}/`}
                 className="mt-1 rounded-xl bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white active:opacity-80">
                 {tc_c("findArtist")}
               </Link>
@@ -726,7 +728,7 @@ function ArtistCalendar({
               <p className="text-xs text-neutral-400 leading-relaxed">
                 {ta("noFollowScheduleDesc")}
               </p>
-              <Link href="/"
+              <Link href={`${localePrefix}/`}
                 className="mt-1 rounded-xl bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white active:opacity-80">
                 {ta_c("findArtist")}
               </Link>

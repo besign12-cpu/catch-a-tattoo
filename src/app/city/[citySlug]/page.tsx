@@ -16,6 +16,7 @@ import { formatDateRange, calcDDay } from "@/lib/utils";
 import { getCityBringCount } from "@/actions/bring";
 import { collectCityClick } from "@/lib/analytics/collect";
 import { getT } from "@/i18n/translations.server";
+import { cookies } from "next/headers";
 import type { GuestSchedule, Tag } from "@/types";
 
 export const metadata: Metadata = { title: "City" };
@@ -125,8 +126,8 @@ function KpiCard({
 
 // ── 아티스트 카드 ─────────────────────────────────────────────
 
-function ArtistCard({ result }: { result: SearchResult }) {
-  const href = `/artists/${result.instagramHandle ?? result.artistId}`;
+function ArtistCard({ result, lp }: { result: SearchResult; lp: string }) {
+  const href = `${lp}/artists/${result.instagramHandle ?? result.artistId}`;
   return (
     <Link
       href={href}
@@ -327,6 +328,10 @@ export default async function CityPage({
 
   const tc = await getT("city");
   const ta = await getT("common");
+  // locale prefix (서버 컴포넌트: middleware가 request 쿠키에 NEXT_LOCALE 설정)
+  const _ck = await cookies();
+  const _lc = _ck.get("NEXT_LOCALE")?.value === "ko" ? "ko" : "en";
+  const lp  = _lc === "ko" ? "/ko" : "";
 
   // 아티스트 데이터 조회
   let guests: SearchResult[] = [];
@@ -370,7 +375,7 @@ export default async function CityPage({
         {/* 도시명 행 */}
         <div className="flex items-center gap-2 px-4 pt-4 pb-2">
           <Link
-            href="/"
+            href={`${lp}/`}
             className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-400 hover:bg-neutral-100 transition-colors"
             aria-label={ta("back")}
           >
@@ -455,7 +460,7 @@ export default async function CityPage({
           </div>
         ) : (
           activeItems.map((r) => (
-            <ArtistCard key={r.artistId} result={r} />
+            <ArtistCard key={r.artistId} result={r} lp={lp} />
           ))
         )}
 

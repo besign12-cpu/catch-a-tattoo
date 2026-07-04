@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import Link from "next/link";
 import { Settings, LayoutDashboard } from "lucide-react";
 
@@ -43,6 +44,9 @@ export default async function MePage() {
 
   const t  = await getT("me");
   const tc = await getT("common");
+  const cookieStore = await cookies();
+  const locale = cookieStore.get("NEXT_LOCALE")?.value === "ko" ? "ko" : "en";
+  const lp = locale === "ko" ? "/ko" : "";  // localePrefix
 
   let profile = null;
   try {
@@ -74,7 +78,7 @@ export default async function MePage() {
         title={t("myInfo")}
         right={
           <Link
-            href="/me/settings"
+            href={`${lp}/me/settings`}
             className="flex h-9 w-9 items-center justify-center rounded-full text-neutral-500 hover:bg-neutral-100 transition-colors"
             aria-label={tc("settings")}
           >
@@ -114,7 +118,7 @@ export default async function MePage() {
           {/* 아티스트 프로필 CTA */}
           {(profile?.role === "artist" || profile?.role === "admin") && profile?.artistHandle && (
             <Link
-              href={`/artists/${profile.artistHandle}`}
+              href={`${lp}/artists/${profile.artistHandle}`}
               className="flex items-center justify-between rounded-2xl bg-neutral-900 px-5 py-4 hover:opacity-90 active:opacity-80 transition-opacity"
             >
               <div className="flex items-center gap-3">
@@ -153,7 +157,7 @@ export default async function MePage() {
 
           {/* 설정 바로가기 */}
           <Link
-            href="/me/settings"
+            href={`${lp}/me/settings`}
             className="flex items-center justify-between rounded-2xl bg-white border border-neutral-100 px-5 py-4 hover:border-neutral-200 transition-colors"
           >
             <div className="flex items-center gap-2.5">
