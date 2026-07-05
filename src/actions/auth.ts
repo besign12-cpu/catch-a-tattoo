@@ -76,8 +76,6 @@ export async function signIn(
 ): Promise<SignInState> {
   const email = formData.get("email");
   const password = formData.get("password");
-  // next: 로그인 후 돌아갈 경로 (예: /ko/me, /me)
-  const next = (formData.get("next") as string | null)?.trim() || "/";
 
   if (typeof email !== "string" || typeof password !== "string") {
     return { status: "error", message: "입력값이 올바르지 않습니다." };
@@ -117,8 +115,7 @@ export async function signIn(
     return { status: "error", message: error.message };
   }
 
-  // next 파라미터가 있으면 해당 경로로, 없으면 홈으로
-  redirect(next);
+  redirect("/");
 }
 
 // ─── 로그아웃 ────────────────────────────────────────────────────────────────
@@ -126,6 +123,6 @@ export async function signIn(
 export async function signOut(): Promise<void> {
   const supabase = await getSupabaseServerClient();
   await supabase.auth.signOut();
-  const { lp } = await getLocaleServer();
-  redirect(lp || "/");
+  const { href } = await getLocaleServer();
+  redirect(href("/"));
 }

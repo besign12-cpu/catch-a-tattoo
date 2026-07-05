@@ -1,3 +1,4 @@
+import { getLocaleServer } from "@/lib/locale.server";
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -129,6 +130,7 @@ async function SearchResults({
 }
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {
+  const { href: locHref } = await getLocaleServer();
   const sp = await searchParams;
 
   return (
@@ -136,7 +138,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
       <header className="sticky top-0 z-40 border-b border-neutral-100 bg-white">
         <div className="flex items-center gap-2 px-4 py-3">
           <Link
-            href="/"
+            href={locHref("/")}
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-neutral-700 active:bg-neutral-100"
             aria-label="홈으로"
           >

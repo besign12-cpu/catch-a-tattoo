@@ -11,15 +11,12 @@ import { ErrorState } from "@/components/ui/ErrorState";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getCityArtists, type SearchResult } from "@/lib/queries/artists";
 import { DUMMY_ARTISTS } from "@/data/dummy";
+import { getLocaleServer } from "@/lib/locale.server";
 import { fromCitySlug } from "@/lib/mock-preferences";
 import { formatDateRange, calcDDay } from "@/lib/utils";
-import { getCityBringCount } from "@/actions/bring";
-import { collectCityClick } from "@/lib/analytics/collect";
-import { getT } from "@/i18n/translations.server";
-import { cookies } from "next/headers";
 import type { GuestSchedule, Tag } from "@/types";
 
-export const metadata: Metadata = { title: "City" };
+export const metadata: Metadata = { title: "도시" };
 
 type TabType = "guest" | "based";
 
@@ -126,8 +123,8 @@ function KpiCard({
 
 // ── 아티스트 카드 ─────────────────────────────────────────────
 
-function ArtistCard({ result, lp }: { result: SearchResult; lp: string }) {
-  const href = `${lp}/artists/${result.instagramHandle ?? result.artistId}`;
+function ArtistCard({ result }: { result: SearchResult }) {
+  const href = `/artists/${result.instagramHandle ?? result.artistId}`;
   return (
     <Link
       href={href}
@@ -168,10 +165,10 @@ function ArtistCard({ result, lp }: { result: SearchResult; lp: string }) {
 
 function PopularStylesSection({
   styles,
-  popularStylesLabel,
+  city,
 }: {
   styles: StyleCount[];
-  popularStylesLabel: string;
+  city: string;
 }) {
   if (styles.length === 0) return null;
 
@@ -180,7 +177,7 @@ function PopularStylesSection({
       <div className="mb-3 flex items-center gap-1.5">
         <TrendingUp size={13} className="text-neutral-400" aria-hidden="true" />
         <p className="text-[11px] font-semibold tracking-widest text-neutral-400 uppercase">
-          {popularStylesLabel}
+          {city} 인기 스타일
         </p>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -211,22 +208,11 @@ function ArtistInsightBanner({
   city,
   guestCount,
   bringCount,
-  artistHandle,
-  activeDemandLabel,
-  currentAndUpcomingLabel,
-  addScheduleLabel,
 }: {
   city: string;
   guestCount: number;
   bringCount: number;
-  artistHandle: string | null;
-  activeDemandLabel: string;
-  currentAndUpcomingLabel: string;
-  addScheduleLabel: string;
 }) {
-  const scheduleNewPath = artistHandle
-    ? `/artists/${artistHandle}/schedule/new`
-    : "/artists/new";
   return (
     <div className="rounded-2xl border border-neutral-800 bg-neutral-900 px-5 py-4">
       {/* 헤더 */}
@@ -245,7 +231,7 @@ function ArtistInsightBanner({
             Bring This Artist
           </span>
           <span className="text-[10px] text-neutral-500">
-            {activeDemandLabel}
+            현재 활성 수요
           </span>
         </div>
         <div className="w-px self-stretch bg-neutral-700" />
@@ -254,13 +240,13 @@ function ArtistInsightBanner({
             {guestCount}
           </span>
           <span className="text-[11px] text-neutral-400">Guest Artists</span>
-          <span className="text-[10px] text-neutral-500">{currentAndUpcomingLabel}</span>
+          <span className="text-[10px] text-neutral-500">현재 / 예정</span>
         </div>
       </div>
 
       {/* CTA */}
       <Link
-        href={scheduleNewPath}
+        href={`/studio/schedule/new`}
         className="
           mt-4 flex items-center justify-center gap-2
           w-full rounded-xl bg-white
@@ -269,7 +255,7 @@ function ArtistInsightBanner({
         "
       >
         <Plus size={14} aria-hidden="true" />
-        {addScheduleLabel}
+        {city} 일정 등록하기
       </Link>
 
       {/* 캘린더 링크 */}
@@ -280,6 +266,9 @@ function ArtistInsightBanner({
         날짜별 수요 확인 →
       </Link>
 
+      <p className="mt-2 text-center text-[10px] text-neutral-600">
+        * Bring 실수요는 Sprint 5에서 연결됩니다
+      </p>
     </div>
   );
 }
@@ -292,18 +281,18 @@ export default async function CityPage({
 }: CityPageProps) {
   const { citySlug } = await params;
   const sp = await searchParams;
+  const { href: locHref } = await getLocaleServer();
 
   const activeTab: TabType = sp.tab === "based" ? "based" : "guest";
   const { city, country } = fromCitySlug(citySlug);
 
-  // 로그인 여부 + role + artistHandle 확인 (Artist View 분기용)
+  // 로그인 여부 + role 확인 (Artist View 분기용)
   const supabase = await getSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   let isArtist = false;
-  let artistHandle: string | null = null;
   if (user) {
     const { data: userRow } = await supabase
       .from("users")
@@ -312,26 +301,7 @@ export default async function CityPage({
       .single();
     isArtist =
       userRow?.role === "artist" || userRow?.role === "admin";
-
-    if (isArtist) {
-      const { data: artistRow } = await supabase
-        .from("artist_profiles")
-        .select("instagram_handle")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      artistHandle = (artistRow as { instagram_handle: string | null } | null)?.instagram_handle ?? null;
-    }
   }
-
-  // City View 수집 (fire-and-forget)
-  void collectCityClick({ cityName: city, userId: user?.id ?? null });
-
-  const tc = await getT("city");
-  const ta = await getT("common");
-  // locale prefix (서버 컴포넌트: middleware가 request 쿠키에 NEXT_LOCALE 설정)
-  const _ck = await cookies();
-  const _lc = _ck.get("NEXT_LOCALE")?.value === "ko" ? "ko" : "en";
-  const lp  = _lc === "ko" ? "/ko" : "";
 
   // 아티스트 데이터 조회
   let guests: SearchResult[] = [];
@@ -365,8 +335,8 @@ export default async function CityPage({
   const allArtists = [...guests, ...based];
   const popularStyles = calcPopularStyles(allArtists);
 
-  // city_follows (is_active=true) 실데이터 조회
-  const bringCount = await getCityBringCount(city);
+  // Sprint 5: city_follows (is_active=true) WHERE city = city 쿼리로 교체
+  const bringCount = 0;
 
   return (
     <PageContainer className="bg-neutral-50">
@@ -375,9 +345,9 @@ export default async function CityPage({
         {/* 도시명 행 */}
         <div className="flex items-center gap-2 px-4 pt-4 pb-2">
           <Link
-            href={`${lp}/`}
+            href={locHref("/")}
             className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-400 hover:bg-neutral-100 transition-colors"
-            aria-label={ta("back")}
+            aria-label="뒤로가기"
           >
             <ChevronLeft size={20} aria-hidden="true" />
           </Link>
@@ -394,11 +364,11 @@ export default async function CityPage({
         {/* KPI 카드 행 */}
         <div className="flex gap-2 px-4 pb-3">
           <KpiCard label="Guest" value={guests.length} sub="현재·예정" />
-          <KpiCard label="Based" value={based.length} sub={tc("basedArtists")} />
+          <KpiCard label="Based" value={based.length} sub="베이스 아티스트" />
           <KpiCard
             label="Bring"
             value={bringCount}
-            sub={tc("activeDemand")}
+            sub="활성 수요"
           />
         </div>
 
@@ -438,10 +408,6 @@ export default async function CityPage({
             city={city}
             guestCount={guests.length}
             bringCount={bringCount}
-            artistHandle={artistHandle}
-            activeDemandLabel={tc("activeDemand")}
-            currentAndUpcomingLabel={tc("currentAndUpcoming")}
-            addScheduleLabel={`${city} ${tc("addSchedule")}`}
           />
         )}
 
@@ -460,12 +426,12 @@ export default async function CityPage({
           </div>
         ) : (
           activeItems.map((r) => (
-            <ArtistCard key={r.artistId} result={r} lp={lp} />
+            <ArtistCard key={r.artistId} result={r} />
           ))
         )}
 
         {/* 인기 스타일 섹션 */}
-        <PopularStylesSection styles={popularStyles} popularStylesLabel={tc("popularStyles")} />
+        <PopularStylesSection styles={popularStyles} city={city} />
       </div>
     </PageContainer>
   );

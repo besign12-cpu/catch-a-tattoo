@@ -15,6 +15,7 @@
 import { useFormState, useFormStatus } from "react-dom";
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useLocaleNav } from "@/lib/hooks/useLocaleNav";
 import { toggleBring, type BringState } from "@/actions/bring";
 import { useT } from "@/lib/hooks/useT";
 
@@ -100,6 +101,7 @@ export function BringButton({
   const [state, formAction] = useFormState(toggleBring, initialState);
   const prevStatus = useRef(state.status);
   const tc = useT("common");
+  const { push: localePush } = useLocaleNav();
 
   useEffect(() => {
     if (state.status === "success" && prevStatus.current !== "success") {
@@ -139,7 +141,7 @@ export function BringButton({
   if (!baseCity) {
     return (
       <button
-        onClick={() => router.push("/me/settings")}
+        onClick={() => localePush("/me/settings")}
         className="flex items-center justify-center rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm font-medium text-amber-600 active:opacity-80 transition-colors"
         aria-label="Base City 설정 후 Bring 가능"
         title={tc("setBaseCityToBring")}
