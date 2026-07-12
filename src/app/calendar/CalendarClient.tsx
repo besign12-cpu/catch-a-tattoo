@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Plus, MapPin } from "lucide-react";
 import { CityDropdown } from "@/components/artist/CityDropdown";
 import type { CityDropdownOption } from "@/components/artist/CityDropdown";
-import type { CalendarScheduleItem, CityCalendarData } from "@/lib/queries/calendar";
 
 // ── 타입 ────────────────────────────────────────────────────
 
@@ -18,17 +18,11 @@ interface CalendarCity {
 }
 
 interface CalendarClientProps {
-  /** null = 비로그인 */
+  /** null = 비로그인. CustomerCalendar를 표시하되 팔로우 일정 영역만 로그인 유도. */
   role: "customer" | "artist" | "admin" | null;
   cities: CalendarCity[];
+  /** 아티스트 instagram handle — ArtistCalendar에서 등록 링크 생성에 사용 */
   artistHandle?: string | null;
-  followingSchedules?: CalendarScheduleItem[];
-  initialCitySchedules?: CalendarScheduleItem[];
-  initialCustomerCity?: CalendarCity | null;
-  initialArtistCity?: CalendarCity | null;
-  initialCityData?: CityCalendarData | null;
-  initialYear?: number;
-  initialMonth?: number;
 }
 
 // ── 달력 계산 유틸 ──────────────────────────────────────────
@@ -276,8 +270,20 @@ function CustomerCalendar({
 
 // ── Artist View 달력 ────────────────────────────────────────
 
-function ArtistCalendar({ cities }: { cities: CalendarCity[] }) {
+function ArtistCalendar({
+  cities,
+  artistHandle,
+}: {
+  cities: CalendarCity[];
+  artistHandle?: string | null;
+}) {
   const today = new Date();
+  const pathname = usePathname();
+  // locale-aware 등록 경로: /ko 상태면 /ko/artists/:handle/schedule/new
+  const lp = pathname === "/ko" || pathname.startsWith("/ko/") ? "/ko" : "";
+  const scheduleNewPath = artistHandle
+    ? `${lp}/artists/${artistHandle}/schedule/new`
+    : `${lp}/artists/new`;
   const [year, setYear]           = useState(today.getFullYear());
   const [month, setMonth]         = useState(today.getMonth());
   const [selectedCity, setSelectedCity] = useState<CalendarCity | null>(
@@ -316,7 +322,7 @@ function ArtistCalendar({ cities }: { cities: CalendarCity[] }) {
       {/* ── Guest Work 등록 CTA ───────────────────────── */}
       <div className="mx-4 mt-2">
         <Link
-          href="/studio/schedule/new"
+          href={scheduleNewPath}
           className="
             flex items-center justify-center gap-2
             w-full rounded-2xl bg-neutral-900
@@ -453,7 +459,7 @@ function ArtistCalendar({ cities }: { cities: CalendarCity[] }) {
                 Guest Work를 등록하면 수요를 확인할 수 있습니다.
               </p>
               <Link
-                href={`/studio/schedule/new`}
+                href={scheduleNewPath}
                 className="
                   mt-3 flex items-center justify-center gap-1.5
                   w-full rounded-xl border border-neutral-200 bg-neutral-50
@@ -491,17 +497,14 @@ function ArtistCalendar({ cities }: { cities: CalendarCity[] }) {
 
 // ── 메인 Export ─────────────────────────────────────────────
 
-export function CalendarClient({ role, cities }: CalendarClientProps) {
-  // null(비로그인) 또는 "customer" → CustomerCalendar
-  // "artist" | "admin" → ArtistCalendar
+export function CalendarClient({ role, cities, artistHandle }: CalendarClientProps) {
   const isArtist = role === "artist" || role === "admin";
-  // 비로그인 여부: CustomerCalendar 내 팔로우 일정 영역 로그인 유도에 사용
-  const isGuest = role === null;
+  const isGuest  = role === null;
 
   return (
     <div className="flex flex-col gap-4 pb-10">
       {isArtist
-        ? <ArtistCalendar cities={cities} />
+        ? <ArtistCalendar cities={cities} artistHandle={artistHandle} />
         : <CustomerCalendar isGuest={isGuest} cities={cities} />
       }
     </div>

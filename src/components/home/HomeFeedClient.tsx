@@ -1,14 +1,11 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { ChevronRight, MapPin, X } from "lucide-react";
 import { FeedCard } from "@/components/artist/FeedCard";
 import { HomeFilterBar, type PeriodFilter } from "@/components/home/HomeFilterBar";
 import { HomeFilterSheet } from "@/components/home/HomeFilterSheet";
-import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
-import { useAnalytics } from "@/lib/hooks/useAnalytics";
-import { useT } from "@/lib/hooks/useT";
 import type { FeedCard as FeedCardType } from "@/types";
 
 // ── 타입 ──────────────────────────────────────────────────────
@@ -27,8 +24,6 @@ interface HomeFeedClientProps {
   baseCity: string;
   baseCountry: string;
   citySlug: string;
-  isLoggedIn?: boolean;
-  /** cities 마스터 목록 (검색용) */
   cities: CityOption[];
 }
 
@@ -78,66 +73,27 @@ export function HomeFeedClient({
   baseCity,
   baseCountry,
   citySlug: initialCitySlug,
-  isLoggedIn = false,
   cities,
 }: HomeFeedClientProps) {
   // ── 도시 state ──────────────────────────────────────────────
-  const [currentCity,    setCurrentCity]    = useState(baseCity);
-  const [currentCountry, setCurrentCountry] = useState(baseCountry);
+  const [currentCity,     setCurrentCity]    = useState(baseCity);
+  const [currentCountry,  setCurrentCountry] = useState(baseCountry);
   const [currentCitySlug, setCurrentCitySlug] = useState(initialCitySlug);
-  const [guestItems, setGuestItems] = useState(initialGuestItems);
-  const [basedItems, setBasedItems] = useState(initialBasedItems);
-  const [cityLoading, setCityLoading] = useState(false);
+  const [guestItems,      setGuestItems]     = useState(initialGuestItems);
+  const [basedItems,      setBasedItems]     = useState(initialBasedItems);
+  const [cityLoading,     setCityLoading]    = useState(false);
 
   // ── 검색 state ──────────────────────────────────────────────
-  const [query,    setQuery]    = useState("");
+  const [query,          setQuery]          = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   // ── 필터 state ──────────────────────────────────────────────
-  const [period,       setPeriod]       = useState<PeriodFilter>("all");
-  const [appliedTags,  setAppliedTags]  = useState<string[]>([]);
-  const [draftTags,    setDraftTags]    = useState<string[]>([]);
-  const [sheetOpen,    setSheetOpen]    = useState(false);
+  const [period,      setPeriod]      = useState<PeriodFilter>("all");
+  const [appliedTags, setAppliedTags] = useState<string[]>([]);
+  const [draftTags,   setDraftTags]   = useState<string[]>([]);
+  const [sheetOpen,   setSheetOpen]   = useState(false);
 
-  const t   = useT("discover");
-  const tc  = useT("common");
-  const tst = useT("settings");
-  const { trackArtistSearch, trackStyleSearch, trackCombinedSearch, trackCityClick } = useAnalytics();
-
-  // ── 검색 debounce ───────────────────────────────────────────
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    const trimmed = query.trim();
-    if (trimmed.length < 2) return;
-    searchTimerRef.current = setTimeout(() => {
-      if (appliedTags.length > 0) {
-        trackCombinedSearch(trimmed, appliedTags, 0);
-      } else {
-        trackArtistSearch(trimmed, 0);
-      }
-    }, 500);
-    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query]);
-
-  const prevAppliedTagsRef = useRef<string>("");
-  useEffect(() => {
-    const key = appliedTags.slice().sort().join(",");
-    if (key === prevAppliedTagsRef.current || appliedTags.length === 0) {
-      prevAppliedTagsRef.current = key;
-      return;
-    }
-    prevAppliedTagsRef.current = key;
-    if (query.trim().length > 0) {
-      trackCombinedSearch(query.trim(), appliedTags, 0);
-    } else {
-      trackStyleSearch(appliedTags, 0);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appliedTags]);
-
-  // ── 도시 선택 핸들러 ─────────────────────────────────────────
+  // ── 도시 변경 핸들러 ─────────────────────────────────────────
   const handleCitySelect = useCallback(async (city: CityOption) => {
     if (city.name === currentCity) {
       setQuery("");
@@ -149,7 +105,6 @@ export function HomeFeedClient({
     setCurrentCity(city.name);
     setCurrentCountry(city.country);
     setCityLoading(true);
-    trackCityClick(city.name);
 
     try {
       const res = await fetch(
@@ -164,15 +119,19 @@ export function HomeFeedClient({
         setGuestItems(data.guestItems);
         setBasedItems(data.basedItems);
         setCurrentCitySlug(data.citySlug);
+      } else {
+        console.error("[HomeFeedClient] 도시 변경 API 실패:", res.status);
       }
-    } catch { /* silent */ }
-    finally { setCityLoading(false); }
-  }, [currentCity, trackCityClick]);
+    } catch (err) {
+      console.error("[HomeFeedClient] 도시 변경 API 오류:", err);
+    } finally {
+      setCityLoading(false);
+    }
+  }, [currentCity]);
 
   // ── 검색 결과 계산 ───────────────────────────────────────────
   const trimmedQuery = query.trim().toLowerCase();
 
-  // Cities 검색 (최대 3개)
   const matchedCities = useMemo(() => {
     if (!trimmedQuery) return [];
     return cities
@@ -180,13 +139,12 @@ export function HomeFeedClient({
         c.name.toLowerCase().includes(trimmedQuery) ||
         c.countryName.toLowerCase().includes(trimmedQuery)
       )
-      .slice(0, 3);
+      .slice(0, 4);
   }, [cities, trimmedQuery]);
 
-  // 검색창에서 검색 중인지 (도시 검색 결과 or 2자 이상 입력)
   const isSearching = isSearchFocused && trimmedQuery.length > 0;
 
-  // ── 피드 필터 (태그/기간) ────────────────────────────────────
+  // ── 피드 필터 ────────────────────────────────────────────────
   const filteredGuest = useMemo(
     () => applyFilters(guestItems, period, appliedTags),
     [guestItems, period, appliedTags]
@@ -196,70 +154,57 @@ export function HomeFeedClient({
     [basedItems, period, appliedTags]
   );
 
-  // ── 이벤트 핸들러 ─────────────────────────────────────────────
-  function handleFilterOpen() { setDraftTags(appliedTags); setSheetOpen(true); }
-  function handleDraftToggle(slug: string) {
-    setDraftTags(prev => prev.includes(slug) ? prev.filter(s => s !== slug) : [...prev, slug]);
-  }
-
   return (
     <>
       {/* ── sticky 헤더 ─────────────────────────────────────── */}
       <div className="sticky top-0 z-40 border-b border-neutral-100 bg-white px-4 pt-4 pb-0">
-        {/* 검색창 + Language 버튼 */}
-        <div className="flex items-center gap-2 mb-3">
-          <div className="relative flex-1">
-            <input
-              type="text"
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              onFocus={() => setIsSearchFocused(true)}
-              onBlur={() => {
-                // 약간의 delay: 도시 클릭 이벤트보다 blur가 먼저 실행되는 것 방지
-                setTimeout(() => setIsSearchFocused(false), 150);
-              }}
-              placeholder={t("searchPlaceholder")}
-              className="w-full rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-[13px] text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-neutral-400 focus:bg-white"
-              aria-label="검색"
-            />
-            {query && (
-              <button
-                onMouseDown={e => e.preventDefault()} // blur 방지
-                onClick={() => { setQuery(""); setIsSearchFocused(false); }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
-                aria-label="검색어 지우기"
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
-          <LanguageSwitcher variant="topbar" />
+        {/* 검색창 */}
+        <div className="relative mb-3">
+          <input
+            type="text"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            onFocus={() => setIsSearchFocused(true)}
+            onBlur={() => setTimeout(() => setIsSearchFocused(false), 150)}
+            placeholder="도시 또는 아티스트 검색"
+            className="w-full rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-[13px] text-neutral-900 placeholder:text-neutral-400 focus:outline-none focus:border-neutral-400 focus:bg-white"
+            aria-label="도시 검색"
+          />
+          {query && (
+            <button
+              onMouseDown={e => e.preventDefault()}
+              onClick={() => { setQuery(""); setIsSearchFocused(false); }}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400"
+              aria-label="검색어 지우기"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
 
-        {/* 검색 중이 아닐 때만 필터바 표시 */}
+        {/* 필터바 (검색 중이 아닐 때) */}
         {!isSearching && (
           <HomeFilterBar
             period={period}
             onPeriodChange={setPeriod}
             activeTagCount={appliedTags.length}
-            onFilterOpen={handleFilterOpen}
+            onFilterOpen={() => { setDraftTags(appliedTags); setSheetOpen(true); }}
           />
         )}
       </div>
 
-      {/* ── 검색 결과 드롭다운 ─────────────────────────────────── */}
+      {/* ── 도시 검색 드롭다운 ─────────────────────────────────── */}
       {isSearching && (
-        <div className="flex flex-col bg-white">
-          {/* Cities 섹션 */}
-          {matchedCities.length > 0 && (
-            <div className="px-4 pt-4 pb-2">
+        <div className="flex flex-col bg-white border-b border-neutral-100">
+          {matchedCities.length > 0 ? (
+            <div className="px-4 py-3">
               <p className="mb-2 text-[10px] font-semibold tracking-widest text-neutral-400 uppercase">
                 Cities
               </p>
               {matchedCities.map(city => (
                 <button
                   key={city.id}
-                  onMouseDown={e => e.preventDefault()} // blur 방지
+                  onMouseDown={e => e.preventDefault()}
                   onClick={() => handleCitySelect(city)}
                   className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-neutral-50 active:bg-neutral-100 transition-colors"
                 >
@@ -272,24 +217,18 @@ export function HomeFeedClient({
                   </div>
                   {city.name === currentCity && (
                     <span className="shrink-0 rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] text-neutral-500">
-                      {tst("baseCityCurrent")}
+                      현재
                     </span>
                   )}
                 </button>
               ))}
             </div>
-          )}
-
-          {/* 구분선 */}
-          {matchedCities.length > 0 && (
-            <div className="mx-4 border-t border-neutral-100" />
-          )}
-
-          {/* 빈 상태 */}
-          {matchedCities.length === 0 && trimmedQuery.length >= 2 && (
-            <div className="px-4 py-8 text-center">
-              <p className="text-[13px] text-neutral-400">{t("noGuests")}</p>
-            </div>
+          ) : (
+            trimmedQuery.length >= 2 && (
+              <div className="px-4 py-8 text-center">
+                <p className="text-[13px] text-neutral-400">검색 결과가 없습니다</p>
+              </div>
+            )
           )}
         </div>
       )}
@@ -297,23 +236,17 @@ export function HomeFeedClient({
       {/* ── 현재 도시 헤더 ──────────────────────────────────────── */}
       {!isSearching && (
         <div className="flex items-start justify-between px-4 pt-5 pb-1">
-          <div className="flex flex-col">
+          <div>
             <h2 className="text-[18px] font-bold text-neutral-900 leading-tight">
-              {cityLoading ? (
-                <span className="text-neutral-300">···</span>
-              ) : (
-                currentCity
-              )}
+              {cityLoading ? <span className="text-neutral-300">···</span> : currentCity}
             </h2>
-            <p className="text-[12px] text-neutral-400 leading-tight mt-0.5">
-              {currentCountry}
-            </p>
+            <p className="text-[12px] text-neutral-400 mt-0.5">{currentCountry}</p>
           </div>
           <Link
             href={`/city/${currentCitySlug}`}
-            className="flex items-center gap-0.5 mt-1 text-[12px] text-neutral-400 hover:text-neutral-600 transition-colors active:opacity-70"
+            className="mt-1 flex items-center gap-0.5 text-[12px] text-neutral-400 hover:text-neutral-600 transition-colors"
           >
-            {tc("moreView")}
+            더보기
             <ChevronRight size={13} strokeWidth={2} />
           </Link>
         </div>
@@ -322,23 +255,27 @@ export function HomeFeedClient({
       {/* ── 피드 ──────────────────────────────────────────────── */}
       {!isSearching && (
         cityLoading ? (
-          <div className="flex flex-col items-center justify-center py-16">
-            <p className="text-[13px] text-neutral-300">{tc("loading")}</p>
+          <div className="flex items-center justify-center py-16">
+            <p className="text-[13px] text-neutral-300">로딩 중...</p>
           </div>
         ) : (
           <div className="pb-6">
-            {/* Upcoming Guest Artists */}
+            {/* Guest Artists */}
             <div className="px-4 pb-2 pt-4">
               <h3 className="text-[13px] font-semibold text-neutral-800">
-                {t("guestArtists")}
+                Upcoming Guest Artists in {currentCity}
               </h3>
             </div>
             {filteredGuest.length === 0 ? (
-              <p className="px-4 py-4 text-[12px] text-neutral-400">{t("noGuests")}</p>
+              <p className="px-4 py-4 text-[12px] text-neutral-400">
+                {appliedTags.length > 0 || period !== "all"
+                  ? "조건에 맞는 게스트 아티스트가 없습니다."
+                  : `${currentCity}에 예정된 Guest Work가 없습니다.`}
+              </p>
             ) : (
               <div className="space-y-2.5 px-3 pt-1">
                 {filteredGuest.map(item => (
-                  <FeedCard key={item.schedule.id} data={item} isLoggedIn={isLoggedIn} />
+                  <FeedCard key={item.schedule.id} data={item} />
                 ))}
               </div>
             )}
@@ -346,15 +283,19 @@ export function HomeFeedClient({
             {/* Based Artists */}
             <div className="px-4 pb-2 pt-5">
               <h3 className="text-[13px] font-semibold text-neutral-800">
-                {t("basedArtists")}
+                Based Artists in {currentCity}
               </h3>
             </div>
             {filteredBased.length === 0 ? (
-              <p className="px-4 py-4 text-[12px] text-neutral-400">{t("noBased")}</p>
+              <p className="px-4 py-4 text-[12px] text-neutral-400">
+                {appliedTags.length > 0 || period !== "all"
+                  ? "조건에 맞는 베이스드 아티스트가 없습니다."
+                  : `${currentCity}에 등록된 Based Artist가 없습니다.`}
+              </p>
             ) : (
               <div className="space-y-2.5 px-3 pt-1">
                 {filteredBased.map(item => (
-                  <FeedCard key={item.schedule.id} data={item} isLoggedIn={isLoggedIn} />
+                  <FeedCard key={item.schedule.id} data={item} />
                 ))}
               </div>
             )}
@@ -366,7 +307,9 @@ export function HomeFeedClient({
       <HomeFilterSheet
         isOpen={sheetOpen}
         draftSlugs={draftTags}
-        onToggle={handleDraftToggle}
+        onToggle={(slug) => setDraftTags(prev =>
+          prev.includes(slug) ? prev.filter(s => s !== slug) : [...prev, slug]
+        )}
         onReset={() => setDraftTags([])}
         onApply={() => { setAppliedTags(draftTags); setSheetOpen(false); }}
         onDismiss={() => setSheetOpen(false)}

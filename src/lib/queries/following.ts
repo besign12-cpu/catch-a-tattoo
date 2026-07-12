@@ -1,15 +1,17 @@
 /**
- * Following 페이지 쿼리
+ * following.ts — Following 페이지 실데이터 쿼리
  *
- * follows 테이블 기준으로:
- * - 내가 팔로우한 아티스트 목록 (artist_profiles + artist_tags + tags JOIN)
- * - 그 아티스트들의 Guest Work 일정 (guest_schedules, active/upcoming만)
+ * follows 테이블 기준:
+ * - 내가 팔로우한 아티스트 목록
+ * - 그 아티스트들의 미래/진행 중 Guest Work 일정
+ *   조건: end_date >= today AND is_active = true
  */
 
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
-import type { FollowingScheduleItem, FollowingArtistItem } from "@/app/following/FollowingClient";
-
-// ── getFollowingData ──────────────────────────────────────────
+import type {
+  FollowingScheduleItem,
+  FollowingArtistItem,
+} from "@/app/following/FollowingClient";
 
 export async function getFollowingData(userId: string): Promise<{
   schedules: FollowingScheduleItem[];
@@ -18,10 +20,15 @@ export async function getFollowingData(userId: string): Promise<{
   const admin = getSupabaseAdminClient();
 
   // 1. 내가 팔로우한 아티스트 ID 목록
-  const { data: followRows } = await admin
+  const { data: followRows, error: followErr } = await admin
     .from("follows")
     .select("artist_id")
     .eq("follower_id", userId);
+
+  if (followErr) {
+    console.error("[getFollowingData] follows 조회 실패:", followErr.message);
+    return { schedules: [], artists: [] };
+  }
 
   if (!followRows || followRows.length === 0) {
     return { schedules: [], artists: [] };
@@ -29,8 +36,8 @@ export async function getFollowingData(userId: string): Promise<{
 
   const artistIds = followRows.map((r) => r.artist_id);
 
-  // 2. 아티스트 프로필 + 태그 조회
-  const { data: profileRows } = await admin
+  // 2. 아티스트 프로필 조회
+  const { data: profileRows, error: profileErr } = await admin
     .from("artist_profiles")
     .select(`
       id,
@@ -38,19 +45,20 @@ export async function getFollowingData(userId: string): Promise<{
       instagram_handle,
       is_verified,
       base_city,
-      base_country,
-      artist_tags (
-        tag_id,
-        tags ( id, name, slug, group_type )
-      )
+      base_country
     `)
     .in("id", artistIds)
     .order("display_name", { ascending: true });
 
-  // 3. 팔로우 아티스트들의 active/upcoming Guest Work 일정 조회
-  const today = new Date().toISOString().split("T")[0];
+  if (profileErr) {
+    console.error("[getFollowingData] artist_profiles 조회 실패:", profileErr.message);
+    return { schedules: [], artists: [] };
+  }
 
-  const { data: scheduleRows } = await admin
+  // 3. 미래/진행 중 Guest Work 일정 조회
+  const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+
+  const { data: scheduleRows, error: scheduleErr } = await admin
     .from("guest_schedules")
     .select(`
       id,
@@ -62,11 +70,16 @@ export async function getFollowingData(userId: string): Promise<{
       is_active
     `)
     .in("artist_id", artistIds)
-    .gte("end_date", today)        // ended 제외
-    .eq("is_active", true)
+    .gte("end_date", today)      // 종료된 일정 제외
+    .eq("is_active", true)       // 취소/삭제 제외
     .order("start_date", { ascending: true });
 
-  // 아티스트 ID → 프로필 맵
+  if (scheduleErr) {
+    console.error("[getFollowingData] guest_schedules 조회 실패:", scheduleErr.message);
+    // 일정 조회 실패해도 아티스트 목록은 반환
+  }
+
+  // profileId → profile 맵
   type ProfileRow = {
     id: string;
     display_name: string;
@@ -74,43 +87,26 @@ export async function getFollowingData(userId: string): Promise<{
     is_verified: boolean;
     base_city: string | null;
     base_country: string | null;
-    artist_tags: {
-      tag_id: string;
-      tags: { id: string; name: string; slug: string; group_type: string } | null;
-    }[];
   };
 
   const profileMap = new Map<string, ProfileRow>(
     (profileRows ?? []).map((p) => [p.id, p as unknown as ProfileRow])
   );
 
-  // ── artists 변환 ──────────────────────────────────────────
-
+  // artists 변환
   const artists: FollowingArtistItem[] = (profileRows ?? []).map((p) => {
     const profile = p as unknown as ProfileRow;
-    const tags = (profile.artist_tags ?? [])
-      .map((at) => at.tags)
-      .filter((t): t is NonNullable<typeof t> => t !== null)
-      .map((t) => ({
-        id: t.id,
-        name: t.name,
-        slug: t.slug,
-        group: t.group_type as "color" | "main" | "art",
-      }));
-
     return {
-      id: profile.id,
-      displayName: profile.display_name,
+      id:              profile.id,
+      displayName:     profile.display_name,
       instagramHandle: profile.instagram_handle ?? profile.id,
-      isVerified: profile.is_verified,
-      baseCity: profile.base_city,
-      baseCountry: profile.base_country,
-      tags,
+      isVerified:      profile.is_verified,
+      baseCity:        profile.base_city,
+      baseCountry:     profile.base_country,
     };
   });
 
-  // ── schedules 변환 ────────────────────────────────────────
-
+  // schedules 변환
   const todayDate = new Date();
   todayDate.setHours(0, 0, 0, 0);
 
@@ -122,8 +118,7 @@ export async function getFollowingData(userId: string): Promise<{
       const startDate = new Date(s.start_date);
       const endDate   = new Date(s.end_date);
       endDate.setHours(23, 59, 59, 999);
-      const isCurrentlyActive =
-        todayDate >= startDate && todayDate <= endDate;
+      const isCurrentlyActive = todayDate >= startDate && todayDate <= endDate;
 
       return {
         id:           s.id,

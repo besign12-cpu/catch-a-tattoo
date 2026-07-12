@@ -1,54 +1,15 @@
 /**
- * GET /api/discover/city?city=Tokyo&country=JP
+ * GET /api/discover/city?city=Seoul&country=KR
  *
- * Discover 도시 전환 시 클라이언트에서 호출.
- * 해당 도시의 Guest/Based 아티스트 피드 반환.
+ * 선택 도시 기준으로 Guest/Based 아티스트 피드 반환.
+ * HomeFeedClient의 도시 변경 시 호출됨.
  */
-import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseAdminClient } from "@/lib/supabase/admin";
-import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { getCityArtists, type SearchResult } from "@/lib/queries/artists";
 import { toCitySlug } from "@/lib/mock-preferences";
 import type { FeedCard } from "@/types";
 
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const city    = searchParams.get("city")?.trim();
-    const country = searchParams.get("country")?.trim() ?? "";
-
-    if (!city) {
-      return NextResponse.json({ error: "city 파라미터 필요" }, { status: 400 });
-    }
-
-    // 로그인 유저의 팔로우 목록 조회 (isFollowing 반영)
-    const supabase = await getSupabaseServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    let followingArtistIds = new Set<string>();
-    if (user) {
-      const admin = getSupabaseAdminClient();
-      const { data: followRows } = await admin
-        .from("follows")
-        .select("artist_id")
-        .eq("follower_id", user.id);
-      if (followRows) {
-        followingArtistIds = new Set(followRows.map((r) => r.artist_id));
-      }
-    }
-
-    const { guests, based } = await getCityArtists(city);
-    const guestItems = toFeedCards(guests, followingArtistIds).slice(0, 8);
-    const basedItems = toFeedCards(based,  followingArtistIds).slice(0, 3);
-    const citySlug   = toCitySlug(city, country);
-
-    return NextResponse.json({ guestItems, basedItems, citySlug });
-  } catch {
-    return NextResponse.json({ error: "서버 오류" }, { status: 500 });
-  }
-}
-
-function toFeedCards(results: SearchResult[], followingIds: Set<string>): FeedCard[] {
+function toFeedCards(results: SearchResult[]): FeedCard[] {
   return results
     .filter((r) => r.nextSchedule !== null)
     .map((r) => ({
@@ -62,6 +23,28 @@ function toFeedCards(results: SearchResult[], followingIds: Set<string>): FeedCa
         tags:            r.tags,
       },
       schedule:    r.nextSchedule!,
-      isFollowing: followingIds.has(r.artistId),
+      isFollowing: false,
     }));
+}
+
+export async function GET(request: NextRequest) {
+  const { searchParams } = request.nextUrl;
+  const city    = searchParams.get("city");
+  const country = searchParams.get("country") ?? "";
+
+  if (!city) {
+    return NextResponse.json({ error: "city is required" }, { status: 400 });
+  }
+
+  try {
+    const { guests, based } = await getCityArtists(city);
+    const guestItems = toFeedCards(guests).slice(0, 8);
+    const basedItems = toFeedCards(based).slice(0, 3);
+    const citySlug   = toCitySlug(city, country);
+
+    return NextResponse.json({ guestItems, basedItems, citySlug });
+  } catch (err) {
+    console.error("[/api/discover/city] 조회 실패:", err);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
 }
