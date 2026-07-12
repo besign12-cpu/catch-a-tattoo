@@ -12,7 +12,7 @@ export default async function FollowingPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // 비로그인: 빈 데이터 + isLoggedIn=false → FollowingClient에서 Empty State 처리
+  // 비로그인 → 빈 데이터 + isLoggedIn=false
   if (!user) {
     return (
       <PageContainer>
@@ -25,7 +25,7 @@ export default async function FollowingPage() {
     );
   }
 
-  // 실데이터 조회 (에러는 getFollowingData 내부에서 console.error로 기록)
+  // 팔로우 아티스트 + 일정 실데이터 조회
   const { schedules, artists } = await getFollowingData(user.id);
 
   return (
