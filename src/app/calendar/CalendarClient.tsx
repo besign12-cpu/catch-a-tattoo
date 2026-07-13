@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Plus, MapPin } from "lucide-react";
 import { CityDropdown } from "@/components/artist/CityDropdown";
@@ -276,8 +277,19 @@ function CustomerCalendar({
 
 // ── Artist View 달력 ────────────────────────────────────────
 
-function ArtistCalendar({ cities }: { cities: CalendarCity[] }) {
+function ArtistCalendar({
+  cities,
+  artistHandle,
+}: {
+  cities: CalendarCity[];
+  artistHandle?: string | null;
+}) {
   const today = new Date();
+  const pathname = usePathname();
+  const lp = pathname === "/ko" || pathname.startsWith("/ko/") ? "/ko" : "";
+  const scheduleNewPath = artistHandle
+    ? `${lp}/artists/${artistHandle}/schedule/new`
+    : `${lp}/artists/new`;
   const [year, setYear]           = useState(today.getFullYear());
   const [month, setMonth]         = useState(today.getMonth());
   const [selectedCity, setSelectedCity] = useState<CalendarCity | null>(
@@ -316,7 +328,7 @@ function ArtistCalendar({ cities }: { cities: CalendarCity[] }) {
       {/* ── Guest Work 등록 CTA ───────────────────────── */}
       <div className="mx-4 mt-2">
         <Link
-          href="/studio/schedule/new"
+          href={scheduleNewPath}
           className="
             flex items-center justify-center gap-2
             w-full rounded-2xl bg-neutral-900
@@ -453,7 +465,7 @@ function ArtistCalendar({ cities }: { cities: CalendarCity[] }) {
                 Guest Work를 등록하면 수요를 확인할 수 있습니다.
               </p>
               <Link
-                href={`/studio/schedule/new`}
+                href={scheduleNewPath}
                 className="
                   mt-3 flex items-center justify-center gap-1.5
                   w-full rounded-xl border border-neutral-200 bg-neutral-50
@@ -491,7 +503,7 @@ function ArtistCalendar({ cities }: { cities: CalendarCity[] }) {
 
 // ── 메인 Export ─────────────────────────────────────────────
 
-export function CalendarClient({ role, cities }: CalendarClientProps) {
+export function CalendarClient({ role, cities, artistHandle }: CalendarClientProps) {
   // null(비로그인) 또는 "customer" → CustomerCalendar
   // "artist" | "admin" → ArtistCalendar
   const isArtist = role === "artist" || role === "admin";
@@ -501,7 +513,7 @@ export function CalendarClient({ role, cities }: CalendarClientProps) {
   return (
     <div className="flex flex-col gap-4 pb-10">
       {isArtist
-        ? <ArtistCalendar cities={cities} />
+        ? <ArtistCalendar cities={cities} artistHandle={artistHandle} />
         : <CustomerCalendar isGuest={isGuest} cities={cities} />
       }
     </div>

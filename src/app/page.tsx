@@ -8,7 +8,6 @@ import { HomeFeedClient } from "@/components/home/HomeFeedClient";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import { getCityArtists, type SearchResult } from "@/lib/queries/artists";
-import { DUMMY_FEED } from "@/data/dummy";
 import {
   DEFAULT_BASE_CITY,
   DEFAULT_BASE_COUNTRY,
@@ -19,12 +18,32 @@ import type { FeedCard } from "@/types";
 export const metadata: Metadata = { title: "Catch A Tattoo" };
 export const revalidate = 30;
 
+/** SearchResult → FeedCard 변환 (nextSchedule 있는 항목만) */
+function toFeedCards(results: SearchResult[]): FeedCard[] {
+  return results
+    .filter((r) => r.nextSchedule !== null)
+    .map((r) => ({
+      artist: {
+        id:              r.artistId,
+        displayName:     r.displayName,
+        instagramHandle: r.instagramHandle ?? "",
+        isVerified:      r.isVerified,
+        isClaimed:       r.isClaimed,
+        baseCity:        r.baseCity ?? "",
+        tags:            r.tags,
+      },
+      schedule:    r.nextSchedule!,
+      isFollowing: false,
+    }));
+}
+
 async function FeedSection() {
   const supabase = await getSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // 로그인 유저의 base_city/country 조회
   let baseCity    = DEFAULT_BASE_CITY;
   let baseCountry = DEFAULT_BASE_COUNTRY;
   let followingArtistIds = new Set<string>();
@@ -54,42 +73,30 @@ async function FeedSection() {
 
   const citySlug = toCitySlug(baseCity, baseCountry);
 
-  function toFeedCards(results: SearchResult[]): FeedCard[] {
-    return results
-      .filter((r) => r.nextSchedule !== null)
-      .map((r) => ({
-        artist: {
-          id:              r.artistId,
-          displayName:     r.displayName,
-          instagramHandle: r.instagramHandle ?? "",
-          isVerified:      r.isVerified,
-          isClaimed:       r.isClaimed,
-          baseCity:        r.baseCity ?? "",
-          tags:            r.tags,
-        },
-        schedule:    r.nextSchedule!,
-        isFollowing: followingArtistIds.has(r.artistId),
-      }));
-  }
-
+  // 피드 조회 — 빈 결과는 빈 결과로 표시 (DUMMY_FEED 사용 안 함)
   let guestItems: FeedCard[] = [];
   let basedItems: FeedCard[] = [];
 
   try {
     const { guests, based } = await getCityArtists(baseCity);
-    guestItems = toFeedCards(guests).slice(0, 8);
-    basedItems = toFeedCards(based).slice(0, 3);
-
-    if (guestItems.length === 0 && basedItems.length === 0) {
-      guestItems = DUMMY_FEED.slice(0, 8);
-      basedItems = DUMMY_FEED.slice(0, 3);
-    }
-  } catch {
-    guestItems = DUMMY_FEED.slice(0, 8);
-    basedItems = DUMMY_FEED.slice(0, 3);
+    guestItems = toFeedCards(guests)
+      .slice(0, 8)
+      .map((item) => ({
+        ...item,
+        isFollowing: followingArtistIds.has(item.artist.id),
+      }));
+    basedItems = toFeedCards(based)
+      .slice(0, 3)
+      .map((item) => ({
+        ...item,
+        isFollowing: followingArtistIds.has(item.artist.id),
+      }));
+  } catch (err) {
+    console.error("[Discover] getCityArtists 실패:", err);
+    // 에러 시 빈 결과 유지 (더미 데이터 표시 안 함)
   }
 
-  // cities 마스터 조회 (검색용)
+  // cities 마스터 조회 (도시 검색/변경용)
   const admin = getSupabaseAdminClient();
   const { data: citiesData } = await admin
     .from("cities")

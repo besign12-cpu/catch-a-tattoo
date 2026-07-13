@@ -165,7 +165,7 @@ export function HomeFeedClient({
         setBasedItems(data.basedItems);
         setCurrentCitySlug(data.citySlug);
       }
-    } catch { /* silent */ }
+    } catch (err) { console.error("[HomeFeedClient] 도시 변경 실패:", err); }
     finally { setCityLoading(false); }
   }, [currentCity, trackCityClick]);
 
