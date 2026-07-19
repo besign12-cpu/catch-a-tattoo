@@ -115,7 +115,9 @@ export async function signIn(
     return { status: "error", message: error.message };
   }
 
-  redirect("/");
+  // login/page.tsx에서 hidden input으로 전달한 next 파라미터
+  const next = (formData.get("next") as string | null)?.trim() || "/";
+  redirect(next);
 }
 
 // ─── 로그아웃 ────────────────────────────────────────────────────────────────

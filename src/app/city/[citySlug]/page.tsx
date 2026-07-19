@@ -10,6 +10,7 @@ import { ErrorState } from "@/components/ui/ErrorState";
 
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getCityArtists, type SearchResult } from "@/lib/queries/artists";
+import { getCityBringCount } from "@/actions/bring";
 import { DUMMY_ARTISTS } from "@/data/dummy";
 import { getLocaleServer } from "@/lib/locale.server";
 import { fromCitySlug } from "@/lib/mock-preferences";
@@ -335,8 +336,8 @@ export default async function CityPage({
   const allArtists = [...guests, ...based];
   const popularStyles = calcPopularStyles(allArtists);
 
-  // Sprint 5: city_follows (is_active=true) WHERE city = city 쿼리로 교체
-  const bringCount = 0;
+  // city_follows에서 해당 도시의 활성 Bring 수요 조회
+  const bringCount = await getCityBringCount(city);
 
   return (
     <PageContainer className="bg-neutral-50">

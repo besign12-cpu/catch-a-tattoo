@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Bell, Calendar, Heart, ChevronRight } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
 import { Avatar } from "@/components/ui/Avatar";
 import { VerifiedBadge } from "@/components/ui/VerifiedBadge";
+import { useLocaleNav } from "@/lib/hooks/useLocaleNav";
+import { toggleFollow } from "@/actions/follow";
 
 // ── 타입 ────────────────────────────────────────────────────
 // Sprint 5에서 실데이터로 교체 예정
@@ -69,6 +71,7 @@ function calcDDay(startDate: string, endDate: string): string {
 // ── 비로그인 Empty State ─────────────────────────────────────
 
 function UnauthenticatedState({ tab }: { tab: TabType }) {
+  const { href: localeHref } = useLocaleNav();
   const message =
     tab === "schedule"
       ? { title: "팔로우한 아티스트 일정이 없습니다", sub: "아티스트를 팔로우하면\n일정을 여기서 확인할 수 있습니다" }
@@ -89,7 +92,7 @@ function UnauthenticatedState({ tab }: { tab: TabType }) {
         </p>
       </div>
       <Link
-        href="/"
+        href={localeHref("/")}
         className="mt-1 rounded-xl bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white active:opacity-80"
       >
         아티스트 찾기
@@ -192,13 +195,34 @@ function ScheduleTab({ schedules }: { schedules: FollowingScheduleItem[] }) {
 // ── 팔로우 탭 ────────────────────────────────────────────────
 
 function FollowTab({ artists }: { artists: FollowingArtistItem[] }) {
-  if (artists.length === 0) {
+  // 낙관적 UI: 언팔로우 즉시 목록에서 제거
+  const [localArtists, setLocalArtists] = useState(artists);
+  const [isPending, startTransition] = useTransition();
+
+  if (localArtists.length === 0) {
     return <UnauthenticatedState tab="follow" />;
+  }
+
+  function handleUnfollow(artistId: string, artistHandle: string) {
+    // 낙관적으로 즉시 제거
+    setLocalArtists(prev => prev.filter(a => a.id !== artistId));
+
+    const formData = new FormData();
+    formData.set("artistId", artistId);
+    formData.set("artistHandle", artistHandle);
+
+    startTransition(async () => {
+      const result = await toggleFollow({ status: "idle" }, formData);
+      // 실패 시 목록 복원
+      if (result.status === "error") {
+        setLocalArtists(artists);
+      }
+    });
   }
 
   return (
     <div className="flex flex-col divide-y divide-neutral-50 px-4 py-2">
-      {artists.map(artist => (
+      {localArtists.map(artist => (
         <div key={artist.id} className="flex items-center gap-3 py-3">
           {/* 아바타 + 이름 */}
           <Link
@@ -222,13 +246,12 @@ function FollowTab({ artists }: { artists: FollowingArtistItem[] }) {
             </div>
           </Link>
 
-          {/* 언팔로우 버튼 — Sprint 5 실동작 연결 예정 */}
+          {/* 언팔로우 버튼 */}
           <button
-            className="shrink-0 rounded-full border border-neutral-200 bg-neutral-100 px-3 py-1.5 text-[11px] font-medium text-neutral-500 active:opacity-70"
+            className="shrink-0 rounded-full border border-neutral-200 bg-neutral-100 px-3 py-1.5 text-[11px] font-medium text-neutral-500 active:opacity-70 disabled:opacity-40"
             aria-label={`${artist.displayName} 팔로잉 중`}
-            onClick={() => {
-              // Sprint 5: useFollow 훅 연결 예정
-            }}
+            disabled={isPending}
+            onClick={() => handleUnfollow(artist.id, artist.instagramHandle)}
           >
             팔로잉
           </button>

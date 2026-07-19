@@ -16,6 +16,11 @@ import { getArtistProfile } from "@/lib/queries/artists";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getArtistByHandle } from "@/data/dummy";
 import { isScheduleActive } from "@/lib/utils";
+import { getLocaleServer } from "@/lib/locale.server";
+import { FollowButton } from "@/components/artist/FollowButton";
+import { BringButton } from "@/components/artist/BringButton";
+import { getFollowStatus } from "@/actions/follow";
+import { getBringStatus } from "@/actions/bring";
 import type { GuestSchedule } from "@/types";
 
 interface Props {
@@ -118,9 +123,18 @@ async function ProfileContent({
   // 본인 여부: 서버에서 받은 ownerArtistId와 비교
   const isOwner = ownerArtistId === artist.id;
 
-  // Sprint 5: Bring 실수요 데이터 연결 예정 (city_follows is_active=true)
+  // 로그인 사용자의 Follow/Bring 실상태 조회
+  const [followData, bringData] = await Promise.all([
+    getFollowStatus(artist.id),
+    getBringStatus(artist.id),
+  ]);
+  const isFollowing = followData.isFollowing;
+  const isBringing  = bringData.isBringing;
+  const baseCity    = bringData.baseCity;
+  const isLoggedIn  = ownerArtistId !== null || followData.followerCount >= 0;
 
-  const isFollowing = false; // Sprint 5: useFollow 훅 연결 예정
+  // locale prefix (KO: "/ko", EN: "")
+  const { lp } = await getLocaleServer();
 
   const instagramUrl = `https://www.instagram.com/${artist.instagramHandle.replace("@", "")}`;
 
@@ -163,34 +177,27 @@ async function ProfileContent({
 
         {/* ── CTA 버튼 행 ──────────────────────────────── */}
         <div className="flex gap-2">
-          {/* 팔로우 버튼 */}
-          <button
-            className={[
-              "flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-medium transition-colors active:opacity-80",
-              isFollowing
-                ? "border border-neutral-200 bg-neutral-100 text-neutral-500"
-                : "bg-neutral-900 text-white",
-            ].join(" ")}
-            aria-label={
-              isFollowing
-                ? `${artist.displayName} 팔로잉 중`
-                : `${artist.displayName} 팔로우`
-            }
-          >
-            {isFollowing ? "팔로잉" : "팔로우"}
-          </button>
+          {/* 팔로우 버튼 — FollowButton (toggleFollow action 연결) */}
+          <FollowButton
+            artistId={artist.id}
+            artistHandle={artist.instagramHandle}
+            artistDisplayName={artist.displayName}
+            isFollowing={isFollowing}
+            isLoggedIn={isLoggedIn}
+            variant="profile"
+          />
 
-          {/* Bring 버튼 — 타인 로그인 시만 표시 */}
-          {/* Sprint 5: useBring 훅 연결, 로그인 여부 서버에서 전달 예정 */}
+          {/* Bring 버튼 — BringButton (toggleBring action 연결), 본인 프로필 제외 */}
           {!isOwner && (
-            <div
-              className="flex items-center justify-center rounded-xl border border-neutral-200 bg-white px-3 py-2.5 text-sm font-medium text-neutral-500 select-none cursor-default"
-              role="button"
-              aria-disabled="true"
-              aria-label={`${artist.displayName} Bring This Artist`}
-            >
-              Bring
-            </div>
+            <BringButton
+              artistId={artist.id}
+              artistHandle={artist.instagramHandle}
+              artistDisplayName={artist.displayName}
+              isBringing={isBringing}
+              baseCity={baseCity}
+              isLoggedIn={isLoggedIn}
+              isFollowing={isFollowing}
+            />
           )}
 
           {/* Instagram 버튼 */}
@@ -231,7 +238,7 @@ async function ProfileContent({
                 {isOwner && (
                   <div className="flex justify-end px-1">
                     <Link
-                      href={`/studio/schedule/${schedule.id}`}
+                      href={`${lp}/artists/${handle}/schedule/${schedule.id}`}
                       className="text-[11px] font-medium text-neutral-400 hover:text-neutral-600 transition-colors"
                       aria-label={`${schedule.city} 일정 수정`}
                     >

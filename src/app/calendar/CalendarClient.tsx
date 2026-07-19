@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { usePathname } from "next/navigation";
+import { useLocaleNav } from "@/lib/hooks/useLocaleNav";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Plus, MapPin } from "lucide-react";
 import { CityDropdown } from "@/components/artist/CityDropdown";
@@ -82,16 +83,35 @@ const DEMAND_LABELS: Record<NonNullable<DemandLevel>, string> = {
 function CustomerCalendar({
   isGuest = false,
   cities = [],
+  followingSchedules = [],
 }: {
   isGuest?: boolean;
   cities?: CalendarCity[];
+  followingSchedules?: CalendarScheduleItem[];
 }) {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
+
+  // 날짜별 일정 존재 여부 Set (YYYY-MM-DD 형식)
+  const scheduleDateSet = useMemo(() => {
+    const set = new Set<string>();
+    followingSchedules.forEach((s) => {
+      const start = new Date(s.startDate);
+      const end   = new Date(s.endDate);
+      // start~end 사이의 모든 날짜를 Set에 추가
+      const cur = new Date(start);
+      while (cur <= end) {
+        set.add(cur.toISOString().split("T")[0]);
+        cur.setDate(cur.getDate() + 1);
+      }
+    });
+    return set;
+  }, [followingSchedules]);
   const [selectedCity, setSelectedCity] = useState<CalendarCity | null>(
     cities[0] ?? null
   );
+  const { href: localeHref } = useLocaleNav();
 
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay   = getFirstDayOfMonth(year, month);
@@ -175,8 +195,8 @@ function CustomerCalendar({
           }
           const date = new Date(year, month, day);
           const isToday = isSameDay(date, today);
-          // Sprint 5: 팔로우 아티스트 일정 점 데이터 연결 예정
-          const hasSchedule = false;
+          const dateKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+          const hasSchedule = scheduleDateSet.has(dateKey);
 
           return (
             <div key={day} className="flex flex-col items-center gap-0.5 py-1">
@@ -249,7 +269,7 @@ function CustomerCalendar({
               </p>
             </div>
             <Link
-              href="/"
+              href={localeHref("/")}
               className="mt-1 rounded-xl bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white active:opacity-80"
             >
               아티스트 찾기
@@ -503,18 +523,15 @@ function ArtistCalendar({
 
 // ── 메인 Export ─────────────────────────────────────────────
 
-export function CalendarClient({ role, cities, artistHandle }: CalendarClientProps) {
-  // null(비로그인) 또는 "customer" → CustomerCalendar
-  // "artist" | "admin" → ArtistCalendar
+export function CalendarClient({ role, cities, artistHandle, followingSchedules }: CalendarClientProps) {
   const isArtist = role === "artist" || role === "admin";
-  // 비로그인 여부: CustomerCalendar 내 팔로우 일정 영역 로그인 유도에 사용
-  const isGuest = role === null;
+  const isGuest  = role === null;
 
   return (
     <div className="flex flex-col gap-4 pb-10">
       {isArtist
         ? <ArtistCalendar cities={cities} artistHandle={artistHandle} />
-        : <CustomerCalendar isGuest={isGuest} cities={cities} />
+        : <CustomerCalendar isGuest={isGuest} cities={cities} followingSchedules={followingSchedules} />
       }
     </div>
   );
