@@ -1,7 +1,7 @@
 "use client";
 
 import { useFormState, useFormStatus } from "react-dom";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toggleFollow, type FollowState } from "@/actions/follow";
 import { useT } from "@/lib/hooks/useT";
@@ -72,6 +72,8 @@ interface FollowButtonProps {
   isFollowing: boolean;
   isLoggedIn: boolean;
   variant?: "profile" | "feed";
+  /** 제공 시: 성공 직후 로컬 상태 갱신에 사용. router.refresh() 생략. */
+  onSuccess?: (nowFollowing: boolean) => void;
 }
 
 const initialState: FollowState = { status: "idle" };
@@ -83,18 +85,45 @@ export function FollowButton({
   isFollowing: initialIsFollowing,
   isLoggedIn,
   variant = "profile",
+  onSuccess,
 }: FollowButtonProps) {
   const router = useRouter();
   const tf = useT("artist");
   const [state, formAction] = useFormState(toggleFollow, initialState);
-  const prevStatus = useRef(state.status);
+
+  // 버튼 표시에 사용하는 로컬 state
+  // - onSuccess 있는 경우: 성공 시 즉시 토글
+  // - onSuccess 없는 경우: router.refresh() 후 prop 변경으로 동기화
+  const [isFollowing, setIsFollowing] = useState(initialIsFollowing);
+
+  // prop이 외부에서 변경될 때 동기화 (router.refresh() 후 profile variant)
+  useEffect(() => {
+    setIsFollowing(initialIsFollowing);
+  }, [initialIsFollowing]);
+
+  // state 객체 참조를 보관 — 문자열이 아닌 객체 자체로 비교
+  // success → success처럼 같은 status 문자열이 연속될 때도 새 제출을 감지
+  const prevStateRef = useRef<FollowState>(state);
 
   useEffect(() => {
-    if (state.status === "success" && prevStatus.current !== "success") {
-      router.refresh();
+    // 이전과 동일한 객체면 재렌더링 — 처리하지 않음
+    if (prevStateRef.current === state) return;
+
+    // 새 객체 도착: 반드시 ref 갱신 먼저
+    prevStateRef.current = state;
+
+    if (state.status === "success") {
+      if (onSuccess) {
+        const nowFollowing = state.action === "follow";
+        setIsFollowing(nowFollowing);
+        onSuccess(nowFollowing);
+      } else {
+        router.refresh();
+      }
     }
-    prevStatus.current = state.status;
-  }, [state.status, router]);
+  // state 객체 참조가 바뀔 때만 실행
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
 
   // ── 비로그인: 로그인 유도 버튼
   // profile/feed 모두 동일한 클래스 체계 사용 → 크기 일관성 보장
@@ -133,8 +162,8 @@ export function FollowButton({
           <input type="hidden" name="artistId" value={artistId} />
           <input type="hidden" name="artistHandle" value={artistHandle} />
           <FollowSubmitButton
-            isFollowing={initialIsFollowing}
-            label={initialIsFollowing
+            isFollowing={isFollowing}
+            label={isFollowing
               ? `${artistDisplayName} ${tf("following")}`
               : `${artistDisplayName} ${tf("follow")}`}
             variant="feed"
@@ -156,8 +185,8 @@ export function FollowButton({
         <input type="hidden" name="artistId" value={artistId} />
         <input type="hidden" name="artistHandle" value={artistHandle} />
         <FollowSubmitButton
-          isFollowing={initialIsFollowing}
-          label={initialIsFollowing
+          isFollowing={isFollowing}
+          label={isFollowing
             ? `${artistDisplayName} ${tf("following")}`
             : `${artistDisplayName} ${tf("follow")}`}
           variant="profile"

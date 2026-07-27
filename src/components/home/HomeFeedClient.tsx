@@ -89,6 +89,16 @@ export function HomeFeedClient({
   const [basedItems, setBasedItems] = useState(initialBasedItems);
   const [cityLoading, setCityLoading] = useState(false);
 
+  // 진행 중인 도시 요청 관리 — race condition 방지
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // unmount 시 활성 요청 abort
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
+
   // ── 검색 state ──────────────────────────────────────────────
   const [query,    setQuery]    = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
@@ -148,13 +158,25 @@ export function HomeFeedClient({
     setIsSearchFocused(false);
     setCurrentCity(city.name);
     setCurrentCountry(city.country);
-    setCityLoading(true);
     trackCityClick(city.name);
+
+    // 이전 요청 abort — 오래된 응답이 최신 결과를 덮지 못하게 함
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    setCityLoading(true);
 
     try {
       const res = await fetch(
-        `/api/discover/city?city=${encodeURIComponent(city.name)}&country=${encodeURIComponent(city.country)}`
+        `/api/discover/city?city=${encodeURIComponent(city.name)}&country=${encodeURIComponent(city.country)}`,
+        {
+          signal: controller.signal,
+          cache: "no-store", // 최신성 개선 목적
+        }
       );
+
+      // abort된 요청은 여기까지 오지 않음
       if (res.ok) {
         const data = await res.json() as {
           guestItems: FeedCardType[];
@@ -164,9 +186,26 @@ export function HomeFeedClient({
         setGuestItems(data.guestItems);
         setBasedItems(data.basedItems);
         setCurrentCitySlug(data.citySlug);
+      } else {
+        // 실제 요청 실패 시: 이전 도시 데이터를 유지하지 않음
+        console.error("[HomeFeedClient] 도시 변경 API 실패:", res.status);
+        setGuestItems([]);
+        setBasedItems([]);
       }
-    } catch (err) { console.error("[HomeFeedClient] 도시 변경 실패:", err); }
-    finally { setCityLoading(false); }
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") {
+        // 정상적인 요청 취소 — 빈 배열 처리 없음, loading도 건드리지 않음
+        return;
+      }
+      console.error("[HomeFeedClient] 도시 변경 실패:", err);
+      setGuestItems([]);
+      setBasedItems([]);
+    } finally {
+      // abort된 요청의 finally가 최신 요청의 loading을 false로 바꾸지 않도록
+      if (!controller.signal.aborted) {
+        setCityLoading(false);
+      }
+    }
   }, [currentCity, trackCityClick]);
 
   // ── 검색 결과 계산 ───────────────────────────────────────────

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/Avatar";
@@ -31,7 +32,16 @@ interface FeedCardProps {
 }
 
 export function FeedCard({ data, className, isLoggedIn = false }: FeedCardProps) {
-  const { artist, schedule, isFollowing } = data;
+  const { artist, schedule } = data;
+
+  // isFollowing을 로컬 state로 관리 — 성공 직후 즉시 반영
+  const [isFollowing, setIsFollowing] = useState(data.isFollowing);
+
+  // 카드 데이터 자체가 교체될 때(도시 변경 등) prop과 동기화
+  useEffect(() => {
+    setIsFollowing(data.isFollowing);
+  }, [data.isFollowing, data.artist.id]);
+
   const status    = isScheduleActive(schedule.startDate, schedule.endDate);
   const isActive  = status === "active";
   const ddayRaw   = calcDDay(schedule.startDate, schedule.endDate);
@@ -82,6 +92,7 @@ export function FeedCard({ data, className, isLoggedIn = false }: FeedCardProps)
           isFollowing={isFollowing}
           isLoggedIn={isLoggedIn}
           variant="feed"
+          onSuccess={(nowFollowing) => setIsFollowing(nowFollowing)}
         />
       </div>
 
