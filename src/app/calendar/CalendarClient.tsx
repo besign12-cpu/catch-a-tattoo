@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { usePathname } from "next/navigation";
 import { useLocaleNav } from "@/lib/hooks/useLocaleNav";
+import { useT } from "@/lib/hooks/useT";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Plus, MapPin } from "lucide-react";
 import { CityDropdown } from "@/components/artist/CityDropdown";
@@ -72,11 +73,7 @@ const DEMAND_COLORS: Record<NonNullable<DemandLevel>, string> = {
   low:  "bg-red-400",
 };
 
-const DEMAND_LABELS: Record<NonNullable<DemandLevel>, string> = {
-  high: "여유 (1–4)",
-  mid:  "보통 (5–8)",
-  low:  "혼잡 (9+)",
-};
+// DEMAND_LABELS는 ArtistCalendar 내부에서 useT로 생성
 
 // ── Customer View 달력 ──────────────────────────────────────
 
@@ -89,6 +86,9 @@ function CustomerCalendar({
   cities?: CalendarCity[];
   followingSchedules?: CalendarScheduleItem[];
 }) {
+  const tc   = useT("calendar");
+  const tf   = useT("following");
+  const tc_c = useT("common");
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -159,7 +159,7 @@ function CustomerCalendar({
         <button
           onClick={prevMonth}
           className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-400 hover:bg-neutral-100 transition-colors"
-          aria-label="이전 달"
+          aria-label={tc("prevMonth")}
         >
           <ChevronLeft size={18} />
         </button>
@@ -169,7 +169,7 @@ function CustomerCalendar({
         <button
           onClick={nextMonth}
           className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-400 hover:bg-neutral-100 transition-colors"
-          aria-label="다음 달"
+          aria-label={tc("nextMonth")}
         >
           <ChevronRight size={18} />
         </button>
@@ -227,7 +227,7 @@ function CustomerCalendar({
       <div className="mx-4 rounded-2xl border border-neutral-100 bg-white">
         <div className="border-b border-neutral-50 px-5 py-3">
           <p className="text-[11px] font-semibold tracking-widest text-neutral-400 uppercase">
-            이번 달 일정
+            {tc("thisMonthSchedule")}
           </p>
         </div>
 
@@ -239,18 +239,17 @@ function CustomerCalendar({
             </div>
             <div className="flex flex-col gap-1">
               <p className="text-sm font-medium text-neutral-700">
-                로그인하면 일정을 볼 수 있습니다
+                {tc("loginToView")}
               </p>
               <p className="text-xs text-neutral-400 leading-relaxed">
-                팔로우한 아티스트의 게스트워크<br />
-                일정을 달력에서 확인해보세요
+                {tc("loginDesc")}
               </p>
             </div>
             <Link
               href="/auth/login?next=/calendar"
               className="mt-1 rounded-xl bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white active:opacity-80"
             >
-              로그인
+              {tf("loginCta")}
             </Link>
           </div>
         ) : (
@@ -261,18 +260,17 @@ function CustomerCalendar({
             </div>
             <div className="flex flex-col gap-1">
               <p className="text-sm font-medium text-neutral-700">
-                팔로우한 아티스트 일정이 없습니다
+                {tc("noFollowSchedule")}
               </p>
               <p className="text-xs text-neutral-400 leading-relaxed">
-                아티스트를 팔로우하면<br />
-                여기서 일정을 확인할 수 있습니다
+                {tc("noFollowScheduleDesc")}
               </p>
             </div>
             <Link
               href={localeHref("/")}
               className="mt-1 rounded-xl bg-neutral-900 px-5 py-2.5 text-sm font-medium text-white active:opacity-80"
             >
-              아티스트 찾기
+              {tf("findArtistCta")}
             </Link>
           </div>
         )}
@@ -282,13 +280,13 @@ function CustomerCalendar({
       <div className="flex items-center gap-3 px-5 pb-4">
         <div className="flex items-center gap-1.5">
           <span className="h-2 w-2 rounded-full bg-cat-purple" aria-hidden="true" />
-          <span className="text-[11px] text-neutral-400">일정 있음</span>
+          <span className="text-[11px] text-neutral-400">{tc_c("hasSchedule")}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-neutral-900 text-[9px] text-white font-medium">
             {today.getDate()}
           </span>
-          <span className="text-[11px] text-neutral-400">오늘</span>
+          <span className="text-[11px] text-neutral-400">{tc_c("todayLabel")}</span>
         </div>
       </div>
     </div>
@@ -304,6 +302,13 @@ function ArtistCalendar({
   cities: CalendarCity[];
   artistHandle?: string | null;
 }) {
+  const tc         = useT("calendar");
+  const ta         = useT("artist");
+  const DEMAND_LABELS: Record<NonNullable<DemandLevel>, string> = {
+    high: tc("demandHigh"),
+    mid:  tc("demandMid"),
+    low:  tc("demandLow"),
+  };
   const today = new Date();
   const pathname = usePathname();
   const lp = pathname === "/ko" || pathname.startsWith("/ko/") ? "/ko" : "";
@@ -357,7 +362,7 @@ function ArtistCalendar({
           "
         >
           <Plus size={16} aria-hidden="true" />
-          Guest Work 등록
+          {ta("addSchedule")}
         </Link>
       </div>
 
@@ -383,7 +388,7 @@ function ArtistCalendar({
         <button
           onClick={prevMonth}
           className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-400 hover:bg-neutral-100 transition-colors"
-          aria-label="이전 달"
+          aria-label={tc("prevMonth")}
         >
           <ChevronLeft size={18} />
         </button>
@@ -393,7 +398,7 @@ function ArtistCalendar({
         <button
           onClick={nextMonth}
           className="flex h-8 w-8 items-center justify-center rounded-full text-neutral-400 hover:bg-neutral-100 transition-colors"
-          aria-label="다음 달"
+          aria-label={tc("nextMonth")}
         >
           <ChevronRight size={18} />
         </button>
@@ -428,7 +433,7 @@ function ArtistCalendar({
               key={day}
               onClick={() => setSelectedDay(isSelected ? null : day)}
               className="flex flex-col items-center gap-0.5 py-1"
-              aria-label={`${month + 1}월 ${day}일`}
+              aria-label={`${month + 1}/${day}`}
               aria-pressed={isSelected}
             >
               <span
@@ -463,26 +468,26 @@ function ArtistCalendar({
       {selectedDay && (
         <div className="mx-4 rounded-2xl border border-neutral-100 bg-white px-5 py-4">
           <p className="text-[13px] font-semibold text-neutral-900">
-            {month + 1}월 {selectedDay}일 인사이트
+            {tc("dateInsight").replace("{month}", String(month + 1)).replace("{day}", String(selectedDay))}
           </p>
 
           {selectedDemand ? (
             <div className="mt-3 flex flex-col gap-2">
               <div className="flex items-center gap-2">
                 <span className="text-[13px] font-medium text-neutral-900">
-                  Guest {DEMAND_LABELS[selectedDemand]}명
+                  {tc("guestCountLabel").replace("{label}", DEMAND_LABELS[selectedDemand!])}
                 </span>
               </div>
               <p className="text-xs text-neutral-400">
-                이 날짜의 수요 데이터를 기반으로 일정을 등록해보세요.
+                {tc("noInsightDesc")}
               </p>
             </div>
           ) : (
             <div className="mt-3">
               <p className="text-xs text-neutral-400 leading-relaxed">
-                이 날짜의 수요 데이터가 아직 없습니다.
+                {tc("noInsight")}
                 <br />
-                Guest Work를 등록하면 수요를 확인할 수 있습니다.
+                {tc("noInsightDesc")}
               </p>
               <Link
                 href={scheduleNewPath}
@@ -494,7 +499,7 @@ function ArtistCalendar({
                 "
               >
                 <Plus size={14} aria-hidden="true" />
-                이 날짜로 일정 등록
+                {tc("addScheduleForDate")}
               </Link>
             </div>
           )}
