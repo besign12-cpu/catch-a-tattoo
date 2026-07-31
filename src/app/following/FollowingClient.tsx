@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Bell, Calendar, Heart, ChevronRight } from "lucide-react";
 import { TopBar } from "@/components/layout/TopBar";
@@ -210,23 +210,69 @@ function ScheduleTab({ schedules }: { schedules: FollowingScheduleItem[] }) {
 function FollowTab({ artists }: { artists: FollowingArtistItem[] }) {
   const ta = useT("artist");
 
-  // 언팔로우된 artist ID Set — 카드는 유지, 버튼 상태만 변경
-  // 화면 재진입 시 서버에서 내려온 artists prop이 갱신되면 자연스럽게 제거됨
+  // ── 최초 mount 시 artists를 localArtists state로 저장 ──────
+  // Server Action 완료 후 부모 서버 컴포넌트가 재렌더돼 새 artists prop이
+  // 내려와도, 현재 화면 세션 동안은 localArtists를 기준으로 렌더링
+  const [localArtists, setLocalArtists] = useState<FollowingArtistItem[]>(artists);
+
+  // 이번 세션에서 언팔로우한 아티스트 ID Set
+  // - 버튼 상태 즉시 전환에 사용
+  // - 서버 재렌더 시 localArtists 병합 기준으로도 사용
   const [unfollowedIds, setUnfollowedIds] = useState<Set<string>>(new Set());
+
   const [isPending, startTransition] = useTransition();
 
-  if (artists.length === 0) {
+  // ── artists prop 변경 시 localArtists 병합 ─────────────────
+  // 조건: 새 prop에 있는 artist 중
+  //   1. 이번 세션에서 언팔로우한 artist → localArtists 유지(제거 금지)
+  //   2. 서버에서 새로 추가된 artist → localArtists에 병합
+  //   3. 서버에서 사라졌고 언팔로우하지 않은 artist → 제거
+  const prevArtistsPropRef = useRef<FollowingArtistItem[]>(artists);
+
+  useEffect(() => {
+    // prop이 실제로 바뀐 경우만 처리
+    if (prevArtistsPropRef.current === artists) return;
+    prevArtistsPropRef.current = artists;
+
+    setLocalArtists(prev => {
+      // 현재 세션 기준 artist ID Set
+      const prevIds    = new Set(prev.map(a => a.id));
+      const newIds     = new Set(artists.map(a => a.id));
+      const unfollowed = unfollowedIds; // 클로저로 현재 값 참조
+
+      // 새 prop에 있고 언팔로우하지 않은 것만 유효한 서버 데이터로 간주
+      const validFromServer = artists.filter(a => !unfollowed.has(a.id));
+
+      // localArtists 중 유지할 항목:
+      //   - 서버에 아직 있거나 (정상)
+      //   - 이번 세션에서 언팔로우한 경우 (화면 유지)
+      const retained = prev.filter(a =>
+        newIds.has(a.id) || unfollowed.has(a.id)
+      );
+
+      // 서버에서 새로 추가된 artist (이전에 없던 것)
+      const added = validFromServer.filter(a => !prevIds.has(a.id));
+
+      return [...retained, ...added];
+    });
+  // unfollowedIds는 의도적으로 deps 제외
+  // — unfollowedIds가 바뀔 때마다 병합 로직을 재실행하면 안 됨
+  // — artists prop 변경 시에만 병합
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [artists]);
+
+  if (localArtists.length === 0 && unfollowedIds.size === 0) {
     return <UnauthenticatedState tab="follow" />;
   }
 
   function handleToggle(artistId: string, artistHandle: string) {
     const isUnfollowed = unfollowedIds.has(artistId);
 
-    // 낙관적 UI: 버튼 상태만 즉시 전환 (카드 제거 없음)
+    // 버튼 상태 즉시 전환
     setUnfollowedIds(prev => {
       const next = new Set(prev);
-      if (isUnfollowed) next.delete(artistId);
-      else next.add(artistId);
+      if (isUnfollowed) next.delete(artistId); // 팔로우 복원
+      else next.add(artistId);                 // 언팔로우
       return next;
     });
 
@@ -236,8 +282,8 @@ function FollowTab({ artists }: { artists: FollowingArtistItem[] }) {
 
     startTransition(async () => {
       const result = await toggleFollow({ status: "idle" }, formData);
-      // 실패 시 버튼 상태 복원
       if (result.status === "error") {
+        // 실패 시 버튼 상태 복원
         setUnfollowedIds(prev => {
           const next = new Set(prev);
           if (isUnfollowed) next.add(artistId);
@@ -250,7 +296,7 @@ function FollowTab({ artists }: { artists: FollowingArtistItem[] }) {
 
   return (
     <div className="flex flex-col divide-y divide-neutral-50 px-4 py-2">
-      {artists.map(artist => {
+      {localArtists.map(artist => {
         const isUnfollowed = unfollowedIds.has(artist.id);
         return (
           <div key={artist.id} className="flex items-center gap-3 py-3">
@@ -276,7 +322,7 @@ function FollowTab({ artists }: { artists: FollowingArtistItem[] }) {
               </div>
             </Link>
 
-            {/* 팔로우/언팔로우 버튼 — 버튼 상태만 즉시 전환 */}
+            {/* 팔로우/언팔로우 버튼 */}
             <button
               className="shrink-0 rounded-full border border-neutral-200 bg-neutral-100 px-3 py-1.5 text-[11px] font-medium text-neutral-500 active:opacity-70 disabled:opacity-40"
               aria-label={`${artist.displayName} ${isUnfollowed ? ta("follow") : ta("following")}`}
